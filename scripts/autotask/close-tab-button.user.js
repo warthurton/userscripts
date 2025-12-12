@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Autotask - Close Tab Button
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.4
+// @version      1.0.5
 // @description  Adds a subtle Close Tab button to Autotask detail pages. Matches *Detail.mvc by default with configurable exclusions.
 // @author       warthurton
 // @match        https://ww*.autotask.net/Mvc/*Detail.mvc*
@@ -261,12 +261,26 @@
     if (!shouldRunOnThisPage()) return;
     log('Page eligible, placing button');
 
-    // Observe DOM if needed to ensure sidebar exists
-    if (!placeButtonAndWire()) {
-      const mo = new MutationObserver(() => { if (placeButtonAndWire()) mo.disconnect(); });
-      log('Sidebar not ready; observing mutations');
-      mo.observe(document.documentElement, { childList: true, subtree: true });
-    }
+    // Try immediate placement
+    const placedNow = placeButtonAndWire();
+    log('Immediate placement result:', placedNow);
+
+    // Observe DOM for TitleBar or sidebar becoming available
+    const mo = new MutationObserver(() => {
+      const titleExists = !!document.querySelector('div.PageHeadingContainer div.Active.TitleBar.TitleBarNavigation');
+      const sidebarExists = !!(
+        document.querySelector('div.SecondaryContainer.Left.Active') ||
+        document.querySelector('div.SecondaryContainer.Left') ||
+        document.querySelector('.SecondaryContainer.Left')
+      );
+      const placed = placeButtonAndWire();
+      if (placed) {
+        log('Placement succeeded after mutation. TitleBar:', titleExists, 'Sidebar:', sidebarExists);
+        mo.disconnect();
+      }
+    });
+    log('Observing DOM for TitleBar/sidebar readiness');
+    mo.observe(document.documentElement, { childList: true, subtree: true });
   }
 
   if (typeof GM_registerMenuCommand === 'function') {
