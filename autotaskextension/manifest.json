@@ -1,0 +1,36 @@
+{
+   "background": {
+      "service_worker": "background.js"
+   },
+   "content_scripts": [ {
+      "all_frames": true,
+      "js": [ "content.js" ],
+      "matches": [ "*://*.autotask.net/*" ],
+      "run_at": "document_idle"
+   } ],
+   "declarative_net_request": {
+      "rule_resources": [ {
+         "enabled": false,
+         "id": "newTabRules",
+         "path": "rulesets/newTabRules.json"
+      } ]
+   },
+   "description": "Highlights the ticket timer a different colour depending on the elapsed time. Can also make Work Type field 'mandatory.",
+   "host_permissions": [ "https://*.autotask.net/*" ],
+   "icons": {
+      "128": "images/logo128.png",
+      "16": "images/logo16.png",
+      "32": "images/logo32.png",
+      "48": "images/logo64.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqsDI8RmPRnWToCqBOf5A4Ikp7W/cnyKeedn7mW9xKtmiaozl8A2WJhQaymdr5pLhPrAn/d2qgsoTpjZZRGaWRC2f8RVUp9NSXSGauk4+mZKHh0/ixwKay4v2cD66n0ih5vFXqrAKG4utKKBUa0nKuup5sg03G+cev6wu18G8rGFT2tUQANqz4XWXtE1NY4pHN4X0mK6ZK5I6B/SZMNPqQAsyg5UI15Fy18vdTeDhcbekodTrzR9M0WJdTK/ir935GR7U1Y1213ZXjXBfHBzISaU3eQPldT+Z6fzrrVo+w2WfCBnui9Mx1EVV8N3NUi6KHC9yv7SUoz8bsbuKq6f2vQIDAQAB",
+   "manifest_version": 3,
+   "name": "Autotask Highlighter",
+   "options_ui": {
+      "open_in_tab": false,
+      "page": "options.html"
+   },
+   "permissions": [ "storage", "declarativeContent", "declarativeNetRequest", "declarativeNetRequestWithHostAccess" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "2.1.0"
+}

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <!-- Latest compiled and minified CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap.min.css"
+    integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+
+  <!-- Optional theme -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/css/bootstrap-theme.min.css"
+    integrity="sha384-6pzBo3FDv/PJ8r2KRkGHifhEocL+1X2rVCTTkUfGk7/0pbek5mMa1upzvWbrUbOZ" crossorigin="anonymous">
+
+  <title>Autotask Highlighter Options</title>
+</head>
+
+<body>
+  <div style="padding:10px; min-width:550px;">
+    <h4>Choose when timers should change colour</h4>
+    <form>
+      <label for="inputOptionAmber">Switch to <span style="color: orange;">Amber</span> at</label>
+      <input min="1" max="999" required type="number" id="inputOptionAmber" name="inputOptionAmber"
+        style="width:50px"><label for="inputOptionAmber">minutes</label>
+      <br>
+      <label for="inputOptionRed">Switch to <span style="color: red;">Red</span> at&nbsp;&nbsp;&nbsp;&nbsp;</label>
+      <input min="2" max="1000" required type="number" id="inputOptionRed" name="inputOptionRed"
+        style="width:50px"><label for="inputOptionAmber">minutes</label>
+      <br>
+      <br>
+      <input type="checkbox" id="enableWorkTypeFeature">
+      <label for="enableWorkTypeFeature">Make Work Type mandatory on time entry screen</label>
+      </br>
+
+      <input type="checkbox" id="enableLinksOpeningInNewTabs">
+      <label for="enableLinksOpeningInNewTabs">Make Article, Ticket and Task links open in new tabs instead of a window</label>
+      </br>
+
+      <button class="btn btn-lg btn-primary btn-block" type="submit" style="width:100px">Save</button>
+      <br />
+      <div class="alert-success" id="status"></div>
+    </form>
+  </div>
+  <script src="options.js"></script>
+</body>
+
+</html>
