@@ -50,11 +50,18 @@
     log('Checking exclusions for URL:', url);
     const patterns = getExcluded();
     log('Patterns:', patterns);
+    if (patterns.length === 0) {
+      log('No exclusion patterns defined');
+      return false;
+    }
     return patterns.some(p => {
-      // simple wildcard match: treat '*' as any chars
-      const re = new RegExp('^' + p.replace(/[.*+?^${}()|[\]\\]/g, r => '\\' + r).replace(/\\\*/g, '.*') + '$');
-      log('Testing pattern:', p, 'regex:', re);
-      return re.test(url);
+      // Escape special regex chars except *, then convert * to .*
+      const escaped = p.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+      const pattern = escaped.replace(/\*/g, '.*');
+      const re = new RegExp('^' + pattern + '$');
+      const matches = re.test(url);
+      log('Testing pattern:', p, 'matches:', matches);
+      return matches;
     });
   }
 
