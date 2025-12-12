@@ -97,9 +97,19 @@
   }
 
   function placeButtonAndWire() {
-    // Find the left sidebar container; prefer the SecondaryContainer Left
-    const leftSidebar = document.querySelector('.SecondaryContainer.Left') || document.querySelector('.SecondaryContainer.Left.Active');
+    // Locate the left sidebar container
+    const leftSidebar = document.querySelector('div.SecondaryContainer.Left.Active')
+      || document.querySelector('div.SecondaryContainer.Left')
+      || document.querySelector('.SecondaryContainer.Left');
     if (!leftSidebar) return false;
+
+    // Create a sticky footer container so the button sits near the bottom
+    let footer = leftSidebar.querySelector('.at-close-tab-footer');
+    if (!footer) {
+      footer = document.createElement('div');
+      footer.className = 'at-close-tab-footer';
+      leftSidebar.appendChild(footer);
+    }
 
     const btn = document.createElement('button');
     btn.className = 'at-close-tab-btn';
@@ -107,7 +117,8 @@
     btn.textContent = 'Close Tab';
 
     const style = `
-      .at-close-tab-btn { width: 100%; margin: 12px 0 4px 0; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.08); background: #f4f6f8; color: #333; font-weight: 600; cursor: pointer; }
+      .at-close-tab-footer { position: sticky; bottom: 8px; display: block; padding: 8px; }
+      .at-close-tab-btn { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.08); background: #f4f6f8; color: #333; font-weight: 600; cursor: pointer; }
       .at-close-tab-btn:hover { background: #eef1f4; }
     `;
     if (typeof GM_addStyle === 'function') GM_addStyle(style); else {
@@ -121,8 +132,8 @@
       try { location.href = 'about:blank'; } catch {}
     });
 
-    // Append to the bottom of the sidebar
-    leftSidebar.appendChild(btn);
+    // Mount button (replace any existing to avoid duplicates)
+    footer.replaceChildren(btn);
     return true;
   }
 
@@ -147,6 +158,10 @@
     GM_registerMenuCommand('Close Tab Button: Exclusions', openSettings);
   }
 
-  if (document.readyState === 'complete' || document.readyState === 'interactive') init();
-  else window.addEventListener('DOMContentLoaded', init, { once: true });
+  const start = () => init();
+  if (document.readyState === 'complete' || document.readyState === 'interactive') start();
+  else {
+    window.addEventListener('DOMContentLoaded', start, { once: true });
+    window.addEventListener('load', start, { once: true });
+  }
 })();
