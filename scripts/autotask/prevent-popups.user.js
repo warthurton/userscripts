@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Autotask - Prevent Popups
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.3
+// @version      1.0.4
 // @description  Prevents Autotask tickets, tasks, and KB articles from opening in popup windows by redirecting to proper MVC URLs
 // @author       warthurton
 // @match        https://ww*.autotask.net/Autotask/AutotaskExtend/ExecuteCommand.aspx*
@@ -28,6 +28,13 @@
     redirectTasks: 'autotask_redirect_tasks',
     redirectKB: 'autotask_redirect_kb'
   };
+
+  // Session flag to prevent redirect loops
+  const SESSION_KEY = 'autotask_popup_handled_' + Date.now();
+  if (sessionStorage.getItem(SESSION_KEY)) {
+    log('Already handled in this session, skipping');
+    return;
+  }
 
   // Get redirect settings
   function getSettings() {
@@ -195,6 +202,13 @@
 
   // Detect if we're in a popup window and handle accordingly
   function handlePopupWindow() {
+    // Check if this URL was already processed
+    const urlKey = 'autotask_popup_processed_' + location.href;
+    if (sessionStorage.getItem(urlKey)) {
+      log('URL already processed, skipping to avoid loop');
+      return false;
+    }
+
     // Check if this is a popup (has opener, smaller than full screen, or has specific popup features)
     const isPopup = !!(
       window.opener || 
@@ -217,10 +231,19 @@
     if (isDetailPage) {
       log('This is a Detail page in a popup. Redirecting to parent or new tab.');
       
+      // Mark this URL as processed
+      sessionStorage.setItem(urlKey, 'true');
+      
       // If we have an opener (parent window), try to redirect there
       if (window.opener && !window.opener.closed) {
         try {
           log('Redirecting opener to:', currentUrl);
+          // Mark in opener's session storage too
+          try {
+            window.opener.sessionStorage.setItem(urlKey, 'true');
+          } catch (e) {
+            log('Could not set session in opener:', e);
+          }
           window.opener.location.href = currentUrl;
           window.close();
           return true;
