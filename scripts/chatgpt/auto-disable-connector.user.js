@@ -6,8 +6,8 @@
 // @match        https://chatgpt.com/admin/*
 // @run-at       document-start
 //
-// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/chatgpt/auto-disable-connector.user.js
-// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/chatgpt/auto-disable-connector.user.js
+// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/scripts/chatgpt/auto-disable-connector.user.js
+// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/scripts/chatgpt/auto-disable-connector.user.js
 //
 // @grant        none
 // ==/UserScript==
