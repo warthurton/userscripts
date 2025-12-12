@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Autotask - Close Tab Button
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.2
+// @version      1.0.3
 // @description  Adds a subtle Close Tab button to Autotask detail pages. Matches *Detail.mvc by default with configurable exclusions.
 // @author       warthurton
 // @match        https://ww*.autotask.net/Mvc/*Detail.mvc*
@@ -107,12 +107,30 @@
 
   function placeButtonAndWire() {
     log('Attempting to place Close Tab button');
-    // Locate the left sidebar container
-    const leftSidebar = document.querySelector('div.SecondaryContainer.Left.Active')
-      || document.querySelector('div.SecondaryContainer.Left')
-      || document.querySelector('.SecondaryContainer.Left');
-    log('Left sidebar found?', !!leftSidebar, leftSidebar);
-    if (!leftSidebar) return false;
+    // Try multiple known selectors for Autotask's left sidebar
+    const selectors = [
+      'div.SecondaryContainer.Left.Active',
+      'div.SecondaryContainer.Left',
+      '.SecondaryContainer.Left',
+      '#leftPanel',
+      '.LeftPanel',
+      '#SecondaryLeft',
+      '.LayoutLeftPanel',
+      '.navLeft',
+      '.secondary-container.left',
+      "[class*='SecondaryContainer'][class*='Left']"
+    ];
+    let leftSidebar = null;
+    let matchedSelector = null;
+    for (const sel of selectors) {
+      const el = document.querySelector(sel);
+      if (el) { leftSidebar = el; matchedSelector = sel; break; }
+    }
+    log('Left sidebar found?', !!leftSidebar, 'selector:', matchedSelector, leftSidebar);
+    if (!leftSidebar) {
+      log('Sidebar not found: will use floating fallback');
+      return placeFloatingButton();
+    }
 
     // Create a sticky footer container so the button sits near the bottom
     let footer = leftSidebar.querySelector('.at-close-tab-footer');
@@ -132,6 +150,8 @@
       .at-close-tab-footer { position: sticky; bottom: 8px; display: block; padding: 8px; }
       .at-close-tab-btn { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.08); background: #f4f6f8; color: #333; font-weight: 600; cursor: pointer; }
       .at-close-tab-btn:hover { background: #eef1f4; }
+      .at-close-tab-float { position: fixed; left: 12px; bottom: 12px; z-index: 2147483646; }
+      .at-close-tab-float .at-close-tab-btn { width: auto; min-width: 120px; box-shadow: 0 6px 18px rgba(0,0,0,0.15); }
     `;
     if (typeof GM_addStyle === 'function') GM_addStyle(style); else {
       const s = document.createElement('style'); s.textContent = style; document.head.appendChild(s);
@@ -147,7 +167,36 @@
 
     // Mount button (replace any existing to avoid duplicates)
     footer.replaceChildren(btn);
-    log('Button placed');
+    const rect = leftSidebar.getBoundingClientRect();
+    log('Button placed in sidebar', { selector: matchedSelector, rect: { x: rect.x, y: rect.y, w: rect.width, h: rect.height } });
+    return true;
+  }
+
+  function placeFloatingButton() {
+    // Fallback: place a subtle floating button bottom-left
+    let float = document.querySelector('.at-close-tab-float');
+    if (!float) {
+      log('Creating floating fallback container');
+      float = document.createElement('div');
+      float.className = 'at-close-tab-float';
+      document.body.appendChild(float);
+    }
+
+    const btn = document.createElement('button');
+    btn.className = 'at-close-tab-btn';
+    btn.type = 'button';
+    btn.textContent = 'Close Tab';
+
+    btn.addEventListener('click', () => {
+      log('Floating close button clicked');
+      try { window.close(); } catch {}
+      try { self.close(); } catch {}
+      try { const w = window.open('', '_self'); if (w) w.close(); } catch {}
+      try { location.href = 'about:blank'; } catch {}
+    });
+
+    float.replaceChildren(btn);
+    log('Floating button placed');
     return true;
   }
 
