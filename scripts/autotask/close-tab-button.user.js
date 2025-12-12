@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Autotask - Close Tab Button
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.8
+// @version      1.0.9
 // @description  Adds a subtle Close Tab button to Autotask detail pages. Matches *Detail.mvc by default with configurable exclusions.
 // @author       warthurton
 // @match        https://ww*.autotask.net/Mvc/*Detail.mvc*
@@ -234,15 +234,22 @@
   function shouldRunOnThisPage() {
     const url = location.href;
     log('shouldRunOnThisPage URL:', url);
-    if (isExcluded(url)) return false;
+    if (isExcluded(url)) {
+      log('URL is excluded');
+      return false;
+    }
     // Default match already handled by @match, but add safety for other contexts
-    return /\/Mvc\/[^/]*Detail\.mvc/.test(url);
+    const matches = /\/Mvc\/.*Detail\.mvc/i.test(url);
+    log('URL matches Detail.mvc pattern:', matches);
+    return matches;
   }
 
   function init() {
     log('Init called');
-    if (!shouldRunOnThisPage()) {
-      log('Page not eligible (excluded)');
+    const shouldRun = shouldRunOnThisPage();
+    log('shouldRunOnThisPage result:', shouldRun);
+    if (!shouldRun) {
+      log('Page not eligible - skipping');
       return;
     }
     log('Page eligible, setting up button placement');
