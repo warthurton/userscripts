@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Autotask - Close Tab Button
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.5
+// @version      1.0.6
 // @description  Adds a subtle Close Tab button to Autotask detail pages. Matches *Detail.mvc by default with configurable exclusions.
 // @author       warthurton
 // @match        https://ww*.autotask.net/Mvc/*Detail.mvc*
@@ -108,8 +108,8 @@
   function placeButtonAndWire() {
     log('Attempting to place Close Tab button');
     // Preferred placement: TitleBar area near the page title or toolbar
-    const titleSelector = 'div.PageHeadingContainer div.Active.TitleBar.TitleBarNavigation div.TitleBarItem.Title';
-    const toolbarSelector = 'div.PageHeadingContainer div.Active.TitleBar.TitleBarNavigation div.TitleBarItem.TitleBarToolbar';
+    const titleSelector = 'body > div.PageHeadingContainer > div.Active.TitleBar.TitleBarNavigation > div.TitleBarItem.Title';
+    const toolbarSelector = 'body > div.PageHeadingContainer > div.Active.TitleBar.TitleBarNavigation > div.TitleBarItem.TitleBarToolbar';
     const titleEl = document.querySelector(titleSelector);
     const toolbarEl = document.querySelector(toolbarSelector);
     if (titleEl || toolbarEl) {
@@ -265,9 +265,23 @@
     const placedNow = placeButtonAndWire();
     log('Immediate placement result:', placedNow);
 
+    // Timed retry loop to handle SPA-rendered content
+    let attempts = 0;
+    const maxAttempts = 40; // ~20s at 500ms
+    const retry = () => {
+      attempts++;
+      const placed = placeButtonAndWire();
+      log('Retry attempt', attempts, 'placed:', placed);
+      if (placed || attempts >= maxAttempts) {
+        clearInterval(timer);
+        log(placed ? 'Placement succeeded via retry loop' : 'Giving up after retries');
+      }
+    };
+    const timer = setInterval(retry, 500);
+
     // Observe DOM for TitleBar or sidebar becoming available
     const mo = new MutationObserver(() => {
-      const titleExists = !!document.querySelector('div.PageHeadingContainer div.Active.TitleBar.TitleBarNavigation');
+      const titleExists = !!document.querySelector('body > div.PageHeadingContainer > div.Active.TitleBar.TitleBarNavigation');
       const sidebarExists = !!(
         document.querySelector('div.SecondaryContainer.Left.Active') ||
         document.querySelector('div.SecondaryContainer.Left') ||
@@ -277,11 +291,19 @@
       if (placed) {
         log('Placement succeeded after mutation. TitleBar:', titleExists, 'Sidebar:', sidebarExists);
         mo.disconnect();
+        clearInterval(timer);
       }
     });
     log('Observing DOM for TitleBar/sidebar readiness');
     mo.observe(document.documentElement, { childList: true, subtree: true });
   }
+
+  // Re-run on SPA navigations
+  const rerun = () => { log('SPA navigation detected; re-initializing'); init(); };
+  const origPushState = history.pushState;
+  history.pushState = function() { const r = origPushState.apply(this, arguments); try { rerun(); } catch {} return r; };
+  window.addEventListener('popstate', rerun);
+  window.addEventListener('hashchange', rerun);
 
   if (typeof GM_registerMenuCommand === 'function') {
     GM_registerMenuCommand('Close Tab Button: Exclusions', openSettings);
