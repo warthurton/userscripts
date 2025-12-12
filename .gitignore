@@ -1,0 +1,22 @@
+# Editor and IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS files
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.bak
+*.log
+
+# Node modules (if any tools are added later)
+node_modules/
+
+# Private or local scripts (use .local.user.js extension for personal testing)
+*.local.user.js
