@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Autotask - Close Tab Button
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.3
+// @version      1.0.4
 // @description  Adds a subtle Close Tab button to Autotask detail pages. Matches *Detail.mvc by default with configurable exclusions.
 // @author       warthurton
 // @match        https://ww*.autotask.net/Mvc/*Detail.mvc*
@@ -107,7 +107,19 @@
 
   function placeButtonAndWire() {
     log('Attempting to place Close Tab button');
-    // Try multiple known selectors for Autotask's left sidebar
+    // Preferred placement: TitleBar area near the page title or toolbar
+    const titleSelector = 'div.PageHeadingContainer div.Active.TitleBar.TitleBarNavigation div.TitleBarItem.Title';
+    const toolbarSelector = 'div.PageHeadingContainer div.Active.TitleBar.TitleBarNavigation div.TitleBarItem.TitleBarToolbar';
+    const titleEl = document.querySelector(titleSelector);
+    const toolbarEl = document.querySelector(toolbarSelector);
+    if (titleEl || toolbarEl) {
+      const target = titleEl || toolbarEl;
+      const placement = titleEl ? 'Title' : 'Toolbar';
+      log('Placing button in TitleBar area at', placement);
+      return placeInlineTitleButton(target, placement);
+    }
+
+    // Fallback 1: left sidebar
     const selectors = [
       'div.SecondaryContainer.Left.Active',
       'div.SecondaryContainer.Left',
@@ -152,6 +164,9 @@
       .at-close-tab-btn:hover { background: #eef1f4; }
       .at-close-tab-float { position: fixed; left: 12px; bottom: 12px; z-index: 2147483646; }
       .at-close-tab-float .at-close-tab-btn { width: auto; min-width: 120px; box-shadow: 0 6px 18px rgba(0,0,0,0.15); }
+      .at-close-tab-inline { display: inline-flex; align-items: center; gap: 8px; margin-left: 10px; }
+      .at-close-tab-inline .at-close-tab-x { appearance: none; border: none; background: #ff5252; color: #fff; width: 24px; height: 24px; border-radius: 6px; font-weight: 800; line-height: 24px; text-align: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+      .at-close-tab-inline .at-close-tab-x:hover { background: #ff1744; }
     `;
     if (typeof GM_addStyle === 'function') GM_addStyle(style); else {
       const s = document.createElement('style'); s.textContent = style; document.head.appendChild(s);
@@ -197,6 +212,39 @@
 
     float.replaceChildren(btn);
     log('Floating button placed');
+    return true;
+  }
+
+  function placeInlineTitleButton(target, placement) {
+    // Create a compact red X button inline with the title/toolbar
+    let container = target.querySelector('.at-close-tab-inline');
+    if (!container) {
+      container = document.createElement('span');
+      container.className = 'at-close-tab-inline';
+      // If placing near Title, append; if near Toolbar, insert before toolbar
+      if (placement === 'Title') {
+        target.appendChild(container);
+      } else {
+        target.parentElement.insertBefore(container, target);
+      }
+    }
+
+    const btn = document.createElement('button');
+    btn.className = 'at-close-tab-x';
+    btn.type = 'button';
+    btn.textContent = '×';
+
+    btn.addEventListener('click', () => {
+      log('Inline red X clicked');
+      try { window.close(); } catch {}
+      try { self.close(); } catch {}
+      try { const w = window.open('', '_self'); if (w) w.close(); } catch {}
+      try { location.href = 'about:blank'; } catch {}
+    });
+
+    container.replaceChildren(btn);
+    const rect = target.getBoundingClientRect();
+    log('Inline TitleBar button placed', { placement, rect: { x: rect.x, y: rect.y, w: rect.width, h: rect.height } });
     return true;
   }
 
