@@ -7,8 +7,6 @@
 // @match        https://www.example.com/*
 // @grant        none
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=example.com
-// @updateURL    
-// @downloadURL  
 // ==/UserScript==
 
 (function() {
