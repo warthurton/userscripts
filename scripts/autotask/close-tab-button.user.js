@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Autotask - Close Tab Button
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.6
+// @version      1.0.7
 // @description  Adds a subtle Close Tab button to Autotask detail pages. Matches *Detail.mvc by default with configurable exclusions.
 // @author       warthurton
 // @match        https://ww*.autotask.net/Mvc/*Detail.mvc*
@@ -26,6 +26,26 @@
   const STORAGE_KEYS = {
     excluded: 'autotask_close_button_excluded_patterns',
   };
+
+  function getTargetDocument() {
+    // Some Autotask views render inside same-origin iframes; prefer targeting those
+    const iframes = Array.from(document.querySelectorAll('iframe'));
+    for (const f of iframes) {
+      const src = f.getAttribute('src') || '';
+      if (/\/Mvc\/[^/]*Detail\.mvc/.test(src)) {
+        try {
+          const doc = f.contentDocument;
+          if (doc) {
+            log('Using iframe document for placement:', src);
+            return { doc, frame: f };
+          }
+        } catch (e) {
+          log('Iframe not accessible yet:', src, e);
+        }
+      }
+    }
+    return { doc: document, frame: null };
+  }
 
   function getExcluded() {
     log('Reading excluded patterns');
@@ -107,11 +127,12 @@
 
   function placeButtonAndWire() {
     log('Attempting to place Close Tab button');
+    const { doc } = getTargetDocument();
     // Preferred placement: TitleBar area near the page title or toolbar
     const titleSelector = 'body > div.PageHeadingContainer > div.Active.TitleBar.TitleBarNavigation > div.TitleBarItem.Title';
     const toolbarSelector = 'body > div.PageHeadingContainer > div.Active.TitleBar.TitleBarNavigation > div.TitleBarItem.TitleBarToolbar';
-    const titleEl = document.querySelector(titleSelector);
-    const toolbarEl = document.querySelector(toolbarSelector);
+    const titleEl = doc.querySelector(titleSelector);
+    const toolbarEl = doc.querySelector(toolbarSelector);
     if (titleEl || toolbarEl) {
       const target = titleEl || toolbarEl;
       const placement = titleEl ? 'Title' : 'Toolbar';
@@ -135,7 +156,7 @@
     let leftSidebar = null;
     let matchedSelector = null;
     for (const sel of selectors) {
-      const el = document.querySelector(sel);
+      const el = doc.querySelector(sel);
       if (el) { leftSidebar = el; matchedSelector = sel; break; }
     }
     log('Left sidebar found?', !!leftSidebar, 'selector:', matchedSelector, leftSidebar);
@@ -169,7 +190,7 @@
       .at-close-tab-inline .at-close-tab-x:hover { background: #ff1744; }
     `;
     if (typeof GM_addStyle === 'function') GM_addStyle(style); else {
-      const s = document.createElement('style'); s.textContent = style; document.head.appendChild(s);
+      const s = doc.createElement('style'); s.textContent = style; doc.head.appendChild(s);
     }
 
     btn.addEventListener('click', () => {
@@ -219,7 +240,8 @@
     // Create a compact red X button inline with the title/toolbar
     let container = target.querySelector('.at-close-tab-inline');
     if (!container) {
-      container = document.createElement('span');
+      const d = target.ownerDocument || document;
+      container = d.createElement('span');
       container.className = 'at-close-tab-inline';
       // If placing near Title, append; if near Toolbar, insert before toolbar
       if (placement === 'Title') {
@@ -229,7 +251,8 @@
       }
     }
 
-    const btn = document.createElement('button');
+    const d = target.ownerDocument || document;
+    const btn = d.createElement('button');
     btn.className = 'at-close-tab-x';
     btn.type = 'button';
     btn.textContent = '×';
@@ -281,11 +304,12 @@
 
     // Observe DOM for TitleBar or sidebar becoming available
     const mo = new MutationObserver(() => {
-      const titleExists = !!document.querySelector('body > div.PageHeadingContainer > div.Active.TitleBar.TitleBarNavigation');
+      const { doc } = getTargetDocument();
+      const titleExists = !!doc.querySelector('body > div.PageHeadingContainer > div.Active.TitleBar.TitleBarNavigation');
       const sidebarExists = !!(
-        document.querySelector('div.SecondaryContainer.Left.Active') ||
-        document.querySelector('div.SecondaryContainer.Left') ||
-        document.querySelector('.SecondaryContainer.Left')
+        doc.querySelector('div.SecondaryContainer.Left.Active') ||
+        doc.querySelector('div.SecondaryContainer.Left') ||
+        doc.querySelector('.SecondaryContainer.Left')
       );
       const placed = placeButtonAndWire();
       if (placed) {
