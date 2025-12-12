@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         Autotask - Prevent Popups
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.1
+// @version      1.0.2
 // @description  Prevents Autotask tickets, tasks, and KB articles from opening in popup windows by redirecting to proper MVC URLs
 // @author       warthurton
 // @match        https://ww*.autotask.net/Autotask/AutotaskExtend/ExecuteCommand.aspx*
+// @match        https://ww*.autotask.net/*
 // @icon         https://favicons-blue.vercel.app/?domain=autotask.net
 // @run-at       document-start
 // @grant        GM_getValue
@@ -118,6 +119,12 @@
 
   function redirectIfNeeded() {
     const currentUrl = location.href;
+    
+    // Only process ExecuteCommand.aspx URLs
+    if (!currentUrl.includes('/ExecuteCommand.aspx')) {
+      return false;
+    }
+
     log('Checking URL:', currentUrl);
 
     // Get current settings
@@ -128,7 +135,7 @@
     const baseUrlMatch = currentUrl.match(/^(https:\/\/[^/]+)/);
     if (!baseUrlMatch) {
       log('Could not extract base URL');
-      return;
+      return false;
     }
     const baseUrl = baseUrlMatch[1];
 
@@ -139,17 +146,47 @@
         // Check if this type of redirect is enabled
         if (!settings[rule.type]) {
           log(`Redirect for ${rule.type} is disabled, allowing popup`);
-          return;
+          return false;
         }
         const newUrl = rule.getUrl(matches, baseUrl);
         log(`Redirecting ${rule.type} to:`, newUrl);
         location.replace(newUrl);
-        return;
+        return true;
       }
     }
 
     log('No redirect rule matched');
+    return false;
   }
+
+  // Also intercept window.open calls to catch programmatic popups
+  const originalOpen = window.open;
+  window.open = function(...args) {
+    const url = args[0];
+    if (url && typeof url === 'string' && url.includes('ExecuteCommand.aspx')) {
+      log('Intercepted window.open call:', url);
+      
+      // Try to redirect this URL
+      const tempLocation = { href: url };
+      const baseUrlMatch = url.match(/^(https:\/\/[^/]+)/);
+      if (baseUrlMatch) {
+        const baseUrl = baseUrlMatch[1];
+        const settings = getSettings();
+        
+        for (const rule of redirectRules) {
+          const matches = url.match(rule.pattern);
+          if (matches && settings[rule.type]) {
+            const newUrl = rule.getUrl(matches, baseUrl);
+            log('Redirecting intercepted window.open to:', newUrl);
+            // Open in same window instead of popup
+            location.href = newUrl;
+            return null;
+          }
+        }
+      }
+    }
+    return originalOpen.apply(this, args);
+  };
 
   // Register menu command
   if (typeof GM_registerMenuCommand === 'function') {
@@ -158,4 +195,12 @@
 
   // Execute immediately at document-start to prevent popup from rendering
   redirectIfNeeded();
+  
+  // Also set up observer to catch late-loading content or iframe navigations
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      log('DOMContentLoaded - checking URL again');
+      redirectIfNeeded();
+    });
+  }
 })();
