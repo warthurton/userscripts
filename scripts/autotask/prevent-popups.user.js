@@ -167,21 +167,16 @@
       return false;
     }
 
-    // Check if we're in a popup window (not just a new tab)
-    // A popup has opener AND is significantly smaller than screen OR lacks standard browser UI
-    const hasOpener = !!(window.opener && !window.opener.closed);
-    const isSmallWindow = window.outerWidth < screen.availWidth - 100 || 
-                          window.outerHeight < screen.availHeight - 100;
-    const lacksUI = !window.menubar.visible || !window.toolbar.visible || !window.locationbar.visible;
+    // Check if this is a popup URL (has workspace=False parameter)
+    // New tabs use /Index? path, popups use ?workspace=False
+    const isPopupUrl = currentUrl.includes('workspace=False');
     
-    const isPopup = hasOpener && (isSmallWindow || lacksUI);
-
-    if (!isPopup) {
-      log('Detail page in regular tab/window, allowing normal display');
+    if (!isPopupUrl) {
+      log('Detail page opened in new tab (no workspace=False), allowing normal display');
       return false;
     }
 
-    log('Detail page popup detected:', detailMatch[1]);
+    log('Detail page popup URL detected:', detailMatch[1]);
 
     // Check settings based on page type
     const settings = getSettings();
