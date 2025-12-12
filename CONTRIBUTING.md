@@ -27,6 +27,7 @@ Thank you for your interest in contributing! This guide will help you add new us
    // @description  Clear description of what the script does
    // @author       Your Name
    // @match        https://example.com/*
+   // @icon         https://favicons-blue.vercel.app/?domain=example.com
    // @updateURL    https://raw.githubusercontent.com/<github-username>/userscripts/main/<path-to-script>.user.js
    // @downloadURL  https://raw.githubusercontent.com/<github-username>/userscripts/main/<path-to-script>.user.js
    // @grant        none
@@ -45,6 +46,18 @@ Thank you for your interest in contributing! This guide will help you add new us
     - `@downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/chatgpt/auto-disable-connector.user.js`
 - If you place scripts under `scripts/...`, keep the full path in the URL, e.g. `scripts/chatgpt/auto-disable-connector.user.js`.
 - Do not omit or comment out these lines; they must be included upon script creation.
+
+### Favicons / Icons
+
+- Purpose: Display an icon for the userscript in the script manager, making it easier to identify scripts at a glance.
+- **Recommended service**: Use `https://favicons-blue.vercel.app/?domain=<domain>` to get favicons.
+- Format: `@icon https://favicons-blue.vercel.app/?domain=example.com`
+- Examples:
+  - For GitHub scripts: `@icon https://favicons-blue.vercel.app/?domain=github.com`
+  - For ChatGPT scripts: `@icon https://favicons-blue.vercel.app/?domain=chatgpt.com`
+  - For YouTube scripts: `@icon https://favicons-blue.vercel.app/?domain=youtube.com`
+- Extract the domain from the `@match` URL pattern to determine the appropriate domain for the favicon.
+- The `@icon` field should always be included in new userscripts.
 
 4. **File Naming**
 
@@ -90,6 +103,7 @@ Thank you for your interest in contributing! This guide will help you add new us
 // @description  Does something useful
 // @author       Your Name
 // @match        https://example.com/*
+// @icon         https://favicons-blue.vercel.app/?domain=example.com
 // @grant        none
 // ==/UserScript==
 

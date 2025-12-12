@@ -4,6 +4,7 @@
 // @version      1.2.1
 // @description  Auto-clicks the "Disable" confirmation after a configurable delay, with countdown.
 // @match        https://chatgpt.com/admin/*
+// @icon         https://favicons-blue.vercel.app/?domain=chatgpt.com
 // @run-at       document-start
 //
 // @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/scripts/chatgpt/auto-disable-connector.user.js
