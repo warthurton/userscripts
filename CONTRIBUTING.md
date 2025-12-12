@@ -5,12 +5,15 @@ Thank you for your interest in contributing! This guide will help you add new us
 ## Adding a New Userscript
 
 1. **Create Your Script**
+
    - Start with the template in `templates/userscript-template.user.js`
    - Write your script following JavaScript best practices
    - Test thoroughly on target websites
 
 2. **Script Requirements**
+
    - Must include complete metadata header
+   - Must include autoupdate URLs (`@updateURL` and `@downloadURL`)
    - Must use `.user.js` extension
    - Must be well-commented
    - Should handle errors gracefully
@@ -24,11 +27,27 @@ Thank you for your interest in contributing! This guide will help you add new us
    // @description  Clear description of what the script does
    // @author       Your Name
    // @match        https://example.com/*
+   // @updateURL    https://raw.githubusercontent.com/<github-username>/userscripts/main/<path-to-script>.user.js
+   // @downloadURL  https://raw.githubusercontent.com/<github-username>/userscripts/main/<path-to-script>.user.js
    // @grant        none
    // ==/UserScript==
    ```
 
+### Autoupdate URLs
+
+- Purpose: Ensure users’ script managers (Tampermonkey/Greasemonkey/Violentmonkey) can automatically detect and install updates.
+- Required fields: `@updateURL` and `@downloadURL` must always be present in every new script.
+- URL format:
+  - Base: `https://raw.githubusercontent.com/warthurton/userscripts/main/`
+  - Path: match the script’s location in this repo.
+  - Example for a script stored at `chatgpt/auto-disable-connector.user.js`:
+    - `@updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/chatgpt/auto-disable-connector.user.js`
+    - `@downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/chatgpt/auto-disable-connector.user.js`
+- If you place scripts under `scripts/...`, keep the full path in the URL, e.g. `scripts/chatgpt/auto-disable-connector.user.js`.
+- Do not omit or comment out these lines; they must be included upon script creation.
+
 4. **File Naming**
+
    - Use lowercase with hyphens
    - Be descriptive but concise
    - Example: `github-notification-enhancer.user.js`
@@ -41,18 +60,21 @@ Thank you for your interest in contributing! This guide will help you add new us
 ## Script Guidelines
 
 ### Code Style
+
 - Use strict mode: `'use strict';`
 - Use meaningful variable names
 - Add comments for complex logic
 - Keep functions small and focused
 
 ### Best Practices
+
 - Wrap code in IIFE to avoid global namespace pollution
 - Check for element existence before manipulating DOM
 - Use event delegation when possible
 - Minimize @grant permissions (use `none` if possible)
 
 ### Testing
+
 - Test on multiple pages that match your @match pattern
 - Verify script doesn't interfere with site functionality
 - Check browser console for errors
@@ -71,26 +93,26 @@ Thank you for your interest in contributing! This guide will help you add new us
 // @grant        none
 // ==/UserScript==
 
-(function() {
-    'use strict';
-    
-    // Configuration
-    const CONFIG = {
-        enabled: true,
-        color: '#ff0000'
-    };
-    
-    // Main functionality
-    function init() {
-        // Your code here
-    }
-    
-    // Wait for DOM to be ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
+(function () {
+  "use strict";
+
+  // Configuration
+  const CONFIG = {
+    enabled: true,
+    color: "#ff0000",
+  };
+
+  // Main functionality
+  function init() {
+    // Your code here
+  }
+
+  // Wait for DOM to be ready
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
 })();
 ```
 
