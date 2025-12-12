@@ -14,6 +14,7 @@ Thank you for your interest in contributing! This guide will help you add new us
 
    - Must include complete metadata header
    - Must include autoupdate URLs (`@updateURL` and `@downloadURL`)
+  - Must increment `@version` whenever a script is updated (any change)
    - Must use `.user.js` extension
    - Must be well-commented
    - Should handle errors gracefully
@@ -58,6 +59,15 @@ Thank you for your interest in contributing! This guide will help you add new us
   - For YouTube scripts: `@icon https://favicons-blue.vercel.app/?domain=youtube.com`
 - Extract the domain from the `@match` URL pattern to determine the appropriate domain for the favicon.
 - The `@icon` field should always be included in new userscripts.
+
+### Versioning
+
+- Always bump the `@version` field in the userscript header when making changes (bug fixes, features, or metadata updates). This helps userscript managers detect updates reliably.
+- Use semantic versioning where practical (`major.minor.patch`). Examples:
+  - Metadata-only change: `1.0.1`
+  - Small feature or improvement: `1.1.0`
+  - Breaking changes: `2.0.0`
+- After merging, consider tagging a GitHub release for visibility. 
 
 4. **File Naming**
 
