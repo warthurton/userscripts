@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Autotask - Prevent Popups
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.6
+// @version      1.0.7
 // @description  Prevents Autotask tickets, tasks, and KB articles from opening in popup windows by redirecting to proper MVC URLs
 // @author       warthurton
 // @match        https://ww*.autotask.net/Autotask/AutotaskExtend/ExecuteCommand.aspx*
@@ -167,15 +167,17 @@
       return false;
     }
 
-    // Check if we're in a popup window
-    const isPopup = !!(
-      window.opener ||
-      window.outerWidth < screen.availWidth - 100 ||
-      window.outerHeight < screen.availHeight - 100
-    );
+    // Check if we're in a popup window (not just a new tab)
+    // A popup has opener AND is significantly smaller than screen OR lacks standard browser UI
+    const hasOpener = !!(window.opener && !window.opener.closed);
+    const isSmallWindow = window.outerWidth < screen.availWidth - 100 || 
+                          window.outerHeight < screen.availHeight - 100;
+    const lacksUI = !window.menubar.visible || !window.toolbar.visible || !window.locationbar.visible;
+    
+    const isPopup = hasOpener && (isSmallWindow || lacksUI);
 
     if (!isPopup) {
-      log('Detail page but not a popup, allowing normal display');
+      log('Detail page in regular tab/window, allowing normal display');
       return false;
     }
 
