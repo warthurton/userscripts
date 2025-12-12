@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Autotask - Close Tab Button
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.7
+// @version      1.0.8
 // @description  Adds a subtle Close Tab button to Autotask detail pages. Matches *Detail.mvc by default with configurable exclusions.
 // @author       warthurton
 // @match        https://ww*.autotask.net/Mvc/*Detail.mvc*
@@ -27,25 +27,8 @@
     excluded: 'autotask_close_button_excluded_patterns',
   };
 
-  function getTargetDocument() {
-    // Some Autotask views render inside same-origin iframes; prefer targeting those
-    const iframes = Array.from(document.querySelectorAll('iframe'));
-    for (const f of iframes) {
-      const src = f.getAttribute('src') || '';
-      if (/\/Mvc\/[^/]*Detail\.mvc/.test(src)) {
-        try {
-          const doc = f.contentDocument;
-          if (doc) {
-            log('Using iframe document for placement:', src);
-            return { doc, frame: f };
-          }
-        } catch (e) {
-          log('Iframe not accessible yet:', src, e);
-        }
-      }
-    }
-    return { doc: document, frame: null };
-  }
+  let buttonPlaced = false;
+  let titleBarObserver = null;
 
   function getExcluded() {
     log('Reading excluded patterns');
@@ -125,73 +108,59 @@
     }
   }
 
-  function placeButtonAndWire() {
-    log('Attempting to place Close Tab button');
-    const { doc } = getTargetDocument();
-    // Preferred placement: TitleBar area near the page title or toolbar
-    const titleSelector = 'body > div.PageHeadingContainer > div.Active.TitleBar.TitleBarNavigation > div.TitleBarItem.Title';
-    const toolbarSelector = 'body > div.PageHeadingContainer > div.Active.TitleBar.TitleBarNavigation > div.TitleBarItem.TitleBarToolbar';
-    const titleEl = doc.querySelector(titleSelector);
-    const toolbarEl = doc.querySelector(toolbarSelector);
-    if (titleEl || toolbarEl) {
-      const target = titleEl || toolbarEl;
-      const placement = titleEl ? 'Title' : 'Toolbar';
-      log('Placing button in TitleBar area at', placement);
-      return placeInlineTitleButton(target, placement);
-    }
-
-    // Fallback 1: left sidebar
-    const selectors = [
-      'div.SecondaryContainer.Left.Active',
-      'div.SecondaryContainer.Left',
-      '.SecondaryContainer.Left',
-      '#leftPanel',
-      '.LeftPanel',
-      '#SecondaryLeft',
-      '.LayoutLeftPanel',
-      '.navLeft',
-      '.secondary-container.left',
-      "[class*='SecondaryContainer'][class*='Left']"
-    ];
-    let leftSidebar = null;
-    let matchedSelector = null;
-    for (const sel of selectors) {
-      const el = doc.querySelector(sel);
-      if (el) { leftSidebar = el; matchedSelector = sel; break; }
-    }
-    log('Left sidebar found?', !!leftSidebar, 'selector:', matchedSelector, leftSidebar);
-    if (!leftSidebar) {
-      log('Sidebar not found: will use floating fallback');
-      return placeFloatingButton();
-    }
-
-    // Create a sticky footer container so the button sits near the bottom
-    let footer = leftSidebar.querySelector('.at-close-tab-footer');
-    if (!footer) {
-      log('Creating footer container');
-      footer = document.createElement('div');
-      footer.className = 'at-close-tab-footer';
-      leftSidebar.appendChild(footer);
-    }
-
-    const btn = document.createElement('button');
-    btn.className = 'at-close-tab-btn';
-    btn.type = 'button';
-    btn.textContent = 'Close Tab';
-
+  // Inject styles once
+  function injectStyles() {
     const style = `
-      .at-close-tab-footer { position: sticky; bottom: 8px; display: block; padding: 8px; }
-      .at-close-tab-btn { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.08); background: #f4f6f8; color: #333; font-weight: 600; cursor: pointer; }
-      .at-close-tab-btn:hover { background: #eef1f4; }
-      .at-close-tab-float { position: fixed; left: 12px; bottom: 12px; z-index: 2147483646; }
-      .at-close-tab-float .at-close-tab-btn { width: auto; min-width: 120px; box-shadow: 0 6px 18px rgba(0,0,0,0.15); }
       .at-close-tab-inline { display: inline-flex; align-items: center; gap: 8px; margin-left: 10px; }
       .at-close-tab-inline .at-close-tab-x { appearance: none; border: none; background: #ff5252; color: #fff; width: 24px; height: 24px; border-radius: 6px; font-weight: 800; line-height: 24px; text-align: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
       .at-close-tab-inline .at-close-tab-x:hover { background: #ff1744; }
     `;
-    if (typeof GM_addStyle === 'function') GM_addStyle(style); else {
-      const s = doc.createElement('style'); s.textContent = style; doc.head.appendChild(s);
+    if (typeof GM_addStyle === 'function') {
+      GM_addStyle(style);
+    } else {
+      const s = document.createElement('style');
+      s.textContent = style;
+      document.head.appendChild(s);
     }
+    log('Styles injected');
+  }
+
+  // Find and place button in TitleBar
+  function placeButton() {
+    if (buttonPlaced) return;
+    
+    log('Searching for TitleBar elements');
+    const titleSelector = 'div.PageHeadingContainer div.TitleBarItem.Title';
+    const toolbarSelector = 'div.PageHeadingContainer div.TitleBarItem.TitleBarToolbar';
+    const titleEl = document.querySelector(titleSelector);
+    const toolbarEl = document.querySelector(toolbarSelector);
+
+    if (!titleEl && !toolbarEl) {
+      log('TitleBar elements not found yet');
+      return;
+    }
+
+    const target = titleEl || toolbarEl;
+    const placement = titleEl ? 'Title' : 'Toolbar';
+    log('Found TitleBar element:', placement, target);
+
+    // Check if button already exists
+    if (target.querySelector('.at-close-tab-inline')) {
+      log('Button already exists, skipping');
+      buttonPlaced = true;
+      return;
+    }
+
+    // Create container
+    const container = document.createElement('span');
+    container.className = 'at-close-tab-inline';
+
+    // Create button
+    const btn = document.createElement('button');
+    btn.className = 'at-close-tab-x';
+    btn.type = 'button';
+    btn.textContent = '×';
+    btn.title = 'Close Tab';
 
     btn.addEventListener('click', () => {
       log('Close button clicked');
@@ -201,74 +170,58 @@
       try { location.href = 'about:blank'; } catch {}
     });
 
-    // Mount button (replace any existing to avoid duplicates)
-    footer.replaceChildren(btn);
-    const rect = leftSidebar.getBoundingClientRect();
-    log('Button placed in sidebar', { selector: matchedSelector, rect: { x: rect.x, y: rect.y, w: rect.width, h: rect.height } });
-    return true;
-  }
+    container.appendChild(btn);
 
-  function placeFloatingButton() {
-    // Fallback: place a subtle floating button bottom-left
-    let float = document.querySelector('.at-close-tab-float');
-    if (!float) {
-      log('Creating floating fallback container');
-      float = document.createElement('div');
-      float.className = 'at-close-tab-float';
-      document.body.appendChild(float);
+    // Place container
+    if (placement === 'Title') {
+      target.appendChild(container);
+    } else {
+      target.parentElement.insertBefore(container, target);
     }
 
-    const btn = document.createElement('button');
-    btn.className = 'at-close-tab-btn';
-    btn.type = 'button';
-    btn.textContent = 'Close Tab';
+    buttonPlaced = true;
+    log('Button placed in TitleBar at', placement);
 
-    btn.addEventListener('click', () => {
-      log('Floating close button clicked');
-      try { window.close(); } catch {}
-      try { self.close(); } catch {}
-      try { const w = window.open('', '_self'); if (w) w.close(); } catch {}
-      try { location.href = 'about:blank'; } catch {}
-    });
-
-    float.replaceChildren(btn);
-    log('Floating button placed');
-    return true;
+    // Disconnect observer once placed
+    if (titleBarObserver) {
+      titleBarObserver.disconnect();
+      titleBarObserver = null;
+      log('Observer disconnected');
+    }
   }
 
-  function placeInlineTitleButton(target, placement) {
-    // Create a compact red X button inline with the title/toolbar
-    let container = target.querySelector('.at-close-tab-inline');
-    if (!container) {
-      const d = target.ownerDocument || document;
-      container = d.createElement('span');
-      container.className = 'at-close-tab-inline';
-      // If placing near Title, append; if near Toolbar, insert before toolbar
-      if (placement === 'Title') {
-        target.appendChild(container);
-      } else {
-        target.parentElement.insertBefore(container, target);
+  // Helper to check if element exists in node tree
+  function findElementInNode(node, selector) {
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      if (typeof node.matches === 'function' && node.matches(selector)) return node;
+      if (typeof node.querySelector === 'function') return node.querySelector(selector);
+    }
+    return null;
+  }
+
+  // Observer callback
+  function handleTitleBarMutations(mutationsList, obs) {
+    for (const mutation of mutationsList) {
+      if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+        for (const node of mutation.addedNodes) {
+          const foundTitle = findElementInNode(node, 'div.PageHeadingContainer div.TitleBarItem.Title');
+          const foundToolbar = findElementInNode(node, 'div.PageHeadingContainer div.TitleBarItem.TitleBarToolbar');
+          if (foundTitle || foundToolbar) {
+            log('TitleBar element detected in mutation');
+            placeButton();
+            return;
+          }
+        }
       }
     }
+  }
 
-    const d = target.ownerDocument || document;
-    const btn = d.createElement('button');
-    btn.className = 'at-close-tab-x';
-    btn.type = 'button';
-    btn.textContent = '×';
-
-    btn.addEventListener('click', () => {
-      log('Inline red X clicked');
-      try { window.close(); } catch {}
-      try { self.close(); } catch {}
-      try { const w = window.open('', '_self'); if (w) w.close(); } catch {}
-      try { location.href = 'about:blank'; } catch {}
-    });
-
-    container.replaceChildren(btn);
-    const rect = target.getBoundingClientRect();
-    log('Inline TitleBar button placed', { placement, rect: { x: rect.x, y: rect.y, w: rect.width, h: rect.height } });
-    return true;
+  // Start watching for TitleBar
+  function startTitleBarObserver() {
+    log('Starting TitleBar observer');
+    if (titleBarObserver) titleBarObserver.disconnect();
+    titleBarObserver = new MutationObserver(handleTitleBarMutations);
+    titleBarObserver.observe(document.body, { childList: true, subtree: true });
   }
 
   function shouldRunOnThisPage() {
@@ -281,63 +234,41 @@
 
   function init() {
     log('Init called');
-    if (!shouldRunOnThisPage()) return;
-    log('Page eligible, placing button');
+    if (!shouldRunOnThisPage()) {
+      log('Page not eligible (excluded)');
+      return;
+    }
+    log('Page eligible, setting up button placement');
+
+    // Inject styles
+    injectStyles();
 
     // Try immediate placement
-    const placedNow = placeButtonAndWire();
-    log('Immediate placement result:', placedNow);
+    placeButton();
 
-    // Timed retry loop to handle SPA-rendered content
-    let attempts = 0;
-    const maxAttempts = 40; // ~20s at 500ms
-    const retry = () => {
-      attempts++;
-      const placed = placeButtonAndWire();
-      log('Retry attempt', attempts, 'placed:', placed);
-      if (placed || attempts >= maxAttempts) {
-        clearInterval(timer);
-        log(placed ? 'Placement succeeded via retry loop' : 'Giving up after retries');
-      }
-    };
-    const timer = setInterval(retry, 500);
-
-    // Observe DOM for TitleBar or sidebar becoming available
-    const mo = new MutationObserver(() => {
-      const { doc } = getTargetDocument();
-      const titleExists = !!doc.querySelector('body > div.PageHeadingContainer > div.Active.TitleBar.TitleBarNavigation');
-      const sidebarExists = !!(
-        doc.querySelector('div.SecondaryContainer.Left.Active') ||
-        doc.querySelector('div.SecondaryContainer.Left') ||
-        doc.querySelector('.SecondaryContainer.Left')
-      );
-      const placed = placeButtonAndWire();
-      if (placed) {
-        log('Placement succeeded after mutation. TitleBar:', titleExists, 'Sidebar:', sidebarExists);
-        mo.disconnect();
-        clearInterval(timer);
-      }
-    });
-    log('Observing DOM for TitleBar/sidebar readiness');
-    mo.observe(document.documentElement, { childList: true, subtree: true });
+    // If not placed, start observer
+    if (!buttonPlaced) {
+      log('Button not placed immediately, starting observer');
+      startTitleBarObserver();
+    }
   }
 
-  // Re-run on SPA navigations
-  const rerun = () => { log('SPA navigation detected; re-initializing'); init(); };
-  const origPushState = history.pushState;
-  history.pushState = function() { const r = origPushState.apply(this, arguments); try { rerun(); } catch {} return r; };
-  window.addEventListener('popstate', rerun);
-  window.addEventListener('hashchange', rerun);
-
+  // Register menu command
   if (typeof GM_registerMenuCommand === 'function') {
     GM_registerMenuCommand('Close Tab Button: Exclusions', openSettings);
   }
 
-  const start = () => init();
-  log('Document readyState:', document.readyState);
-  if (document.readyState === 'complete' || document.readyState === 'interactive') { log('Starting immediately'); start(); }
-  else {
-    window.addEventListener('DOMContentLoaded', () => { log('DOMContentLoaded'); start(); }, { once: true });
-    window.addEventListener('load', () => { log('load'); start(); }, { once: true });
+  // Initialize on load
+  log('Script loaded, readyState:', document.readyState);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    setTimeout(init, 50);
   }
+
+  // Cleanup on unload
+  window.addEventListener('unload', () => {
+    if (titleBarObserver) titleBarObserver.disconnect();
+    log('Cleaned up on unload');
+  });
 })();
