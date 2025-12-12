@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Autotask - Prevent Popups
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.8
+// @version      1.0.9
 // @description  Prevents Autotask tickets, tasks, and KB articles from opening in popup windows by redirecting to proper MVC URLs
 // @author       warthurton
 // @match        https://ww*.autotask.net/Autotask/AutotaskExtend/ExecuteCommand.aspx*
@@ -190,11 +190,35 @@
       return false;
     }
 
+    // Convert popup URL to new tab URL format
+    // Popup: TicketDetail.mvc?workspace=False&mode=0&TicketID=40265
+    // Tab:   TicketDetail.mvc/Index?ticketId=40265
+    let tabUrl = currentUrl;
+    
+    // Extract the ID based on page type
+    const ticketIdMatch = currentUrl.match(/[?&]TicketID=(\d+)/i);
+    const taskIdMatch = currentUrl.match(/[?&]TaskID=(\d+)/i);
+    const articleIdMatch = currentUrl.match(/[?&](id|articleId)=(\d+)/i);
+    
+    if (ticketIdMatch) {
+      const baseUrl = currentUrl.match(/^(https:\/\/[^/]+)/)[1];
+      tabUrl = `${baseUrl}/Mvc/ServiceDesk/TicketDetail.mvc/Index?ticketId=${ticketIdMatch[1]}`;
+      log('Converted ticket URL:', tabUrl);
+    } else if (taskIdMatch) {
+      const baseUrl = currentUrl.match(/^(https:\/\/[^/]+)/)[1];
+      tabUrl = `${baseUrl}/Mvc/Projects/TaskDetail.mvc/Index?taskId=${taskIdMatch[1]}`;
+      log('Converted task URL:', tabUrl);
+    } else if (articleIdMatch) {
+      const baseUrl = currentUrl.match(/^(https:\/\/[^/]+)/)[1];
+      tabUrl = `${baseUrl}/Mvc/Knowledgebase/ArticleDetail.mvc/ArticlePage?articleId=${articleIdMatch[2]}`;
+      log('Converted KB article URL:', tabUrl);
+    }
+
     // Try to redirect parent window and close popup
     if (window.opener && !window.opener.closed) {
       try {
-        log('Redirecting parent window to:', currentUrl);
-        window.opener.location.href = currentUrl;
+        log('Redirecting parent window to:', tabUrl);
+        window.opener.location.href = tabUrl;
         window.close();
         return true;
       } catch (e) {
