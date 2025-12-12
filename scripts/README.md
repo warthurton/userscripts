@@ -38,17 +38,18 @@ When adding a new script:
 
 - Auto Close Page (Countdown)
 	- Automatically closes pages after a configurable countdown.
-	- Settings:
-		- CloseAfter30Seconds: domains closed after 30s
-		- CloseAfter120Seconds: domains closed after 120s
-		- Others close after 5s
-	- How to configure:
-		- Open the userscript menu and choose "Auto Close: Settings".
-		- Enter domains one per line or comma-separated. Matching is by hostname equality or subdomain suffix.
+	- Default: 120s if the domain has no explicit setting.
+	- Settings sources:
+		- In-banner selector: choose 5/30/120 and click Save to assign the current domain (stored via script storage if supported).
+		- Settings modal: manage domain lists for 5s, 30s, and 120s.
+			- CloseAfter5Seconds
+			- CloseAfter30Seconds
+			- CloseAfter120Seconds
+	- Matching: by hostname equality or subdomain suffix.
 	- Behavior:
 		- Runs after the page loads and delays ~1s to allow external URL handlers to complete.
-		- Shows a banner with the countdown and Cancel/Settings buttons.
-		- Press Escape or click Cancel to abort closing.
+		- Shows a banner with a clickable time (cancels), duration selector, Save, and Settings buttons.
+		- Press Escape or click the time button to cancel closing.
 
 ## Naming Convention
 

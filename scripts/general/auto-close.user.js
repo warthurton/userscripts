@@ -16,6 +16,7 @@
   'use strict';
 
   const STORAGE_KEYS = {
+    d5: 'autoClose_domains_5',
     d30: 'autoClose_domains_30',
     d120: 'autoClose_domains_120',
   };
@@ -47,21 +48,31 @@
 
   function computeCountdownSeconds() {
     const h = location.hostname || '';
+    const d5 = getStoredDomains(STORAGE_KEYS.d5);
     const d30 = getStoredDomains(STORAGE_KEYS.d30);
     const d120 = getStoredDomains(STORAGE_KEYS.d120);
 
+    if (hostnameMatchesList(h, d5)) return 5;
     if (hostnameMatchesList(h, d30)) return 30;
     if (hostnameMatchesList(h, d120)) return 120;
-    return 5;
+    return 120; // default with no domain match
   }
 
-  function createBanner(seconds, onCancel) {
+  function createBanner(seconds, onCancel, onSaveDuration) {
     const banner = document.createElement('div');
     banner.id = 'auto-close-banner';
     banner.innerHTML = `
       <div class="acp-content">
         <button id="acp-count-btn" type="button" aria-label="Remaining time">${seconds}s</button>
         <span class="acp-text">Tab will auto-close. Click time to cancel.</span>
+        <label class="acp-inline">Duration:
+          <select id="acp-duration" aria-label="Choose auto-close duration">
+            <option value="5">5s</option>
+            <option value="30">30s</option>
+            <option value="120">120s</option>
+          </select>
+        </label>
+        <button id="acp-save-duration" type="button">Save</button>
         <button id="acp-settings" type="button">Settings</button>
       </div>
     `;
@@ -75,7 +86,9 @@
       #auto-close-banner .acp-text { opacity: 0.9; }
       #auto-close-banner button { border: none; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
       #auto-close-banner #acp-count-btn { background: #c62828; color: #fff; font-weight: 600; min-width: 64px; }
-      #auto-close-banner #acp-settings { background: #1565c0; color: #fff; }
+      #auto-close-banner #acp-settings, #auto-close-banner #acp-save-duration { background: #1565c0; color: #fff; }
+      #auto-close-banner .acp-inline { display: inline-flex; align-items: center; gap: 6px; }
+      #auto-close-banner select { background: #222; color: #fff; border: 1px solid #555; border-radius: 6px; padding: 4px 6px; }
       .acp-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 2147483647; display: flex; align-items: center; justify-content: center; }
       .acp-modal { background: #fff; color: #111; width: min(680px, 92vw); max-height: 80vh; overflow: auto; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,0.35); }
       .acp-modal header { padding: 12px 16px; font-weight: 600; border-bottom: 1px solid #eee; }
@@ -92,17 +105,33 @@
 
     const countBtn = banner.querySelector('#acp-count-btn');
     const settingsBtn = banner.querySelector('#acp-settings');
+    const selectEl = banner.querySelector('#acp-duration');
+    const saveBtn = banner.querySelector('#acp-save-duration');
 
     countBtn.addEventListener('click', onCancel);
     settingsBtn.addEventListener('click', openSettingsModal);
+    if (selectEl) {
+      // preselect current seconds bucket (5/30/120)
+      const pre = [5, 30, 120].includes(Number(seconds)) ? String(seconds) : '120';
+      selectEl.value = pre;
+    }
+    if (saveBtn) {
+      saveBtn.addEventListener('click', () => {
+        if (!selectEl) return;
+        const val = Number(selectEl.value);
+        if (![5, 30, 120].includes(val)) return;
+        onSaveDuration && onSaveDuration(val);
+      });
+    }
 
-    return { banner, countBtn };
+    return { banner, countBtn, selectEl };
   }
 
   function openSettingsModal() {
     const existing = document.querySelector('.acp-modal-backdrop');
     if (existing) { existing.remove(); }
 
+    const d5 = getStoredDomains(STORAGE_KEYS.d5);
     const d30 = getStoredDomains(STORAGE_KEYS.d30);
     const d120 = getStoredDomains(STORAGE_KEYS.d120);
 
@@ -113,6 +142,10 @@
     modal.innerHTML = `
       <header>Auto Close Settings</header>
       <div class="acp-body">
+        <div>
+          <label for="acp-ta-5">CloseAfter5Seconds domains (one per line or comma-separated):</label>
+          <textarea id="acp-ta-5" placeholder="fast.example">${d5.join('\n')}</textarea>
+        </div>
         <div>
           <label for="acp-ta-30">CloseAfter30Seconds domains (one per line or comma-separated):</label>
           <textarea id="acp-ta-30" placeholder="example.com\nsub.example.org">${d30.join('\n')}</textarea>
@@ -131,6 +164,7 @@
     backdrop.appendChild(modal);
     document.documentElement.appendChild(backdrop);
 
+    const ta5 = modal.querySelector('#acp-ta-5');
     const ta30 = modal.querySelector('#acp-ta-30');
     const ta120 = modal.querySelector('#acp-ta-120');
     const saveBtn = modal.querySelector('.acp-save');
@@ -141,8 +175,10 @@
     backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
 
     saveBtn.addEventListener('click', () => {
+      const list5 = parseDomains(ta5.value);
       const list30 = parseDomains(ta30.value);
       const list120 = parseDomains(ta120.value);
+      saveDomains(STORAGE_KEYS.d5, list5);
       saveDomains(STORAGE_KEYS.d30, list30);
       saveDomains(STORAGE_KEYS.d120, list120);
       close();
@@ -165,7 +201,33 @@
     let seconds = computeCountdownSeconds();
     let cancelled = false;
 
-    const { countBtn } = createBanner(seconds, () => { cancelled = true; removeBanner(); });
+    const { countBtn } = createBanner(
+      seconds,
+      () => { cancelled = true; removeBanner(); },
+      (newSeconds) => {
+        // Persist preference for this hostname and adjust timer
+        const host = (location.hostname || '').toLowerCase();
+        const lists = {
+          5: getStoredDomains(STORAGE_KEYS.d5),
+          30: getStoredDomains(STORAGE_KEYS.d30),
+          120: getStoredDomains(STORAGE_KEYS.d120),
+        };
+        // Remove host from all lists first
+        for (const k of [5, 30, 120]) {
+          const arr = lists[k].filter(d => d !== host);
+          lists[k] = arr;
+        }
+        // Add to selected list
+        lists[newSeconds].push(host);
+        saveDomains(STORAGE_KEYS.d5, lists[5]);
+        saveDomains(STORAGE_KEYS.d30, lists[30]);
+        saveDomains(STORAGE_KEYS.d120, lists[120]);
+
+        // Reset countdown to the chosen value
+        seconds = newSeconds;
+        if (countBtn) countBtn.textContent = `${seconds}s`;
+      }
+    );
 
     const interval = setInterval(() => {
       if (cancelled) { clearInterval(interval); return; }
