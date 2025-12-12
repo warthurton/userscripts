@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Autotask - Prevent Popups
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.4
+// @version      1.0.5
 // @description  Prevents Autotask tickets, tasks, and KB articles from opening in popup windows by redirecting to proper MVC URLs
 // @author       warthurton
 // @match        https://ww*.autotask.net/Autotask/AutotaskExtend/ExecuteCommand.aspx*
@@ -20,14 +20,19 @@
 (function() {
   'use strict';
 
-  const DEBUG = true;
-  const log = (...args) => DEBUG && console.log('[Autotask Popup Blocker]', ...args);
-
   const STORAGE_KEYS = {
     redirectTickets: 'autotask_redirect_tickets',
     redirectTasks: 'autotask_redirect_tasks',
-    redirectKB: 'autotask_redirect_kb'
+    redirectKB: 'autotask_redirect_kb',
+    debug: 'autotask_debug_mode'
   };
+
+  // Get debug setting
+  function isDebugEnabled() {
+    return (typeof GM_getValue === 'function') ? GM_getValue(STORAGE_KEYS.debug, false) : false;
+  }
+
+  const log = (...args) => isDebugEnabled() && console.log('[Autotask Popup Blocker]', ...args);
 
   // Session flag to prevent redirect loops
   const SESSION_KEY = 'autotask_popup_handled_' + Date.now();
@@ -57,16 +62,20 @@
   // Settings UI
   function openSettings() {
     const current = getSettings();
+    const debugEnabled = isDebugEnabled();
     const overlay = document.createElement('div');
     overlay.className = 'at-popup-settings-overlay';
     overlay.innerHTML = `
       <div class="at-popup-modal">
         <header>Prevent Popups – Settings</header>
         <div class="body">
+          <h3>Redirect Options</h3>
           <p>Choose which Autotask popups to redirect to MVC pages:</p>
           <label><input type="checkbox" id="cb-tickets" ${current.tickets ? 'checked' : ''}> Redirect Ticket popups</label>
           <label><input type="checkbox" id="cb-tasks" ${current.tasks ? 'checked' : ''}> Redirect Task popups</label>
           <label><input type="checkbox" id="cb-kb" ${current.kb ? 'checked' : ''}> Redirect Knowledge Base popups</label>
+          <h3 style="margin-top: 16px;">Debug Options</h3>
+          <label><input type="checkbox" id="cb-debug" ${debugEnabled ? 'checked' : ''}> Enable debug logging</label>
         </div>
         <footer>
           <button class="save">Save</button>
@@ -85,6 +94,10 @@
         kb: overlay.querySelector('#cb-kb').checked
       };
       saveSettings(newSettings);
+      const debugChecked = overlay.querySelector('#cb-debug').checked;
+      if (typeof GM_setValue === 'function') {
+        GM_setValue(STORAGE_KEYS.debug, debugChecked);
+      }
       log('Settings saved:', newSettings);
       overlay.remove();
     });
@@ -94,7 +107,7 @@
       .at-popup-modal { background: #fff; color: #111; width: min(500px, 92vw); max-height: 82vh; overflow: auto; border-radius: 10px; box-shadow: 0 10px 35px rgba(0,0,0,0.35); }
       .at-popup-modal header { padding: 12px 16px; font-weight: 600; border-bottom: 1px solid #eee; }
       .at-popup-modal .body { padding: 16px; }
-      .at-popup-modal .body label { display: block; margin: 12px 0; cursor: pointer; }
+      .at-popup-modal .body h3 { margin: 0 0 8px 0; font-size: 14px; font-weight: 600; }      .at-popup-modal .body h3 { margin: 0 0 8px 0; font-size: 14px; font-weight: 600; }      .at-popup-modal .body label { display: block; margin: 12px 0; cursor: pointer; }
       .at-popup-modal .body input[type="checkbox"] { margin-right: 8px; }
       .at-popup-modal footer { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 16px; border-top: 1px solid #eee; }
       .at-popup-modal button { background: #1565c0; color: #fff; border: none; border-radius: 6px; padding: 8px 12px; cursor: pointer; }

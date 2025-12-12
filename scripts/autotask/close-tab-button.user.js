@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Autotask - Close Tab Button
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.9
+// @version      1.1.1
 // @description  Adds a subtle Close Tab button to Autotask detail pages. Matches *Detail.mvc by default with configurable exclusions.
 // @author       warthurton
 // @match        https://ww*.autotask.net/Mvc/*Detail.mvc*
@@ -67,18 +67,22 @@
 
   function openSettings() {
     const current = getExcluded().join('\n');
+    const debugEnabled = isDebugEnabled();
     const overlay = document.createElement('div');
     overlay.className = 'at-close-settings-overlay';
     overlay.innerHTML = `
       <div class="at-close-modal">
-        <header>Close Tab Button – Exclusions</header>
+        <header>Close Tab Button – Settings</header>
         <div class="body">
+          <h3>Exclusions</h3>
           <p>Enter URL patterns to exclude (one per line). Use * as wildcard. Examples:</p>
           <ul>
             <li>https://ww*.autotask.net/Mvc/ServiceDesk/TicketEdit.mvc*</li>
             <li>https://ww*.autotask.net/Mvc/Contracts/*Detail.mvc*</li>
           </ul>
           <textarea>${current}</textarea>
+          <h3 style="margin-top: 16px;">Debug Options</h3>
+          <label style="display: block; margin: 8px 0;"><input type="checkbox" id="cb-debug" ${debugEnabled ? 'checked' : ''}> Enable debug logging</label>
         </div>
         <footer>
           <button class="save">Save</button>
@@ -97,6 +101,10 @@
         .map(s => s.trim())
         .filter(Boolean);
       saveExcluded(list);
+      const debugChecked = overlay.querySelector('#cb-debug').checked;
+      if (typeof GM_setValue === 'function') {
+        GM_setValue(STORAGE_KEYS.debug, debugChecked);
+      }
       overlay.remove();
     });
 
@@ -105,6 +113,7 @@
       .at-close-modal { background: #fff; color: #111; width: min(700px, 92vw); max-height: 82vh; overflow: auto; border-radius: 10px; box-shadow: 0 10px 35px rgba(0,0,0,0.35); }
       .at-close-modal header { padding: 12px 16px; font-weight: 600; border-bottom: 1px solid #eee; }
       .at-close-modal .body { padding: 12px 16px; }
+      .at-close-modal .body h3 { margin: 0 0 8px 0; font-size: 14px; font-weight: 600; }
       .at-close-modal .body textarea { width: 100%; min-height: 140px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; }
       .at-close-modal footer { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 16px; border-top: 1px solid #eee; }
       .at-close-modal button { background: #1565c0; color: #fff; border: none; border-radius: 6px; padding: 8px 12px; cursor: pointer; }
@@ -118,9 +127,26 @@
   // Inject styles once
   function injectStyles() {
     const style = `
-      .at-close-tab-inline { display: inline-flex; align-items: center; gap: 8px; margin-left: 10px; }
-      .at-close-tab-inline .at-close-tab-x { appearance: none; border: none; background: #ff5252; color: #fff; width: 24px; height: 24px; border-radius: 6px; font-weight: 800; line-height: 24px; text-align: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-      .at-close-tab-inline .at-close-tab-x:hover { background: #ff1744; }
+      .at-close-tab-inline { display: inline-flex; align-items: center; gap: 8px; margin-right: 10px; order: -1; }
+      .at-close-tab-inline .at-close-tab-x { 
+        appearance: none; 
+        border: none; 
+        background: #d32f2f; 
+        color: #fff; 
+        width: 28px; 
+        height: 28px; 
+        border-radius: 4px; 
+        font-size: 18px;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer; 
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: background 0.2s ease;
+      }
+      .at-close-tab-inline .at-close-tab-x:hover { background: #c62828; box-shadow: 0 3px 6px rgba(0,0,0,0.15); }
+      .at-close-tab-inline .at-close-tab-x:active { background: #b71c1c; }
     `;
     if (typeof GM_addStyle === 'function') {
       GM_addStyle(style);
@@ -162,12 +188,15 @@
     const container = document.createElement('span');
     container.className = 'at-close-tab-inline';
 
-    // Create button
+    // Create button with SVG icon
     const btn = document.createElement('button');
     btn.className = 'at-close-tab-x';
     btn.type = 'button';
-    btn.textContent = '×';
     btn.title = 'Close Tab';
+    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18"></line>
+      <line x1="6" y1="6" x2="18" y2="18"></line>
+    </svg>`;
 
     btn.addEventListener('click', () => {
       log('Close button clicked');
@@ -179,10 +208,12 @@
 
     container.appendChild(btn);
 
-    // Place container
-    if (placement === 'Title') {
-      target.appendChild(container);
+    // Place container at the leftmost position in the TitleBar
+    const titleBar = target.closest('div.TitleBar.TitleBarNavigation') || target.parentElement;
+    if (titleBar) {
+      titleBar.insertBefore(container, titleBar.firstChild);
     } else {
+      // Fallback: insert before target
       target.parentElement.insertBefore(container, target);
     }
 
@@ -269,7 +300,7 @@
 
   // Register menu command
   if (typeof GM_registerMenuCommand === 'function') {
-    GM_registerMenuCommand('Close Tab Button: Exclusions', openSettings);
+    GM_registerMenuCommand('Close Tab Button: Settings', openSettings);
   }
 
   // Initialize on load
