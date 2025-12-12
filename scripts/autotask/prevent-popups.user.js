@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Autotask - Prevent Popups
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.2
+// @version      1.0.3
 // @description  Prevents Autotask tickets, tasks, and KB articles from opening in popup windows by redirecting to proper MVC URLs
 // @author       warthurton
 // @match        https://ww*.autotask.net/Autotask/AutotaskExtend/ExecuteCommand.aspx*
@@ -193,14 +193,71 @@
     GM_registerMenuCommand('Popup Blocker: Settings', openSettings);
   }
 
+  // Detect if we're in a popup window and handle accordingly
+  function handlePopupWindow() {
+    // Check if this is a popup (has opener, smaller than full screen, or has specific popup features)
+    const isPopup = !!(
+      window.opener || 
+      (window.outerWidth < screen.availWidth - 100) ||
+      (window.outerHeight < screen.availHeight - 100) ||
+      !window.menubar.visible ||
+      !window.toolbar.visible
+    );
+
+    if (!isPopup) {
+      return false;
+    }
+
+    const currentUrl = location.href;
+    log('Detected popup window. URL:', currentUrl);
+
+    // Check if this is a Detail page that was opened from ExecuteCommand
+    const isDetailPage = /\/(TicketDetail|TaskDetail|ArticleDetail)\.mvc/i.test(currentUrl);
+    
+    if (isDetailPage) {
+      log('This is a Detail page in a popup. Redirecting to parent or new tab.');
+      
+      // If we have an opener (parent window), try to redirect there
+      if (window.opener && !window.opener.closed) {
+        try {
+          log('Redirecting opener to:', currentUrl);
+          window.opener.location.href = currentUrl;
+          window.close();
+          return true;
+        } catch (e) {
+          log('Could not redirect opener (cross-origin?):', e);
+        }
+      }
+      
+      // Fallback: open in new tab and close this popup
+      try {
+        log('Opening in new tab and closing popup');
+        window.open(currentUrl, '_blank');
+        window.close();
+        return true;
+      } catch (e) {
+        log('Could not open new tab:', e);
+      }
+    }
+
+    return false;
+  }
+
   // Execute immediately at document-start to prevent popup from rendering
-  redirectIfNeeded();
+  const redirected = redirectIfNeeded();
+  
+  // If not redirected, check if we're in a popup
+  if (!redirected) {
+    handlePopupWindow();
+  }
   
   // Also set up observer to catch late-loading content or iframe navigations
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       log('DOMContentLoaded - checking URL again');
-      redirectIfNeeded();
+      if (!redirectIfNeeded()) {
+        handlePopupWindow();
+      }
     });
   }
 })();
