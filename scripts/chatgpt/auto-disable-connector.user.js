@@ -9,6 +9,8 @@
 //
 // @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/scripts/chatgpt/auto-disable-connector.user.js
 // @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/scripts/chatgpt/auto-disable-connector.user.js
+// @homepageURL  https://github.com/warthurton/userscripts
+// @supportURL   https://github.com/warthurton/userscripts/issues
 //
 // @grant        none
 // ==/UserScript==

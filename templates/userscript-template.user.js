@@ -5,10 +5,12 @@
 // @description  Template for creating new userscripts
 // @author       Your Name
 // @match        https://www.example.com/*
-// NOTE: Replace <path-to-script> with the actual repo path,
-// e.g. chatgpt/your-script.user.js or scripts/chatgpt/your-script.user.js
-// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/<path-to-script>.user.js
-// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/<path-to-script>.user.js
+// NOTE: Replace <path-to-script> with the path from repo root,
+// e.g. scripts/chatgpt/your-script.user.js
+// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/<path-to-script>
+// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/<path-to-script>
+// @homepageURL  https://github.com/warthurton/userscripts
+// @supportURL   https://github.com/warthurton/userscripts/issues
 // @grant        none
 // @icon         https://favicons-blue.vercel.app/?domain=example.com
 // ==/UserScript==
