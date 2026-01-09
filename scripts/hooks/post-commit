@@ -5,8 +5,8 @@
 DIST_DIR="dist"
 
 # Ensure dist directory exists
-if [ ! -d "$DIST_DIR" ]; then
-    mkdir -p "$DIST_DIR"
+if [ ! -d "$BUILD_DIR" ]; then
+    mkdir -p "$BUILD_DIR"
 fi
 
 # Get list of modified .user.js files from the last commit
@@ -16,20 +16,20 @@ if [ -z "$MODIFIED_FILES" ]; then
     exit 0
 fi
 
-echo "[dist] Copying modified scripts to $DIST_DIR/"
+echo "[build] Copying modified scripts to $BUILD_DIR/"
 
 for file in $MODIFIED_FILES; do
     if [ -f "$file" ]; then
         # Extract just the filename
         FILENAME=$(basename "$file")
         
-        # Copy file to dist directory
-        cp "$file" "$DIST_DIR/$FILENAME"
-        echo "[dist] Copied: $FILENAME"
+        # Copy file to build directory
+        cp "$file" "$BUILD_DIR/$FILENAME"
+        echo "[build] Copied: $FILENAME"
     fi
 done
 
-echo "[dist] Copy completed"
+echo "[build] Copy completed"
 
 echo "[post-commit] Backup complete!"
 exit 0
