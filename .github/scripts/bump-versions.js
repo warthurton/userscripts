@@ -27,7 +27,7 @@ function formatVersion(major, minor) {
 function getMainVersion(filePath) {
     try {
         const relativePath = path.relative(process.cwd(), filePath);
-        const mainContent = execSync(`git show main:${relativePath}`, { encoding: 'utf8' });
+        const mainContent = execSync('git', ['show', `main:${relativePath}`], { encoding: 'utf8' });
         return parseVersion(mainContent);
     } catch (error) {
         // File doesn't exist in main
