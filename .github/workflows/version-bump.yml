@@ -1,45 +1,45 @@
 name: Version Bump on PR
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-    paths:
-      - 'scripts/**/*.user.js'
+    pull_request:
+        types: [opened, synchronize, reopened]
+        paths:
+            - "scripts/**/*.user.js"
 
 permissions:
-  contents: write
-  pull-requests: write
+    contents: write
+    pull-requests: write
 
 jobs:
-  bump-version:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout PR branch
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-          fetch-depth: 0
+    bump-version:
+        runs-on: ubuntu-latest
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+        steps:
+            - name: Checkout PR branch
+              uses: actions/checkout@v4
+              with:
+                  ref: ${{ github.head_ref }}
+                  fetch-depth: 0
 
-      - name: Fetch main branch
-        run: |
-          git fetch origin main:main
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
 
-      - name: Run version bump script
-        id: bump
-        run: |
-          node .github/scripts/bump-versions.js
+            - name: Fetch main branch
+              run: |
+                  git fetch origin main:main
 
-      - name: Commit version changes
-        if: steps.bump.outputs.changes == 'true'
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add scripts/**/*.user.js
-          git commit -m "chore: bump userscript versions"
-          git push
+            - name: Run version bump script
+              id: bump
+              run: |
+                  node .github/scripts/bump-versions.js
+
+            - name: Commit version changes
+              if: steps.bump.outputs.changes == 'true'
+              run: |
+                  git config --local user.email "github-actions[bot]@users.noreply.github.com"
+                  git config --local user.name "github-actions[bot]"
+                  git add scripts/**/*.user.js
+                  git commit -m "chore: bump userscript versions"
+                  git push
