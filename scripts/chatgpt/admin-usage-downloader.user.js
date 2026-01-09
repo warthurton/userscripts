@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChatGPT Admin Usage Downloader
 // @namespace    http://tampermonkey.net/
-// @version      1.0.17
+// @version      1.0
 // @description  Auto-download analytics data from ChatGPT admin usage page
 // @author       Your Name
 // @match        https://chatgpt.com/admin/usage
