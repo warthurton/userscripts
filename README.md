@@ -31,9 +31,80 @@ Alternatively, you can copy the script content and create a new script in your u
 ```
 user-scripts/
 ├── scripts/          # Active userscripts
+│   └── hooks/        # Git hooks for automation
 ├── templates/        # Templates for creating new userscripts
 └── README.md         # This file
 ```
+
+## Git Hooks & Automation
+
+This repository includes git hooks for automatic versioning and backup of userscripts.
+
+### Setup
+
+Run the setup script from the repository root:
+
+**Linux/Mac:**
+
+```bash
+bash scripts/hooks/setup.sh
+```
+
+**Windows:**
+
+```cmd
+scripts\hooks\setup.bat
+```
+
+The setup will:
+
+1. Install pre-commit and post-commit hooks
+2. Ask if you want automatic backups after commits
+3. Prompt for a backup location (if enabled)
+
+### Features
+
+**Pre-commit Hook:**
+
+- Automatically increments the PATCH version (e.g., 1.0.0 → 1.0.1) in all modified `.user.js` files
+
+**Post-commit Hook:**
+
+- Backs up all modified `.user.js` files to your configured location
+
+### Manual Backup
+
+You can manually backup all scripts anytime:
+
+**Linux/Mac:**
+
+```bash
+bash scripts/hooks/manual-backup.sh
+```
+
+**Windows:**
+
+```cmd
+scripts\hooks\manual-backup.bat
+```
+
+### Updating Hooks
+
+When hooks are updated in the repository, run:
+
+**Linux/Mac:**
+
+```bash
+bash scripts/hooks/setup.sh -u
+```
+
+**Windows:**
+
+```cmd
+scripts\hooks\setup.bat /u
+```
+
+This updates the hooks without changing your backup configuration.
 
 ## Creating Your Own Userscript
 
