@@ -14,17 +14,32 @@ Thank you for your interest in contributing! This guide will help you add new us
 
    - Must include complete metadata header
    - Must include autoupdate URLs (`@updateURL` and `@downloadURL`)
-  - Must increment `@version` whenever a script is updated (any change)
+   - Must use semantic versioning (see below)
    - Must use `.user.js` extension
    - Must be well-commented
    - Should handle errors gracefully
 
-3. **Metadata Requirements**
+3. **Semantic Versioning**
+
+   All scripts must follow [semantic versioning](https://semver.org/) (MAJOR.MINOR.PATCH):
+
+   - **MAJOR** (first number): Breaking changes or major rewrites
+   - **MINOR** (second number): New features added (backward compatible)
+   - **PATCH** (third number): Bug fixes and minor improvements
+
+   **When updating scripts:**
+
+   - The PATCH version is automatically incremented by a pre-commit hook
+   - Increment MINOR version manually (e.g., 1.0.1 → 1.1.0) when adding new features
+   - Increment MAJOR version manually (e.g., 1.1.0 → 2.0.0) for breaking changes
+   - Reset lower numbers to zero when incrementing higher ones (e.g., 1.2.3 → 2.0.0)
+
+4. **Metadata Requirements**
    ```javascript
    // ==UserScript==
    // @name         Descriptive Name
    // @namespace    http://tampermonkey.net/
-   // @version      1.0
+   // @version      1.0.0
    // @description  Clear description of what the script does
    // @author       Your Name
    // @match        https://example.com/*
@@ -60,14 +75,22 @@ Thank you for your interest in contributing! This guide will help you add new us
 - Extract the domain from the `@match` URL pattern to determine the appropriate domain for the favicon.
 - The `@icon` field should always be included in new userscripts.
 
-### Versioning
+### Version Automation with Git Hooks
 
-- Always bump the `@version` field in the userscript header when making changes (bug fixes, features, or metadata updates). This helps userscript managers detect updates reliably.
-- Use semantic versioning where practical (`major.minor.patch`). Examples:
-  - Metadata-only change: `1.0.1`
-  - Small feature or improvement: `1.1.0`
-  - Breaking changes: `2.0.0`
-- After merging, consider tagging a GitHub release for visibility. 
+This repository includes git hooks that automatically manage versioning and backups:
+
+- **Pre-commit hook** (`scripts/hooks/pre-commit`): Automatically increments the PATCH version in all modified `.user.js` files
+- **Post-commit hook** (`scripts/hooks/post-commit`): Backs up all modified `.user.js` files to `\\tsclient\R\userscripts` if the network path exists
+
+**Setup:** Copy the hooks to your `.git/hooks` directory:
+
+```bash
+cp scripts/hooks/pre-commit .git/hooks/
+cp scripts/hooks/post-commit .git/hooks/
+chmod +x .git/hooks/pre-commit  # On Windows, this may not be necessary
+```
+
+After setup, hooks will run automatically before and after each commit.
 
 4. **File Naming**
 
