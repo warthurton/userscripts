@@ -460,152 +460,135 @@
 
     // Create UI
     function createUI() {
-        const container = document.createElement('div');
-        container.id = 'analytics-downloader-ui';
-        container.style.cssText = `
-            background: white;
-            border: 2px solid #10a37f;
-            border-radius: 8px;
-            padding: 15px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            min-width: 250px;
+        // Create info display to go under date picker
+        const infoContainer = document.createElement('div');
+        infoContainer.id = 'analytics-downloader-info';
+        infoContainer.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 11px;
+            color: #666;
+            padding: 4px 0;
+            margin-top: 4px;
         `;
-
-        const title = document.createElement('div');
-        title.textContent = 'Analytics Downloader';
-        title.style.cssText = `
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: #10a37f;
-            font-size: 14px;
-        `;
-
-        downloadButton = document.createElement('button');
-        downloadButton.textContent = 'Download';
-        downloadButton.style.cssText = `
-            background: #10a37f;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 8px 16px;
-            cursor: pointer;
-            font-size: 13px;
-            width: 100%;
-            font-weight: 500;
-        `;
-        downloadButton.addEventListener('mouseover', () => {
-            downloadButton.style.background = '#0d8c6d';
-        });
-        downloadButton.addEventListener('mouseout', () => {
-            downloadButton.style.background = '#10a37f';
-        });
-        downloadButton.addEventListener('click', async () => {
-            await createAndDownloadZip(true);
-        });
 
         const info = document.createElement('div');
         info.style.cssText = `
-            font-size: 11px;
-            color: #666;
-            margin-top: 10px;
-            line-height: 1.4;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         `;
-        info.innerHTML = 'Date: <span style="color: #999;">waiting...</span><br>Data files: 0';
+        info.innerHTML = '<span style="color: #10a37f; font-weight: 500;">📊</span><span>Date: <span style="color: #999;">waiting...</span> | Files: <span style="color: #10a37f; font-weight: 600;">0</span></span>';
         info.id = 'data-count-info';
         
-        const debugToggle = document.createElement('div');
+        const debugToggle = document.createElement('span');
         debugToggle.style.cssText = `
             font-size: 10px;
             color: #999;
-            margin-top: 5px;
             cursor: pointer;
             text-decoration: underline;
+            user-select: none;
         `;
-        debugToggle.textContent = 'Toggle Debug Logs';
+        debugToggle.textContent = 'debug';
+        debugToggle.title = 'Toggle debug logs in console';
         debugToggle.addEventListener('click', () => {
             debugMode = !debugMode;
             console.log(`[Analytics Downloader] Debug mode ${debugMode ? 'enabled' : 'disabled'}`);
             showToast(`Debug mode ${debugMode ? 'enabled' : 'disabled'}`);
         });
 
+        infoContainer.appendChild(info);
+        infoContainer.appendChild(debugToggle);
+
+        // Create download button to go under Export button
+        downloadButton = document.createElement('button');
+        downloadButton.className = 'btn relative btn-secondary btn-small ms-2';
+        downloadButton.style.cssText = `
+            background: linear-gradient(to bottom, #10a37f, #0d8c6d) !important;
+            border-color: #10a37f !important;
+            color: white !important;
+        `;
+        downloadButton.innerHTML = '<div class="flex items-center justify-center">Download Zip</div>';
+        downloadButton.addEventListener('mouseover', () => {
+            downloadButton.style.background = 'linear-gradient(to bottom, #0d8c6d, #0a7558) !important';
+        });
+        downloadButton.addEventListener('mouseout', () => {
+            downloadButton.style.background = 'linear-gradient(to bottom, #10a37f, #0d8c6d) !important';
+        });
+        downloadButton.addEventListener('click', async () => {
+            await createAndDownloadZip(true);
+        });
+
+        // Toast notification
         const toast = document.createElement('div');
         toast.id = 'analytics-toast';
         toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
             font-size: 12px;
             color: white;
             background: #10a37f;
-            padding: 8px 12px;
-            margin-top: 10px;
-            border-radius: 4px;
+            padding: 10px 16px;
+            border-radius: 6px;
             display: none;
             opacity: 0;
             transition: opacity 0.3s ease;
-            text-align: center;
+            z-index: 10001;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         `;
+        document.body.appendChild(toast);
 
-        container.appendChild(title);
-        container.appendChild(downloadButton);
-        container.appendChild(info);
-        container.appendChild(debugToggle);
-        container.appendChild(toast);
+        // Function to try inserting elements
+        function tryInsertElements() {
+            // Find the date picker container
+            const datePickerButtons = document.querySelectorAll('.flex.items-stretch button');
+            let datePickerContainer = null;
+            
+            for (const btn of datePickerButtons) {
+                if (btn.textContent.match(/[A-Z][a-z]{2}\s+\d{4}/)) { // Matches "Aug 2025" pattern
+                    datePickerContainer = btn.closest('.flex.items-stretch');
+                    break;
+                }
+            }
 
-        // Find the sidebar element and position the box to its right
-        const sidebarTarget = document.evaluate(
-            '//*[@id="stage-slideover-sidebar"]/div/div[2]',
-            document,
-            null,
-            XPathResult.FIRST_ORDERED_NODE_TYPE,
-            null
-        ).singleNodeValue;
-        
-        if (sidebarTarget) {
-            // Get sidebar dimensions
-            const rect = sidebarTarget.getBoundingClientRect();
-            const sidebarWidth = rect.width;
-            const sidebarLeft = rect.left;
+            // Insert info under date picker
+            if (datePickerContainer && !document.getElementById('analytics-downloader-info')) {
+                const parentContainer = datePickerContainer.parentElement;
+                if (parentContainer) {
+                    // Insert after the date picker's parent flex container
+                    parentContainer.parentElement.insertBefore(infoContainer, parentContainer.nextSibling);
+                    console.log('[Analytics Downloader] Info display inserted under date picker');
+                }
+            }
+
+            // Find Export button and insert Download button after it
+            const exportButton = Array.from(document.querySelectorAll('button')).find(btn => 
+                btn.textContent.includes('Export')
+            );
             
-            // Calculate box dimensions and position
-            const boxWidth = sidebarWidth * 0.8; // 80% of sidebar width
-            const boxLeft = sidebarLeft + sidebarWidth + (sidebarWidth * 0.05); // Right edge + 5% spacing
-            
-            // Apply positioning - right of sidebar, bottom of screen
-            container.style.cssText = `
-                background: white;
-                border: 2px solid #10a37f;
-                border-radius: 8px;
-                padding: 15px;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                position: fixed;
-                left: ${boxLeft}px;
-                bottom: 20px;
-                width: ${boxWidth}px;
-                max-height: 80vh;
-                overflow-y: auto;
-                z-index: 10000;
-            `;
-            
-            document.body.appendChild(container);
-            console.log('[Analytics Downloader] UI positioned next to sidebar');
-        } else {
-            // Fallback to bottom-left if sidebar not found
-            container.style.cssText = `
-                background: white;
-                border: 2px solid #10a37f;
-                border-radius: 8px;
-                padding: 15px;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                position: fixed;
-                bottom: 20px;
-                left: 20px;
-                min-width: 250px;
-                z-index: 10000;
-            `;
-            document.body.appendChild(container);
-            console.warn('[Analytics Downloader] Sidebar not found, using fallback position');
+            if (exportButton && !document.querySelector('#analytics-download-btn')) {
+                downloadButton.id = 'analytics-download-btn';
+                exportButton.parentElement.appendChild(downloadButton);
+                console.log('[Analytics Downloader] Download button inserted after Export button');
+            }
         }
+
+        // Try immediately and with retries
+        tryInsertElements();
+        setTimeout(tryInsertElements, 500);
+        setTimeout(tryInsertElements, 1000);
+        setTimeout(tryInsertElements, 2000);
+
+        // Watch for DOM changes to re-insert if needed (e.g., page navigation)
+        const observer = new MutationObserver(() => {
+            if (!document.getElementById('analytics-downloader-info') || !document.querySelector('#analytics-download-btn')) {
+                tryInsertElements();
+            }
+        });
+        
+        observer.observe(document.body, { childList: true, subtree: true });
 
         // Update data count periodically
         setInterval(() => {
@@ -617,7 +600,8 @@
                 analyticsCount = Object.values(interceptedData).filter(item => item.startDate === currentDate).length;
             }
             
-            info.innerHTML = `Date: ${dateDisplay}<br>Data files: ${analyticsCount}`;
+            const fileCount = `<span style="color: #10a37f; font-weight: 600;">${analyticsCount}</span>`;
+            info.innerHTML = `<span style="color: #10a37f; font-weight: 500;">📊</span><span>Date: ${dateDisplay} | Files: ${fileCount}</span>`;
         }, 500);
     }
 
