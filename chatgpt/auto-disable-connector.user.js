@@ -13,7 +13,7 @@
 // @supportURL   https://github.com/warthurton/userscripts/issues
 //
 // @grant        none
-// @author       kept-treat-flirt@duck.com
+// @author       warthurton
 // ==/UserScript==
 
 

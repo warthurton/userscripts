@@ -3,7 +3,7 @@
 // @namespace    https://github.com/warthurton/userscripts
 // @version      1.1
 // @description  Automatically closes pages after a configurable countdown. Domains can be assigned to 30s or 120s groups; others close after 5s. Includes an in-page settings UI.
-// @author       kept-treat-flirt@duck.com
+// @author       warthurton
 // @run-at       document-idle
 // @grant        GM_getValue
 // @grant        GM_setValue

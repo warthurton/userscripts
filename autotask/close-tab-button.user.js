@@ -3,7 +3,7 @@
 // @namespace    https://github.com/warthurton/userscripts
 // @version      1.1
 // @description  Adds a subtle Close Tab button to Autotask detail pages. Matches *Detail.mvc by default with configurable exclusions.
-// @author       kept-treat-flirt@duck.com
+// @author       warthurton
 // @match        https://ww*.autotask.net/Mvc/*Detail.mvc*
 // @icon         https://favicons-blue.vercel.app/?domain=autotask.net
 // @run-at       document-idle

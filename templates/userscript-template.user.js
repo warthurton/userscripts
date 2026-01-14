@@ -3,7 +3,7 @@
 // @namespace    http://tampermonkey.net/
 // @version      1.0
 // @description  Template for creating new userscripts
-// @author       Your Name
+// @author       warthurton
 // @match        https://www.example.com/*
 // NOTE: Replace <path-to-script> with the path from repo root,
 // e.g. chatgpt/your-script.user.js or autotask/your-script.user.js
