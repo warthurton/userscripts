@@ -1,35 +1,22 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Post-commit hook: Copy modified .user.js files to dist/
 # This runs automatically after each commit
 
-DIST_DIR="dist"
-
-# Ensure dist directory exists
-if [ ! -d "$BUILD_DIR" ]; then
-    mkdir -p "$BUILD_DIR"
+# Check for disable flag
+if [ -f ".git/hooks/.disable-copy-to-dist" ]; then
+    echo "[post-commit] Copy to dist is disabled."
+    exit 0
 fi
 
-# Get list of modified .user.js files from the last commit
+# Call the copy-to-dist script with modified files
 MODIFIED_FILES=$(git diff-tree --no-commit-id --name-only -r HEAD | grep '\.user\.js$')
-
 if [ -z "$MODIFIED_FILES" ]; then
     exit 0
 fi
 
-echo "[build] Copying modified scripts to $BUILD_DIR/"
-
 for file in $MODIFIED_FILES; do
-    if [ -f "$file" ]; then
-        # Extract just the filename
-        FILENAME=$(basename "$file")
-        
-        # Copy file to build directory
-        cp "$file" "$BUILD_DIR/$FILENAME"
-        echo "[build] Copied: $FILENAME"
-    fi
+    bash scripts/hooks/copy-to-dist.sh "$file"
 done
 
-echo "[build] Copy completed"
-
-echo "[post-commit] Backup complete!"
+echo "[post-commit] Copy to dist complete!"
 exit 0

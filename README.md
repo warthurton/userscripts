@@ -38,7 +38,7 @@ user-scripts/
 
 ## Git Hooks & Automation
 
-This repository includes git hooks for automatic versioning and backup of userscripts.
+This repository includes git hooks for automatic versioning and copying userscripts to dist/.
 
 ### Setup
 
@@ -59,8 +59,8 @@ scripts\hooks\setup.bat
 The setup will:
 
 1. Install pre-commit and post-commit hooks
-2. Ask if you want automatic backups after commits
-3. Prompt for a backup location (if enabled)
+2. Ask if you want automatic Copy to dist after commits
+3. Prompt for a dist location (if enabled)
 
 ### Features
 
@@ -70,22 +70,22 @@ The setup will:
 
 **Post-commit Hook:**
 
-- Backs up all modified `.user.js` files to your configured location
+- Copies all modified `.user.js` files to your configured dist/ location (enabled by default)
 
-### Manual Backup
+### Manual Copy to dist
 
-You can manually backup all scripts anytime:
+You can manually copy all scripts to dist/ anytime:
 
 **Linux/Mac:**
 
 ```bash
-bash scripts/hooks/manual-backup.sh
+bash scripts/hooks/copy-to-dist.sh
 ```
 
 **Windows:**
 
 ```cmd
-scripts\hooks\manual-backup.bat
+scripts\hooks\copy-to-dist.bat
 ```
 
 ### Updating Hooks
@@ -104,7 +104,7 @@ bash scripts/hooks/setup.sh -u
 scripts\hooks\setup.bat /u
 ```
 
-This updates the hooks without changing your backup configuration.
+This updates the hooks without changing your Copy to dist configuration.
 
 ## Creating Your Own Userscript
 
