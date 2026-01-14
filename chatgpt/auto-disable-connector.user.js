@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChatGPT Admin - Auto-confirm Disable Connector
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0
+// @version      1.1
 // @description  Auto-clicks the "Disable" confirmation after a configurable delay, with countdown.
 // @match        https://chatgpt.com/admin/*
 // @icon         https://favicons-blue.vercel.app/?domain=chatgpt.com
