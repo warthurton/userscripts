@@ -30,7 +30,21 @@
         const url = target.href;
 
         // Check if this is a static.teams.cdn.office.net link
-        if (url && url.includes('static.teams.cdn.office.net')) {
+        let isStaticTeamsCdn = false;
+        if (url) {
+            try {
+                const parsed = new URL(url, window.location.href);
+                const host = parsed.hostname;
+                const allowedHosts = ['static.teams.cdn.office.net'];
+                if (allowedHosts.includes(host)) {
+                    isStaticTeamsCdn = true;
+                }
+            } catch (e) {
+                // If the URL cannot be parsed, do not treat it as a static Teams CDN link
+            }
+        }
+
+        if (isStaticTeamsCdn) {
             // STOP EVERYTHING IMMEDIATELY
             event.preventDefault();
             event.stopPropagation();
