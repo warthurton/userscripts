@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Teams Link Interceptor
 // @namespace    https://github.com/warthurton/userscripts
-// @version      0.2
+// @version      1.0
 // @description  Intercepts link clicks in Microsoft Teams to log URLs before they open in Edge sidebar
 // @match        https://teams.microsoft.com/*
 // @match        https://*.teams.microsoft.com/*
