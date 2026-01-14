@@ -1,18 +1,16 @@
-#!/bin/bash
-# Manual copy script for userscripts
-# Copies .user.js files to build/ directory
+#!/usr/bin/env bash
+# Copy to dist script for userscripts
+# Copies .user.js files to dist/ directory
 # Usage:
-#   ./manual-backup.sh              - Copy all .user.js files
-#   ./manual-backup.sh <file.user.js> - Copy specific file
+#   ./copy-to-dist.sh              - Copy all .user.js files
+#   ./copy-to-dist.sh <file.user.js> - Copy specific file
 
-BUILD_DIR="build"
+DIST_DIR="dist"
 
-# Ensure build directory exists
-if [ ! -d "$BUILD_DIR" ]; then
-    mkdir -p "$BUILD_DIR"
+if [ ! -d "$DIST_DIR" ]; then
+    mkdir -p "$DIST_DIR"
 fi
-
-TARGET_PATH="$BUILD_DIR"
+TARGET_PATH="$DIST_DIR"
 
 # Check if a specific file was provided
 if [ -n "$1" ]; then

@@ -1,17 +1,18 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Setup script for installing git hooks
 # Run this from the repository root
-# Usage: 
-#   ./setup.sh       - Full setup with configuration
-#   ./setup.sh -u    - Update hooks only (keeps existing config)
 
-HOOKS_DIR="scripts/hooks"
+# Usage:
+#   ./setup.sh         - Always updates hooks
+#   ./setup.sh -r      - Reconfigure: prompts to enable/disable copy-to-dist
+
+HOOKS_DIR=".scripts/hooks"
 GIT_HOOKS_DIR=".git/hooks"
-UPDATE_ONLY=false
+RECONFIGURE=false
 
-# Check for update-only flag
-if [ "$1" = "-u" ] || [ "$1" = "--update-only" ]; then
-    UPDATE_ONLY=true
+# Check for reconfigure flag
+if [ "$1" = "-r" ] || [ "$1" = "--reconfigure" ]; then
+    RECONFIGURE=true
 fi
 
 if [ ! -d "$GIT_HOOKS_DIR" ]; then
@@ -22,7 +23,6 @@ fi
 echo "=== Git Hooks Setup ==="
 echo ""
 
-# Copy and set permissions for pre-commit hook
 if [ -f "$HOOKS_DIR/pre-commit" ]; then
     if [ -f "$GIT_HOOKS_DIR/pre-commit" ]; then
         echo "Updating pre-commit hook..."
@@ -34,7 +34,6 @@ else
     echo "✗ pre-commit hook not found at $HOOKS_DIR/pre-commit"
 fi
 
-# Copy post-commit hook
 if [ -f "$HOOKS_DIR/post-commit" ]; then
     if [ -f "$GIT_HOOKS_DIR/post-commit" ]; then
         echo "Updating post-commit hook..."
@@ -42,15 +41,28 @@ if [ -f "$HOOKS_DIR/post-commit" ]; then
     cp -f "$HOOKS_DIR/post-commit" "$GIT_HOOKS_DIR/post-commit"
     chmod +x "$GIT_HOOKS_DIR/post-commit"
     echo "✓ post-commit hook installed"
+    if [ -f "$GIT_HOOKS_DIR/.disable-copy-to-dist" ]; then
+        echo "Copy to dist is currently disabled (flag file present)."
+    else
+        echo "Copy to dist is enabled by default."
+    fi
 else
     echo "✗ post-commit hook not found at $HOOKS_DIR/post-commit"
 fi
 
-# If update-only mode, exit here
-if [ "$UPDATE_ONLY" = true ]; then
+
+# If reconfigure mode, prompt for copy-to-dist
+if [ "$RECONFIGURE" = true ]; then
     echo ""
-    echo "✓ Hooks updated successfully!"
-    exit 0
+    echo "Do you want to copy .user.js files to dist/ after each commit? [Y/n]"
+    read -r ENABLE_COPY
+    if [ "$ENABLE_COPY" = "n" ] || [ "$ENABLE_COPY" = "N" ]; then
+        touch "$GIT_HOOKS_DIR/.disable-copy-to-dist"
+        echo "Copy to dist will be disabled."
+    else
+        rm -f "$GIT_HOOKS_DIR/.disable-copy-to-dist"
+        echo "Copy to dist will be enabled."
+    fi
 fi
 
 echo ""
@@ -58,11 +70,11 @@ echo "=== Setup Complete ==="
 echo ""
 echo "Hooks installed:"
 echo "  • pre-commit: Automatically increments PATCH version in .user.js files"
-if [ "$ENABLE_BACKUP" = "y" ] || [ "$ENABLE_BACKUP" = "Y" ]; then
-    echo "  • post-commit: Backs up modified .user.js files to $BACKUP_PATH"
+if [ -f "$GIT_HOOKS_DIR/.disable-copy-to-dist" ]; then
+    echo "  • post-commit: Copy to dist disabled"
 else
-    echo "  • post-commit: Backup disabled"
+    echo "  • post-commit: Copy to dist enabled (copies modified .user.js files to dist/)"
 fi
 echo ""
 echo "Run this script again anytime to reconfigure."
-echo "Use './setup.sh -u' to update hooks without reconfiguring."
+echo "Use './setup.sh -r' to reconfigure copy-to-dist behavior."

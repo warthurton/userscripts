@@ -57,10 +57,10 @@ Thank you for your interest in contributing! This guide will help you add new us
 - URL format:
   - Base: `https://raw.githubusercontent.com/warthurton/userscripts/main/`
   - Path: match the script’s location in this repo.
-  - Example for a script stored at `chatgpt/auto-disable-connector.user.js`:
-    - `@updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/chatgpt/auto-disable-connector.user.js`
-    - `@downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/chatgpt/auto-disable-connector.user.js`
-- If you place scripts under `scripts/...`, keep the full path in the URL, e.g. `scripts/chatgpt/auto-disable-connector.user.js`.
+  - Example for a script stored at `userscripts/chatgpt/auto-disable-connector.user.js`:
+    - `@updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/userscripts/chatgpt/auto-disable-connector.user.js`
+    - `@downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/userscripts/chatgpt/auto-disable-connector.user.js`
+- If you place scripts under `userscripts/...`, keep the full path in the URL, e.g. `userscripts/chatgpt/auto-disable-connector.user.js`.
 - Do not omit or comment out these lines; they must be included upon script creation.
 
 ### Favicons / Icons
@@ -79,14 +79,14 @@ Thank you for your interest in contributing! This guide will help you add new us
 
 This repository includes git hooks that automatically manage versioning and backups:
 
-- **Pre-commit hook** (`scripts/hooks/pre-commit`): Automatically increments the PATCH version in all modified `.user.js` files
-- **Post-commit hook** (`scripts/hooks/post-commit`): Backs up all modified `.user.js` files to `\\tsclient\R\userscripts` if the network path exists
+- **Pre-commit hook** (`.scripts/hooks/pre-commit`): Automatically increments the PATCH version in all modified `.user.js` files
+- **Post-commit hook** (`.scripts/hooks/post-commit`): Backs up all modified `.user.js` files to `\\tsclient\R\userscripts` if the network path exists
 
 **Setup:** Copy the hooks to your `.git/hooks` directory:
 
 ```bash
-cp scripts/hooks/pre-commit .git/hooks/
-cp scripts/hooks/post-commit .git/hooks/
+cp .scripts/hooks/pre-commit .git/hooks/
+cp .scripts/hooks/post-commit .git/hooks/
 chmod +x .git/hooks/pre-commit  # On Windows, this may not be necessary
 ```
 

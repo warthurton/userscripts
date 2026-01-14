@@ -18,7 +18,7 @@ Choose one of the following userscript managers for your browser:
 
 ### Step 2: Install Userscripts
 
-1. Browse the `scripts/` directory
+1. Browse the `userscripts/` directory
 2. Click on a `.user.js` file
 3. Click the "Raw" button on GitHub
 4. Your userscript manager should prompt you to install it
@@ -29,8 +29,9 @@ Alternatively, you can copy the script content and create a new script in your u
 ## Repository Structure
 
 ```
-user-scripts/
-├── scripts/          # Active userscripts
+userscripts/
+├── userscripts/      # Active userscripts
+├── .scripts/
 │   └── hooks/        # Git hooks for automation
 ├── templates/        # Templates for creating new userscripts
 └── README.md         # This file
@@ -38,7 +39,7 @@ user-scripts/
 
 ## Git Hooks & Automation
 
-This repository includes git hooks for automatic versioning and backup of userscripts.
+This repository includes git hooks for automatic versioning and copying userscripts to dist/.
 
 ### Setup
 
@@ -47,20 +48,20 @@ Run the setup script from the repository root:
 **Linux/Mac:**
 
 ```bash
-bash scripts/hooks/setup.sh
+bash .scripts/hooks/setup.sh
 ```
 
 **Windows:**
 
 ```cmd
-scripts\hooks\setup.bat
+.scripts\hooks\setup.bat
 ```
 
 The setup will:
 
 1. Install pre-commit and post-commit hooks
-2. Ask if you want automatic backups after commits
-3. Prompt for a backup location (if enabled)
+2. Ask if you want automatic Copy to dist after commits
+3. Prompt for a dist location (if enabled)
 
 ### Features
 
@@ -70,22 +71,22 @@ The setup will:
 
 **Post-commit Hook:**
 
-- Backs up all modified `.user.js` files to your configured location
+- Copies all modified `.user.js` files to your configured dist/ location (enabled by default)
 
-### Manual Backup
+### Manual Copy to dist
 
-You can manually backup all scripts anytime:
+You can manually copy all scripts to dist/ anytime:
 
 **Linux/Mac:**
 
 ```bash
-bash scripts/hooks/manual-backup.sh
+bash .scripts/hooks/copy-to-dist.sh
 ```
 
 **Windows:**
 
 ```cmd
-scripts\hooks\manual-backup.bat
+.scripts\hooks\copy-to-dist.bat
 ```
 
 ### Updating Hooks
@@ -95,16 +96,16 @@ When hooks are updated in the repository, run:
 **Linux/Mac:**
 
 ```bash
-bash scripts/hooks/setup.sh -u
+bash .scripts/hooks/setup.sh -r
 ```
 
 **Windows:**
 
 ```cmd
-scripts\hooks\setup.bat /u
+.scripts\hooks\setup.bat /r
 ```
 
-This updates the hooks without changing your backup configuration.
+This updates the hooks without changing your Copy to dist configuration.
 
 ## Creating Your Own Userscript
 
@@ -120,7 +121,7 @@ This updates the hooks without changing your backup configuration.
 
 ## Adding Scripts to This Repository
 
-1. Place your userscript in the `scripts/` directory
+1. Place your userscript in the `userscripts/` directory
 2. Ensure the filename ends with `.user.js`
 3. Include proper metadata in the script header
 4. Commit and push your changes

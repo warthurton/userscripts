@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         Autotask - Close Tab Button
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.1.1
+// @version      1.0
 // @description  Adds a subtle Close Tab button to Autotask detail pages. Matches *Detail.mvc by default with configurable exclusions.
-// @author       warthurton
+// @author       kept-treat-flirt@duck.com
 // @match        https://ww*.autotask.net/Mvc/*Detail.mvc*
 // @icon         https://favicons-blue.vercel.app/?domain=autotask.net
 // @run-at       document-idle
@@ -11,13 +11,13 @@
 // @grant        GM_setValue
 // @grant        GM_registerMenuCommand
 // @grant        GM_addStyle
-// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/scripts/autotask/close-tab-button.user.js
-// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/scripts/autotask/close-tab-button.user.js
+// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/userscripts/autotask/close-tab-button.user.js
+// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/userscripts/autotask/close-tab-button.user.js
 // @homepageURL  https://github.com/warthurton/userscripts
 // @supportURL   https://github.com/warthurton/userscripts/issues
 // ==/UserScript==
 
-(function() {
+(function () {
   'use strict';
 
   const DEBUG = true;
@@ -161,7 +161,7 @@
   // Find and place button in TitleBar
   function placeButton() {
     if (buttonPlaced) return;
-    
+
     log('Searching for TitleBar elements');
     const titleSelector = 'div.PageHeadingContainer div.TitleBarItem.Title';
     const toolbarSelector = 'div.PageHeadingContainer div.TitleBarItem.TitleBarToolbar';
@@ -200,10 +200,10 @@
 
     btn.addEventListener('click', () => {
       log('Close button clicked');
-      try { window.close(); } catch {}
-      try { self.close(); } catch {}
-      try { const w = window.open('', '_self'); if (w) w.close(); } catch {}
-      try { location.href = 'about:blank'; } catch {}
+      try { window.close(); } catch { }
+      try { self.close(); } catch { }
+      try { const w = window.open('', '_self'); if (w) w.close(); } catch { }
+      try { location.href = 'about:blank'; } catch { }
     });
 
     container.appendChild(btn);

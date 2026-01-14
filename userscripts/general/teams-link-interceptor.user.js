@@ -1,21 +1,23 @@
 // ==UserScript==
 // @name         Teams Link Interceptor
-// @namespace    http://tampermonkey.net/
-// @version      0.2
+// @namespace    https://github.com/warthurton/userscripts
+// @version      1.0
 // @description  Intercepts link clicks in Microsoft Teams to log URLs before they open in Edge sidebar
-// @author       Your Name
 // @match        https://teams.microsoft.com/*
 // @match        https://*.teams.microsoft.com/*
-// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/scripts/general/teams-link-interceptor.user.js
-// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/scripts/general/teams-link-interceptor.user.js
+// @icon         https://favicons-blue.vercel.app/?domain=teams.microsoft.com
+// @run-at       document-start
+//
+// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/userscripts/general/teams-link-interceptor.user.js
+// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/userscripts/general/teams-link-interceptor.user.js
 // @homepageURL  https://github.com/warthurton/userscripts
 // @supportURL   https://github.com/warthurton/userscripts/issues
+//
 // @grant        none
-// @run-at       document-start
-// @icon         https://favicons-blue.vercel.app/?domain=teams.microsoft.com
+// @author       kept-treat-flirt@duck.com
 // ==/UserScript==
 
-(function() {
+(function () {
     'use strict';
 
     console.log('Teams Link Interceptor loaded');
@@ -26,23 +28,23 @@
         if (!target) return;
 
         const url = target.href;
-        
+
         // Check if this is a static.teams.cdn.office.net link
         if (url && url.includes('static.teams.cdn.office.net')) {
             // STOP EVERYTHING IMMEDIATELY
             event.preventDefault();
             event.stopPropagation();
             event.stopImmediatePropagation();
-            
+
             const targetAttr = target.getAttribute('target');
-            
+
             console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
             console.log('🔗 Teams Link INTERCEPTED (static.teams.cdn.office.net):');
             console.log('URL:', url);
             console.log('Target:', targetAttr || 'none');
             console.log('Text:', target.textContent.trim());
             console.log('Classes:', target.className);
-            
+
             // Log any data attributes that might be relevant
             const dataAttrs = Array.from(target.attributes)
                 .filter(attr => attr.name.startsWith('data-'))
@@ -50,27 +52,27 @@
                     acc[attr.name] = attr.value;
                     return acc;
                 }, {});
-            
+
             if (Object.keys(dataAttrs).length > 0) {
                 console.log('Data attributes:', dataAttrs);
             }
-            
+
             console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-            
+
             // Don't navigate - keep the log visible
             alert('Link intercepted! Check console for URL details.\n\nURL: ' + url);
             return false;
         }
-        
+
         const targetAttr = target.getAttribute('target');
-        
+
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log('🔗 Teams Link Clicked:');
         console.log('URL:', url);
         console.log('Target:', targetAttr || 'none');
         console.log('Text:', target.textContent.trim());
         console.log('Classes:', target.className);
-        
+
         // Log any data attributes that might be relevant
         const dataAttrs = Array.from(target.attributes)
             .filter(attr => attr.name.startsWith('data-'))
@@ -78,11 +80,11 @@
                 acc[attr.name] = attr.value;
                 return acc;
             }, {});
-        
+
         if (Object.keys(dataAttrs).length > 0) {
             console.log('Data attributes:', dataAttrs);
         }
-        
+
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     }
 

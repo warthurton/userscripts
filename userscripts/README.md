@@ -1,4 +1,4 @@
-# Scripts Directory
+# Userscripts Directory
 
 This directory contains active userscripts ready for installation.
 

@@ -1,19 +1,19 @@
 // ==UserScript==
 // @name         ChatGPT Admin - Auto-confirm Disable Connector
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.2.2
+// @version      1.0
 // @description  Auto-clicks the "Disable" confirmation after a configurable delay, with countdown.
 // @match        https://chatgpt.com/admin/*
 // @icon         https://favicons-blue.vercel.app/?domain=chatgpt.com
 // @run-at       document-start
 //
-// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/scripts/chatgpt/auto-disable-connector.user.js
-// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/scripts/chatgpt/auto-disable-connector.user.js
+// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/userscripts/chatgpt/auto-disable-connector.user.js
+// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/userscripts/chatgpt/auto-disable-connector.user.js
 // @homepageURL  https://github.com/warthurton/userscripts
 // @supportURL   https://github.com/warthurton/userscripts/issues
 //
 // @grant        none
-// @author       warthurton
+// @author       kept-treat-flirt@duck.com
 // ==/UserScript==
 
 

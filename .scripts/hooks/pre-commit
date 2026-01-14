@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Pre-commit hook for automatic PATCH version bumping
 # Increments the PATCH version in all modified .user.js files
 
@@ -12,6 +12,11 @@ fi
 echo "[pre-commit] Updating PATCH versions..."
 
 for file in $MODIFIED_FILES; do
+    # Skip template file
+    if [[ "$file" == *"templates/userscript-template.user.js" ]]; then
+        continue
+    fi
+    
     if [ -f "$file" ]; then
         # Extract current version
         CURRENT_VERSION=$(grep -m 1 '// @version' "$file" | grep -oP '\d+\.\d+\.\d+')
