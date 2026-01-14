@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Post-commit hook: Copy modified .user.js files to dist/
+# Post-commit hook: Copy modified .user.js files to build/
 # This runs automatically after each commit
 
 # Check for disable flag
@@ -15,7 +15,7 @@ if [ -z "$MODIFIED_FILES" ]; then
 fi
 
 for file in $MODIFIED_FILES; do
-    bash .scripts/hooks/copy-to-dist.sh "$file"
+    bash .github/scripts/hooks/copy-to-dist.sh "$file"
 done
 
 echo "[post-commit] Copy to dist complete!"

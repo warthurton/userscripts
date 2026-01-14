@@ -98,12 +98,19 @@ function findUserscripts(dir) {
 function main() {
     console.log('🔍 Checking userscript versions...\n');
 
-    const scriptsDir = path.join(process.cwd(), 'userscripts');
-    const userscripts = findUserscripts(scriptsDir);
+    const categories = ['autotask', 'chatgpt', 'general'];
+    let allUserscripts = [];
+
+    for (const category of categories) {
+        const categoryPath = path.join(process.cwd(), category);
+        if (fs.existsSync(categoryPath)) {
+            allUserscripts.push(...findUserscripts(categoryPath));
+        }
+    }
 
     let hasChanges = false;
 
-    for (const scriptPath of userscripts) {
+    for (const scriptPath of allUserscripts) {
         const relativePath = path.relative(process.cwd(), scriptPath);
         console.log(`\n📄 Checking ${relativePath}`);
 
