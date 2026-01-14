@@ -18,7 +18,7 @@ Choose one of the following userscript managers for your browser:
 
 ### Step 2: Install Userscripts
 
-1. Browse the `scripts/` directory
+1. Browse the `userscripts/` directory
 2. Click on a `.user.js` file
 3. Click the "Raw" button on GitHub
 4. Your userscript manager should prompt you to install it
@@ -29,8 +29,9 @@ Alternatively, you can copy the script content and create a new script in your u
 ## Repository Structure
 
 ```
-user-scripts/
-├── scripts/          # Active userscripts
+userscripts/
+├── userscripts/      # Active userscripts
+├── .scripts/
 │   └── hooks/        # Git hooks for automation
 ├── templates/        # Templates for creating new userscripts
 └── README.md         # This file
@@ -47,13 +48,13 @@ Run the setup script from the repository root:
 **Linux/Mac:**
 
 ```bash
-bash scripts/hooks/setup.sh
+bash .scripts/hooks/setup.sh
 ```
 
 **Windows:**
 
 ```cmd
-scripts\hooks\setup.bat
+.scripts\hooks\setup.bat
 ```
 
 The setup will:
@@ -79,13 +80,13 @@ You can manually copy all scripts to dist/ anytime:
 **Linux/Mac:**
 
 ```bash
-bash scripts/hooks/copy-to-dist.sh
+bash .scripts/hooks/copy-to-dist.sh
 ```
 
 **Windows:**
 
 ```cmd
-scripts\hooks\copy-to-dist.bat
+.scripts\hooks\copy-to-dist.bat
 ```
 
 ### Updating Hooks
@@ -95,13 +96,13 @@ When hooks are updated in the repository, run:
 **Linux/Mac:**
 
 ```bash
-bash scripts/hooks/setup.sh -u
+bash .scripts/hooks/setup.sh -r
 ```
 
 **Windows:**
 
 ```cmd
-scripts\hooks\setup.bat /u
+.scripts\hooks\setup.bat /r
 ```
 
 This updates the hooks without changing your Copy to dist configuration.
@@ -120,7 +121,7 @@ This updates the hooks without changing your Copy to dist configuration.
 
 ## Adding Scripts to This Repository
 
-1. Place your userscript in the `scripts/` directory
+1. Place your userscript in the `userscripts/` directory
 2. Ensure the filename ends with `.user.js`
 3. Include proper metadata in the script header
 4. Commit and push your changes

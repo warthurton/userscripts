@@ -6,7 +6,7 @@
 #   ./setup.sh         - Always updates hooks
 #   ./setup.sh -r      - Reconfigure: prompts to enable/disable copy-to-dist
 
-HOOKS_DIR="scripts/hooks"
+HOOKS_DIR=".scripts/hooks"
 GIT_HOOKS_DIR=".git/hooks"
 RECONFIGURE=false
 

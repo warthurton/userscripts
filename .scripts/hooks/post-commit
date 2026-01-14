@@ -15,7 +15,7 @@ if [ -z "$MODIFIED_FILES" ]; then
 fi
 
 for file in $MODIFIED_FILES; do
-    bash scripts/hooks/copy-to-dist.sh "$file"
+    bash .scripts/hooks/copy-to-dist.sh "$file"
 done
 
 echo "[post-commit] Copy to dist complete!"
