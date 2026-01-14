@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Autotask - Close Tab Button
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0
+// @version      1.1
 // @description  Adds a subtle Close Tab button to Autotask detail pages. Matches *Detail.mvc by default with configurable exclusions.
 // @author       kept-treat-flirt@duck.com
 // @match        https://ww*.autotask.net/Mvc/*Detail.mvc*
@@ -11,8 +11,8 @@
 // @grant        GM_setValue
 // @grant        GM_registerMenuCommand
 // @grant        GM_addStyle
-// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/userscripts/autotask/close-tab-button.user.js
-// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/userscripts/autotask/close-tab-button.user.js
+// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/autotask/close-tab-button.user.js
+// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/autotask/close-tab-button.user.js
 // @homepageURL  https://github.com/warthurton/userscripts
 // @supportURL   https://github.com/warthurton/userscripts/issues
 // ==/UserScript==

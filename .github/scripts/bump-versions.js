@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 
 /**
  * Parse version from userscript header (e.g., "1.2.3" -> [1, 2])
@@ -27,7 +27,7 @@ function formatVersion(major, minor) {
 function getMainVersion(filePath) {
     try {
         const relativePath = path.relative(process.cwd(), filePath);
-        const mainContent = execSync('git', ['show', `main:${relativePath}`], { encoding: 'utf8' });
+        const mainContent = execFileSync('git', ['show', `main:${relativePath}`], { encoding: 'utf8' });
         return parseVersion(mainContent);
     } catch (error) {
         // File doesn't exist in main
@@ -173,13 +173,15 @@ function main() {
         hasChanges = true;
     }
 
-    // Set output for GitHub Actions
+    // Set output for GitHub Actions using environment files (recommended)
     if (hasChanges) {
         console.log('\n✨ Version changes made!');
-        console.log('::set-output name=changes::true');
+        const fs = require('fs');
+        fs.appendFileSync(process.env.GITHUB_OUTPUT, 'changes=true\n');
     } else {
         console.log('\n✅ No version changes needed');
-        console.log('::set-output name=changes::false');
+        const fs = require('fs');
+        fs.appendFileSync(process.env.GITHUB_OUTPUT, 'changes=false\n');
     }
 }
 

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Auto Close Page (Countdown)
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.1
+// @version      1.1
 // @description  Automatically closes pages after a configurable countdown. Domains can be assigned to 30s or 120s groups; others close after 5s. Includes an in-page settings UI.
 // @author       kept-treat-flirt@duck.com
 // @run-at       document-idle
@@ -9,8 +9,8 @@
 // @grant        GM_setValue
 // @grant        GM_registerMenuCommand
 // @grant        GM_addStyle
-// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/userscripts/general/auto-close.user.js
-// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/userscripts/general/auto-close.user.js
+// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/general/auto-close.user.js
+// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/general/auto-close.user.js
 // @homepageURL  https://github.com/warthurton/userscripts
 // @supportURL   https://github.com/warthurton/userscripts/issues
 // ==/UserScript==
