@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 
 /**
  * Parse version from userscript header (e.g., "1.2.3" -> [1, 2])
@@ -27,7 +27,7 @@ function formatVersion(major, minor) {
 function getMainVersion(filePath) {
     try {
         const relativePath = path.relative(process.cwd(), filePath);
-        const mainContent = execSync(`git show main:${relativePath}`, { encoding: 'utf8' });
+        const mainContent = execFileSync('git', ['show', `main:${relativePath}`], { encoding: 'utf8' });
         return parseVersion(mainContent);
     } catch (error) {
         // File doesn't exist in main
