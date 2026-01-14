@@ -41,14 +41,16 @@ jobs:
             - name: Update URLs in scripts
               run: |
                   for file in *.user.js; do
-                      sed -i "s|https://raw.githubusercontent.com/warthurton/userscripts/main/userscripts/[^/]*/|https://raw.githubusercontent.com/warthurton/userscripts/publish/|g" "$file"
+                      # Update @updateURL and @downloadURL to point to publish branch with flat structure
+                      sed -i -E "s|@updateURL[[:space:]]+https://raw.githubusercontent.com/warthurton/userscripts/main/userscripts/.+\.user\.js|@updateURL    https://raw.githubusercontent.com/warthurton/userscripts/publish/$file|g" "$file"
+                      sed -i -E "s|@downloadURL[[:space:]]+https://raw.githubusercontent.com/warthurton/userscripts/main/userscripts/.+\.user\.js|@downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/publish/$file|g" "$file"
                   done
 
             - name: Commit and push
               run: |
                   git add *.user.js
                   git commit -m "Sync userscripts from main ($(date -u +'%Y-%m-%d %H:%M:%S UTC'))" || echo "No changes to commit"
-                  git push -u origin publish
+                  git push -u origin publish --force
 
             - name: Create summary
               run: |
