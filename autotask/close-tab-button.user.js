@@ -11,8 +11,8 @@
 // @grant        GM_setValue
 // @grant        GM_registerMenuCommand
 // @grant        GM_addStyle
-// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/userscripts/autotask/close-tab-button.user.js
-// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/userscripts/autotask/close-tab-button.user.js
+// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/autotask/close-tab-button.user.js
+// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/autotask/close-tab-button.user.js
 // @homepageURL  https://github.com/warthurton/userscripts
 // @supportURL   https://github.com/warthurton/userscripts/issues
 // ==/UserScript==

@@ -7,8 +7,8 @@
 // @icon         https://favicons-blue.vercel.app/?domain=chatgpt.com
 // @run-at       document-start
 //
-// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/userscripts/chatgpt/auto-disable-connector.user.js
-// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/userscripts/chatgpt/auto-disable-connector.user.js
+// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/chatgpt/auto-disable-connector.user.js
+// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/chatgpt/auto-disable-connector.user.js
 // @homepageURL  https://github.com/warthurton/userscripts
 // @supportURL   https://github.com/warthurton/userscripts/issues
 //

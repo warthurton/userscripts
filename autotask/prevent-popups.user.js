@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Autotask - Prevent Popups
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.9
+// @version      1.0.11
 // @description  Prevents Autotask tickets, tasks, and KB articles from opening in popup windows by redirecting to proper MVC URLs
 // @author       kept-treat-flirt@duck.com
 // @match        https://ww*.autotask.net/Autotask/AutotaskExtend/ExecuteCommand.aspx*
@@ -13,8 +13,8 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_registerMenuCommand
-// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/userscripts/autotask/prevent-popups.user.js
-// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/userscripts/autotask/prevent-popups.user.js
+// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/autotask/prevent-popups.user.js
+// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/autotask/prevent-popups.user.js
 // @homepageURL  https://github.com/warthurton/userscripts
 // @supportURL   https://github.com/warthurton/userscripts/issues
 // ==/UserScript==
