@@ -173,13 +173,15 @@ function main() {
         hasChanges = true;
     }
 
-    // Set output for GitHub Actions
+    // Set output for GitHub Actions using environment files (recommended)
     if (hasChanges) {
         console.log('\n✨ Version changes made!');
-        console.log('::set-output name=changes::true');
+        const fs = require('fs');
+        fs.appendFileSync(process.env.GITHUB_OUTPUT, 'changes=true\n');
     } else {
         console.log('\n✅ No version changes needed');
-        console.log('::set-output name=changes::false');
+        const fs = require('fs');
+        fs.appendFileSync(process.env.GITHUB_OUTPUT, 'changes=false\n');
     }
 }
 
