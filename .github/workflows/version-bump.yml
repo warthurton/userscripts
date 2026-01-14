@@ -43,6 +43,6 @@ jobs:
               run: |
                   git config --local user.email "github-actions[bot]@users.noreply.github.com"
                   git config --local user.name "github-actions[bot]"
-                  git add autotask/**/*.user.js chatgpt/**/*.user.js general/**/*.user.js
+                  git add autotask/ chatgpt/ general/
                   git commit -m "chore: bump userscript versions"
                   git push
