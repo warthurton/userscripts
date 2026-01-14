@@ -57,10 +57,11 @@ Thank you for your interest in contributing! This guide will help you add new us
 - URL format:
   - Base: `https://raw.githubusercontent.com/warthurton/userscripts/main/`
   - Path: match the script’s location in this repo.
-  - Example for a script stored at `userscripts/chatgpt/auto-disable-connector.user.js`:
-    - `@updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/userscripts/chatgpt/auto-disable-connector.user.js`
-    - `@downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/userscripts/chatgpt/auto-disable-connector.user.js`
-- If you place scripts under `userscripts/...`, keep the full path in the URL, e.g. `userscripts/chatgpt/auto-disable-connector.user.js`.
+  - Example for a script stored at `chatgpt/auto-disable-connector.user.js`:
+    - `@updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/chatgpt/auto-disable-connector.user.js`
+    - `@downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/chatgpt/auto-disable-connector.user.js`
+- Scripts are organized in category directories (autotask/, chatgpt/, general/) at the repository root.
+- Keep the full path in the URL, e.g. `chatgpt/auto-disable-connector.user.js`.
 - Do not omit or comment out these lines; they must be included upon script creation.
 
 ### Favicons / Icons
@@ -77,17 +78,21 @@ Thank you for your interest in contributing! This guide will help you add new us
 
 ### Version Automation with Git Hooks
 
-This repository includes git hooks that automatically manage versioning and backups:
+This repository includes git hooks that automatically manage versioning and build output:
 
-- **Pre-commit hook** (`.scripts/hooks/pre-commit`): Automatically increments the PATCH version in all modified `.user.js` files
-- **Post-commit hook** (`.scripts/hooks/post-commit`): Backs up all modified `.user.js` files to `\\tsclient\R\userscripts` if the network path exists
+- **Pre-commit hook** (`.github/scripts/hooks/pre-commit`): Automatically increments the PATCH version in all modified `.user.js` files
+- **Post-commit hook** (`.github/scripts/hooks/post-commit`): Copies all modified `.user.js` files to `build/` directory
 
-**Setup:** Copy the hooks to your `.git/hooks` directory:
+**Setup:** Run the setup script from the repository root:
 
 ```bash
-cp .scripts/hooks/pre-commit .git/hooks/
-cp .scripts/hooks/post-commit .git/hooks/
-chmod +x .git/hooks/pre-commit  # On Windows, this may not be necessary
+bash .github/scripts/hooks/setup.sh
+```
+
+On Windows:
+
+```cmd
+.github\scripts\hooks\setup.bat
 ```
 
 After setup, hooks will run automatically before and after each commit.
@@ -126,42 +131,14 @@ After setup, hooks will run automatically before and after each commit.
 - Check browser console for errors
 - Test in different browsers if possible
 
-## Example Script Structure
+## Script Template
 
-```javascript
-// ==UserScript==
-// @name         Example Script
-// @namespace    http://tampermonkey.net/
-// @version      1.0
-// @description  Does something useful
-// @author       Your Name
-// @match        https://example.com/*
-// @icon         https://favicons-blue.vercel.app/?domain=example.com
-// @grant        none
-// ==/UserScript==
+Use the template in [templates/userscript-template.user.js](templates/userscript-template.user.js) as a starting point for new scripts. It includes:
 
-(function () {
-  "use strict";
-
-  // Configuration
-  const CONFIG = {
-    enabled: true,
-    color: "#ff0000",
-  };
-
-  // Main functionality
-  function init() {
-    // Your code here
-  }
-
-  // Wait for DOM to be ready
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
-  } else {
-    init();
-  }
-})();
-```
+- Proper metadata header with all required fields
+- IIFE wrapper to avoid global namespace pollution
+- Example structure with configuration and initialization
+- Placeholder comments for updateURL and downloadURL
 
 ## Questions?
 

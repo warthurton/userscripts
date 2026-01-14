@@ -20,3 +20,6 @@ node_modules/
 
 # Private or local scripts (use .local.user.js extension for personal testing)
 *.local.user.js
+
+# Build output
+build/

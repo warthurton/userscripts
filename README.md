@@ -12,17 +12,39 @@ Userscripts are small JavaScript programs that modify web pages to add features,
 
 Choose one of the following userscript managers for your browser:
 
-- **Tampermonkey** - [Chrome](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojnmkdajkgjejbfnm) | [Firefox](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/) | [Edge](https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd) | [Safari](https://apps.apple.com/us/app/tampermonkey/id1482490089)
-- **Violentmonkey** - [Chrome](https://chrome.google.com/webstore/detail/violentmonkey/jinjaccalgkegednnccohejagnlnfdag) | [Firefox](https://addons.mozilla.org/en-US/firefox/addon/violentmonkey/) | [Edge](https://microsoftedge.microsoft.com/addons/detail/violentmonkey/eeagobfjdenkkddmbclomhiblgggliao)
-- **Greasemonkey** - [Firefox](https://addons.mozilla.org/en-US/firefox/addon/greasemonkey/)
+**Recommended userscript managers:**
+
+- **FireMonkey** - [Firefox](https://addons.mozilla.org/en-US/firefox/addon/firemonkey/) - Open source (MPL-2.0), Firefox-native, manages scripts + styles together
+- **Violentmonkey** - [Chrome](https://chrome.google.com/webstore/detail/violentmonkey/jinjaccalgkegednnccohejagnlnfdag) | [Firefox](https://addons.mozilla.org/en-US/firefox/addon/violentmonkey/) | [Edge](https://microsoftedge.microsoft.com/addons/detail/violentmonkey/eeagobfjdenkkddmbclomhiblgggliao) | [Opera/Vivaldi/Brave](https://violentmonkey.github.io/get-it/) - Open source (MIT), very active development
+- **Userscripts** - [Safari (macOS, iOS, iPadOS)](https://github.com/quoid/userscripts) - Open source userscript manager for Safari
+- **Tampermonkey** - [Chrome](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojnmkdajkgjejbfnm) | [Firefox](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/) | [Edge](https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd) | [Safari](https://apps.apple.com/us/app/tampermonkey/id1482490089) - Popular cross-platform option
+
+*Note: Greasemonkey is also available for [Firefox](https://addons.mozilla.org/en-US/firefox/addon/greasemonkey/) but is less actively maintained.*
+
+#### Browser-Specific Recommendations
+
+| Browser                           | Best Pick                  | Why                                                                                                    |
+| --------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------ |
+| **Firefox (desktop + Android)**   | **FireMonkey**             | Open source (MPL-2.0), Firefox-native API approach, manages scripts + styles together ([GitHub][1])   |
+| **Chrome / Chromium**             | **Violentmonkey**          | Open source (MIT), very active release cadence, broad WebExtensions support ([GitHub][2])             |
+| **Edge**                          | **Violentmonkey**          | Same reasons as Chrome; built for WebExtensions browsers ([Get it][3])                                |
+| **Opera / Vivaldi / Brave, etc.** | **Violentmonkey**          | Explicitly supported in their "Get it" list (WebExtension-compatible browsers) ([Get it][3])          |
+| **Safari (macOS + iOS/iPadOS)**   | **Userscripts**            | Open-source userscript manager for Safari, actively maintained, available on iOS + macOS ([GitHub][4]) |
+
+[1]: https://github.com/erosman/firemonkey "FireMonkey - combined user-script and user-style manager"
+[2]: https://github.com/Violentmonkey/Violentmonkey "Violentmonkey - userscript support for browsers"
+[3]: https://violentmonkey.github.io/get-it/ "Get Violentmonkey"
+[4]: https://github.com/quoid/userscripts "Userscripts - open-source userscript manager for Safari"
 
 ### Step 2: Install Userscripts
 
-1. Browse the `userscripts/` directory
+1. Browse the category directories (`autotask/`, `chatgpt/`, `general/`)
 2. Click on a `.user.js` file
 3. Click the "Raw" button on GitHub
 4. Your userscript manager should prompt you to install it
 5. Confirm the installation
+
+**Note for Safari users:** Userscripts for Safari has a different installation process. See the [Userscripts usage documentation](https://github.com/quoid/userscripts?tab=readme-ov-file#usage) for detailed instructions.
 
 Alternatively, you can copy the script content and create a new script in your userscript manager.
 
@@ -30,82 +52,21 @@ Alternatively, you can copy the script content and create a new script in your u
 
 ```
 userscripts/
-├── userscripts/      # Active userscripts
-├── .scripts/
-│   └── hooks/        # Git hooks for automation
+├── autotask/         # Autotask-related userscripts
+├── chatgpt/          # ChatGPT-related userscripts
+├── general/          # General-purpose userscripts
+├── .github/
+│   └── scripts/
+│       └── hooks/    # Git hooks for automation
 ├── templates/        # Templates for creating new userscripts
 └── README.md         # This file
 ```
 
-## Git Hooks & Automation
+## Development & Contributing
 
-This repository includes git hooks for automatic versioning and copying userscripts to dist/.
+For information about git hooks, automation, and development workflow, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
-### Setup
-
-Run the setup script from the repository root:
-
-**Linux/Mac:**
-
-```bash
-bash .scripts/hooks/setup.sh
-```
-
-**Windows:**
-
-```cmd
-.scripts\hooks\setup.bat
-```
-
-The setup will:
-
-1. Install pre-commit and post-commit hooks
-2. Ask if you want automatic Copy to dist after commits
-3. Prompt for a dist location (if enabled)
-
-### Features
-
-**Pre-commit Hook:**
-
-- Automatically increments the PATCH version (e.g., 1.0.0 → 1.0.1) in all modified `.user.js` files
-
-**Post-commit Hook:**
-
-- Copies all modified `.user.js` files to your configured dist/ location (enabled by default)
-
-### Manual Copy to dist
-
-You can manually copy all scripts to dist/ anytime:
-
-**Linux/Mac:**
-
-```bash
-bash .scripts/hooks/copy-to-dist.sh
-```
-
-**Windows:**
-
-```cmd
-.scripts\hooks\copy-to-dist.bat
-```
-
-### Updating Hooks
-
-When hooks are updated in the repository, run:
-
-**Linux/Mac:**
-
-```bash
-bash .scripts/hooks/setup.sh -r
-```
-
-**Windows:**
-
-```cmd
-.scripts\hooks\setup.bat /r
-```
-
-This updates the hooks without changing your Copy to dist configuration.
+For contribution guidelines and script requirements, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Creating Your Own Userscript
 
@@ -121,7 +82,11 @@ This updates the hooks without changing your Copy to dist configuration.
 
 ## Adding Scripts to This Repository
 
-1. Place your userscript in the `userscripts/` directory
+See [DEVELOPMENT.md](DEVELOPMENT.md) for git hooks setup and [CONTRIBUTING.md](CONTRIBUTING.md) for detailed contribution guidelines.
+
+Quick steps:
+
+1. Place your userscript in the appropriate category directory (`autotask/`, `chatgpt/`, or `general/`)
 2. Ensure the filename ends with `.user.js`
 3. Include proper metadata in the script header
 4. Commit and push your changes

@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Copy to dist script for userscripts
-# Copies .user.js files to dist/ directory
+# Copy to build script for userscripts
+# Copies .user.js files to build/ directory
 # Usage:
 #   ./copy-to-dist.sh              - Copy all .user.js files
 #   ./copy-to-dist.sh <file.user.js> - Copy specific file
 
-DIST_DIR="dist"
+BUILD_DIR="build"
 
-if [ ! -d "$DIST_DIR" ]; then
-    mkdir -p "$DIST_DIR"
+if [ ! -d "$BUILD_DIR" ]; then
+    mkdir -p "$BUILD_DIR"
 fi
-TARGET_PATH="$DIST_DIR"
+TARGET_PATH="$BUILD_DIR"
 
 # Check if a specific file was provided
 if [ -n "$1" ]; then
@@ -32,11 +32,11 @@ if [ -n "$1" ]; then
     exit 0
 fi
 
-# Find all .user.js files
-USER_SCRIPTS=$(find scripts -name "*.user.js" 2>/dev/null)
+# Find all .user.js files in category directories at root
+USER_SCRIPTS=$(find autotask chatgpt general -name "*.user.js" 2>/dev/null)
 
 if [ -z "$USER_SCRIPTS" ]; then
-    echo "[build] No .user.js files found in scripts directory."
+    echo "[build] No .user.js files found in category directories."
     exit 0
 fi
 
