@@ -21,6 +21,9 @@
     'use strict';
 
     // Block the chatwidget script from loading
+    const BLOCKED_SCRIPT = 'crchat-chatwidget.js';
+    
+    // Override createElement to block script creation
     const originalCreateElement = document.createElement;
     document.createElement = function(tagName, ...args) {
         const element = originalCreateElement.apply(document, [tagName, ...args]);
@@ -28,23 +31,62 @@
         if (tagName.toLowerCase() === 'script') {
             const originalSetAttribute = element.setAttribute;
             element.setAttribute = function(name, value) {
-                if (name === 'src' && value && value.includes('crchat-chatwidget.js')) {
-                    console.log('[CloudRadial Content Downloader] Blocking chatwidget script');
+                if (name === 'src' && value && value.includes(BLOCKED_SCRIPT)) {
+                    console.log('[CloudRadial Content Downloader] Blocking chatwidget script via setAttribute');
                     return; // Don't set the src attribute
                 }
                 return originalSetAttribute.apply(this, [name, value]);
             };
+            
+            // Also override the src property setter
+            const descriptor = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, 'src');
+            Object.defineProperty(element, 'src', {
+                get: descriptor.get,
+                set: function(value) {
+                    if (value && value.includes(BLOCKED_SCRIPT)) {
+                        console.log('[CloudRadial Content Downloader] Blocking chatwidget script via src setter');
+                        return;
+                    }
+                    descriptor.set.call(this, value);
+                }
+            });
         }
         
         return element;
     };
 
-    // Also block if script is already in the page
-    const chatwidgetScript = document.querySelector('script[src*="crchat-chatwidget.js"]');
-    if (chatwidgetScript) {
-        console.log('[CloudRadial Content Downloader] Removing existing chatwidget script');
-        chatwidgetScript.remove();
+    // Remove existing script if already in page
+    function removeChatwidgetScript() {
+        const scripts = document.querySelectorAll(`script[src*="${BLOCKED_SCRIPT}"]`);
+        scripts.forEach(script => {
+            console.log('[CloudRadial Content Downloader] Removing existing chatwidget script');
+            script.remove();
+        });
     }
+    removeChatwidgetScript();
+
+    // Watch for script tags being added via MutationObserver
+    const scriptObserver = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            mutation.addedNodes.forEach((node) => {
+                if (node.tagName === 'SCRIPT' && node.src && node.src.includes(BLOCKED_SCRIPT)) {
+                    console.log('[CloudRadial Content Downloader] Blocking chatwidget script via MutationObserver');
+                    node.remove();
+                }
+            });
+        });
+    });
+    
+    // Start observing as soon as possible
+    if (document.documentElement) {
+        scriptObserver.observe(document.documentElement, {
+            childList: true,
+            subtree: true
+        });
+    }
+    
+    // Periodically check and remove the script
+    setInterval(removeChatwidgetScript, 1000);
 
     let currentContentId = null;
     const API_ENDPOINTS = [
@@ -502,7 +544,8 @@
             downloadAllBtn.style.cssText = `
                 position: fixed;
                 bottom: 20px;
-                right: 20px;
+                left: 50%;
+                transform: translateX(-50%);
                 padding: 12px 20px;
                 background: linear-gradient(to bottom, #10a37f, #0d8c6d) !important;
                 border: 1px solid #10a37f !important;
