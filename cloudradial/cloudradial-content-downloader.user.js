@@ -3,7 +3,7 @@
 // @namespace    https://github.com/warthurton/userscripts
 // @version      1.0
 // @description  Auto-download content data from CloudRadial admin portal
-// @match        https://portal.itiliti.io/app/admin/content/*
+// @match        https://portal.itiliti.io/app/admin/content*
 // @icon         https://favicons-blue.vercel.app/?domain=itiliti.io
 // @run-at       document-start
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js
