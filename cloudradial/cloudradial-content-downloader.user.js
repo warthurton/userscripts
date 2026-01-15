@@ -42,15 +42,14 @@
     // Store intercepted data
     const interceptedData = {};
     let debugMode = true;
-    let downloadButton = null;
     let statusDisplay = null;
+    const lastDownloadTimes = {}; // Map of contentId -> timestamp
 
     /**
-     * Extract content ID from current URL
+     * Check if on root content page
      */
-    function getContentIdFromURL() {
-        const match = window.location.pathname.match(/\/content\/(\d+)$/);
-        return match ? match[1] : null;
+    function isRootContentPage() {
+        return window.location.pathname === '/app/admin/content' || window.location.pathname === '/app/admin/content/';
     }
 
     /**
@@ -80,9 +79,19 @@
      * Create and download a zip file with all collected data
      */
     async function createAndDownloadZip() {
+        // Check if this content ID was recently downloaded (within 1 minute)
+        const now = Date.now();
+        const contentId = currentContentId || 'unknown';
+        const lastDownload = lastDownloadTimes[contentId];
+        
+        if (lastDownload && (now - lastDownload) < 60000) {
+            const secondsLeft = Math.ceil((60000 - (now - lastDownload)) / 1000);
+            showToast(`Content ${contentId} downloaded recently. Wait ${secondsLeft}s before downloading again.`, 4000);
+            return 0;
+        }
+
         const zip = new JSZip();
         let count = 0;
-        const contentId = currentContentId || 'unknown';
         const title = getContentTitle();
 
         // Add intercepted API data to zip
@@ -109,6 +118,9 @@
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+
+            // Update last download time for this content ID
+            lastDownloadTimes[contentId] = Date.now();
 
             console.log(`[CloudRadial Content Downloader] Downloaded zip with ${count} file(s)`);
             showToast(`Downloaded ${count} file(s) as zip`);
@@ -310,27 +322,116 @@
     };
 
     /**
+     * Check if on root content page
+     */
+    function isRootContentPage() {
+        return window.location.pathname === '/app/admin/content' || window.location.pathname === '/app/admin/content/';
+    }
+
+    /**
+     * Get all content IDs from templates API
+     */
+    async function getAllContentIds() {
+        try {
+            const response = await fetch('https://portal.itiliti.io/api/content/templates?s=0&t=999&d=a');
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            const data = await response.json();
+            
+            // Extract IDs from the response
+            let ids = [];
+            if (Array.isArray(data)) {
+                ids = data.map(item => item.id).filter(id => id);
+            } else if (data.data && Array.isArray(data.data)) {
+                ids = data.data.map(item => item.id).filter(id => id);
+            }
+            
+            console.log(`[CloudRadial Content Downloader] Found ${ids.length} content IDs`);
+            return ids;
+        } catch (error) {
+            console.error('[CloudRadial Content Downloader] Error fetching content IDs:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Download all content IDs sequentially
+     */
+    async function downloadAllContent() {
+        const ids = await getAllContentIds();
+        if (ids.length === 0) {
+            showToast('No content IDs found');
+            return;
+        }
+
+        showToast(`Starting download of ${ids.length} items...`);
+        console.log(`[CloudRadial Content Downloader] Starting batch download of ${ids.length} items:`, ids);
+
+        let completed = 0;
+        for (const id of ids) {
+            try {
+                console.log(`[CloudRadial Content Downloader] Navigating to content ${id}...`);
+                showToast(`Downloading ${completed + 1}/${ids.length}...`);
+                
+                // Navigate to the content page
+                window.location.href = `/app/admin/content/${id}`;
+                
+                // Wait for the page to load and auto-download to happen
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                completed++;
+            } catch (error) {
+                console.error(`[CloudRadial Content Downloader] Error downloading content ${id}:`, error);
+            }
+        }
+
+        showToast(`Completed download of ${completed}/${ids.length} items`);
+    }
+
+    /**
+     * Try to insert status container into navbar
+     */
+    let statusContainer = null;
+    function tryInsertIntoNavbar() {
+        if (!statusContainer) return;
+        
+        // Get the navbar right container element
+        const navbarRight = document.evaluate(
+            '//*[@id="navbar0"]/div[2]/div[2]',
+            document,
+            null,
+            XPathResult.FIRST_ORDERED_NODE_TYPE,
+            null
+        ).singleNodeValue;
+
+        if (navbarRight && !document.getElementById('cloudradial-downloader-status')) {
+            navbarRight.parentElement.insertBefore(statusContainer, navbarRight);
+            console.log('[CloudRadial Content Downloader] Status inserted into navbar');
+        }
+    }
+
+    /**
      * Create UI elements
      */
     function createUI() {
         // Create status display
-        const statusContainer = document.createElement('div');
+        statusContainer = document.createElement('div');
         statusContainer.id = 'cloudradial-downloader-status';
         statusContainer.style.cssText = `
-            position: fixed;
-            top: 20px;
-            left: 20px;
             display: flex;
             align-items: center;
-            gap: 12px;
+            justify-content: center;
+            gap: 8px;
             font-size: 12px;
             color: #333;
-            padding: 10px 16px;
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            z-index: 10000;
+            padding: 0 12px;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            height: 100%;
+            white-space: nowrap;
+            flex: 1;
         `;
 
         statusDisplay = document.createElement('div');
@@ -361,37 +462,47 @@
 
         statusContainer.appendChild(statusDisplay);
         statusContainer.appendChild(debugToggle);
-        document.body.appendChild(statusContainer);
 
-        // Create download button
-        downloadButton = document.createElement('button');
-        downloadButton.id = 'cloudradial-download-btn';
-        downloadButton.textContent = 'Download Data';
-        downloadButton.style.cssText = `
-            position: fixed;
-            top: 20px;
-            left: 320px;
-            padding: 8px 16px;
-            background: linear-gradient(to bottom, #10a37f, #0d8c6d) !important;
-            border: 1px solid #10a37f !important;
-            color: white !important;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 500;
-            z-index: 10000;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        `;
-        downloadButton.addEventListener('mouseover', () => {
-            downloadButton.style.background = 'linear-gradient(to bottom, #0d8c6d, #0a7558) !important';
-        });
-        downloadButton.addEventListener('mouseout', () => {
-            downloadButton.style.background = 'linear-gradient(to bottom, #10a37f, #0d8c6d) !important';
-        });
-        downloadButton.addEventListener('click', async () => {
-            await createAndDownloadZip();
-        });
-        document.body.appendChild(downloadButton);
+        // Try immediately and with retries
+        tryInsertIntoNavbar();
+        setTimeout(tryInsertIntoNavbar, 500);
+        setTimeout(tryInsertIntoNavbar, 1000);
+
+        // Add download all button if on root content page
+        if (isRootContentPage()) {
+            const downloadAllBtn = document.createElement('button');
+            downloadAllBtn.id = 'cloudradial-download-all-btn';
+            downloadAllBtn.textContent = 'Download All';
+            downloadAllBtn.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                padding: 12px 20px;
+                background: linear-gradient(to bottom, #10a37f, #0d8c6d) !important;
+                border: 1px solid #10a37f !important;
+                color: white !important;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 13px;
+                font-weight: 600;
+                z-index: 10000;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            `;
+            downloadAllBtn.addEventListener('mouseover', () => {
+                downloadAllBtn.style.background = 'linear-gradient(to bottom, #0d8c6d, #0a7558) !important';
+            });
+            downloadAllBtn.addEventListener('mouseout', () => {
+                downloadAllBtn.style.background = 'linear-gradient(to bottom, #10a37f, #0d8c6d) !important';
+            });
+            downloadAllBtn.addEventListener('click', async () => {
+                downloadAllBtn.disabled = true;
+                downloadAllBtn.textContent = 'Processing...';
+                await downloadAllContent();
+                downloadAllBtn.disabled = false;
+                downloadAllBtn.textContent = 'Download All';
+            });
+            document.body.appendChild(downloadAllBtn);
+        }
 
         // Toast notification
         const toast = document.createElement('div');
@@ -420,13 +531,17 @@
         console.log('[CloudRadial Content Downloader] UI created and monitoring...');
     }
 
-    // Watch for URL changes (for SPA navigation)
+    // Watch for DOM and URL changes
     let lastUrl = window.location.href;
     const observer = new MutationObserver(() => {
         if (window.location.href !== lastUrl) {
             lastUrl = window.location.href;
             console.log('[CloudRadial Content Downloader] URL changed, checking for content ID...');
             handleContentIdChange();
+        }
+        // Re-insert if navbar structure changes
+        if (!document.getElementById('cloudradial-downloader-status')) {
+            tryInsertIntoNavbar();
         }
     });
 
