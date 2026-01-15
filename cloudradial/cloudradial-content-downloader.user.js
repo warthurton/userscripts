@@ -40,16 +40,19 @@
             
             // Also override the src property setter
             const descriptor = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, 'src');
-            Object.defineProperty(element, 'src', {
-                get: descriptor.get,
-                set: function(value) {
-                    if (value && value.includes(BLOCKED_SCRIPT)) {
-                        console.log('[CloudRadial Content Downloader] Blocking chatwidget script via src setter');
-                        return;
-                    }
-                    descriptor.set.call(this, value);
-                }
-            });
+            if (descriptor) {
+                Object.defineProperty(element, 'src', {
+                    get: descriptor.get,
+                    set: function(value) {
+                        if (value && value.includes(BLOCKED_SCRIPT)) {
+                            console.log('[CloudRadial Content Downloader] Blocking chatwidget script via src setter');
+                            return;
+                        }
+                        descriptor.set.call(this, value);
+                    },
+                    configurable: true
+                });
+            }
         }
         
         return element;
@@ -58,35 +61,39 @@
     // Remove existing script if already in page
     function removeChatwidgetScript() {
         const scripts = document.querySelectorAll(`script[src*="${BLOCKED_SCRIPT}"]`);
-        scripts.forEach(script => {
-            console.log('[CloudRadial Content Downloader] Removing existing chatwidget script');
-            script.remove();
-        });
+        if (scripts.length > 0) {
+            scripts.forEach(script => {
+                console.log('[CloudRadial Content Downloader] Removing existing chatwidget script');
+                script.remove();
+            });
+        }
     }
-    removeChatwidgetScript();
 
     // Watch for script tags being added via MutationObserver
     const scriptObserver = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
             mutation.addedNodes.forEach((node) => {
-                if (node.tagName === 'SCRIPT' && node.src && node.src.includes(BLOCKED_SCRIPT)) {
-                    console.log('[CloudRadial Content Downloader] Blocking chatwidget script via MutationObserver');
-                    node.remove();
+                if (node.nodeType === 1 && node.tagName === 'SCRIPT') {
+                    const src = node.getAttribute('src') || node.src;
+                    if (src && src.includes(BLOCKED_SCRIPT)) {
+                        console.log('[CloudRadial Content Downloader] Blocking chatwidget script via MutationObserver');
+                        node.remove();
+                    }
                 }
             });
         });
     });
     
-    // Start observing as soon as possible
-    if (document.documentElement) {
-        scriptObserver.observe(document.documentElement, {
-            childList: true,
-            subtree: true
-        });
-    }
-    
-    // Periodically check and remove the script
-    setInterval(removeChatwidgetScript, 1000);
+    // Start observing after DOM is ready
+    window.addEventListener('DOMContentLoaded', () => {
+        removeChatwidgetScript();
+        if (document.body) {
+            scriptObserver.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+        }
+    });
 
     let currentContentId = null;
     const API_ENDPOINTS = [
