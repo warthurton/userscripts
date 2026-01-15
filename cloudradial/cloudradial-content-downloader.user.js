@@ -1,15 +1,15 @@
 // ==UserScript==
-// @name         Itiliti Content Downloader
+// @name         CloudRadial Content Downloader
 // @namespace    https://github.com/warthurton/userscripts
 // @version      1.0
-// @description  Auto-download content data from Itiliti admin portal
+// @description  Auto-download content data from CloudRadial admin portal
 // @match        https://portal.itiliti.io/app/admin/content/*
 // @icon         https://favicons-blue.vercel.app/?domain=itiliti.io
 // @run-at       document-start
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js
 //
-// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/general/itiliti-content-downloader.user.js
-// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/general/itiliti-content-downloader.user.js
+// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/cloudradial/cloudradial-content-downloader.user.js
+// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/cloudradial/cloudradial-content-downloader.user.js
 // @homepageURL  https://github.com/warthurton/userscripts
 // @supportURL   https://github.com/warthurton/userscripts/issues
 //
@@ -71,7 +71,7 @@
                 return element.textContent.trim();
             }
         } catch (e) {
-            console.warn('[Itiliti Content Downloader] Could not extract content title:', e);
+            console.warn('[CloudRadial Content Downloader] Could not extract content title:', e);
         }
         return null;
     }
@@ -104,13 +104,13 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `itiliti-content-${contentId}.zip`;
+            a.download = `cloudradial-content-${contentId}.zip`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
-            console.log(`[Itiliti Content Downloader] Downloaded zip with ${count} file(s)`);
+            console.log(`[CloudRadial Content Downloader] Downloaded zip with ${count} file(s)`);
             showToast(`Downloaded ${count} file(s) as zip`);
             return count;
         } else {
@@ -123,7 +123,7 @@
      * Show toast message in UI
      */
     function showToast(message, duration = 3000) {
-        const toast = document.getElementById('itiliti-toast');
+        const toast = document.getElementById('cloudradial-toast');
         if (toast) {
             toast.textContent = message;
             toast.style.opacity = '1';
@@ -160,7 +160,7 @@
         const newContentId = getContentIdFromURL();
 
         if (newContentId && newContentId !== currentContentId) {
-            console.log(`[Itiliti Content Downloader] Content ID changed to: ${newContentId}`);
+            console.log(`[CloudRadial Content Downloader] Content ID changed to: ${newContentId}`);
             currentContentId = newContentId;
 
             // Clear previous data
@@ -187,7 +187,7 @@
         autoDownloadTimer = setTimeout(() => {
             const dataCount = Object.keys(interceptedData).length;
             if (dataCount > 0 && dataCount < 3) {
-                console.log(`[Itiliti Content Downloader] Auto-download triggered with ${dataCount}/3 files`);
+                console.log(`[CloudRadial Content Downloader] Auto-download triggered with ${dataCount}/3 files`);
                 showToast(`Auto-downloading ${dataCount} available file(s)...`);
                 createAndDownloadZip();
             }
@@ -205,7 +205,7 @@
                 autoDownloadTimer = null;
             }
 
-            console.log('[Itiliti Content Downloader] All API calls completed, auto-downloading...');
+            console.log('[CloudRadial Content Downloader] All API calls completed, auto-downloading...');
             showToast('All data received, downloading...');
             createAndDownloadZip();
         }
@@ -227,7 +227,7 @@
 
         if (matchedEndpoint) {
             if (debugMode) {
-                console.log(`[Itiliti Content Downloader] Intercepted ${matchedEndpoint.key}:`, url);
+                console.log(`[CloudRadial Content Downloader] Intercepted ${matchedEndpoint.key}:`, url);
             }
         }
 
@@ -239,7 +239,7 @@
                 const data = await clonedResponse.json();
 
                 if (debugMode) {
-                    console.log(`[Itiliti Content Downloader] Data received for ${matchedEndpoint.key}:`, data);
+                    console.log(`[CloudRadial Content Downloader] Data received for ${matchedEndpoint.key}:`, data);
                 }
 
                 // Store the data
@@ -251,7 +251,7 @@
                 updateStatusDisplay();
                 checkAndDownloadIfComplete();
             } catch (error) {
-                console.error(`[Itiliti Content Downloader] Error processing ${matchedEndpoint.key}:`, error);
+                console.error(`[CloudRadial Content Downloader] Error processing ${matchedEndpoint.key}:`, error);
             }
         }
 
@@ -282,14 +282,14 @@
 
             if (matchedEndpoint && this.status === 200) {
                 if (debugMode) {
-                    console.log(`[Itiliti Content Downloader] XHR Intercepted ${matchedEndpoint.key}:`, url);
+                    console.log(`[CloudRadial Content Downloader] XHR Intercepted ${matchedEndpoint.key}:`, url);
                 }
 
                 try {
                     const data = JSON.parse(this.responseText);
 
                     if (debugMode) {
-                        console.log(`[Itiliti Content Downloader] XHR Data received for ${matchedEndpoint.key}:`, data);
+                        console.log(`[CloudRadial Content Downloader] XHR Data received for ${matchedEndpoint.key}:`, data);
                     }
 
                     // Store the data
@@ -301,7 +301,7 @@
                     updateStatusDisplay();
                     checkAndDownloadIfComplete();
                 } catch (error) {
-                    console.error(`[Itiliti Content Downloader] Error processing XHR ${matchedEndpoint.key}:`, error);
+                    console.error(`[CloudRadial Content Downloader] Error processing XHR ${matchedEndpoint.key}:`, error);
                 }
             }
         });
@@ -315,7 +315,7 @@
     function createUI() {
         // Create status display
         const statusContainer = document.createElement('div');
-        statusContainer.id = 'itiliti-downloader-status';
+        statusContainer.id = 'cloudradial-downloader-status';
         statusContainer.style.cssText = `
             position: fixed;
             top: 20px;
@@ -355,7 +355,7 @@
         debugToggle.title = 'Toggle debug logs in console';
         debugToggle.addEventListener('click', () => {
             debugMode = !debugMode;
-            console.log(`[Itiliti Content Downloader] Debug mode ${debugMode ? 'enabled' : 'disabled'}`);
+            console.log(`[CloudRadial Content Downloader] Debug mode ${debugMode ? 'enabled' : 'disabled'}`);
             showToast(`Debug mode ${debugMode ? 'enabled' : 'disabled'}`);
         });
 
@@ -365,7 +365,7 @@
 
         // Create download button
         downloadButton = document.createElement('button');
-        downloadButton.id = 'itiliti-download-btn';
+        downloadButton.id = 'cloudradial-download-btn';
         downloadButton.textContent = 'Download Data';
         downloadButton.style.cssText = `
             position: fixed;
@@ -395,7 +395,7 @@
 
         // Toast notification
         const toast = document.createElement('div');
-        toast.id = 'itiliti-toast';
+        toast.id = 'cloudradial-toast';
         toast.style.cssText = `
             position: fixed;
             bottom: 20px;
@@ -417,7 +417,7 @@
         handleContentIdChange();
         updateStatusDisplay();
 
-        console.log('[Itiliti Content Downloader] UI created and monitoring...');
+        console.log('[CloudRadial Content Downloader] UI created and monitoring...');
     }
 
     // Watch for URL changes (for SPA navigation)
@@ -425,7 +425,7 @@
     const observer = new MutationObserver(() => {
         if (window.location.href !== lastUrl) {
             lastUrl = window.location.href;
-            console.log('[Itiliti Content Downloader] URL changed, checking for content ID...');
+            console.log('[CloudRadial Content Downloader] URL changed, checking for content ID...');
             handleContentIdChange();
         }
     });
@@ -434,7 +434,7 @@
 
     // Also use popstate for history navigation
     window.addEventListener('popstate', () => {
-        console.log('[Itiliti Content Downloader] Navigation detected');
+        console.log('[CloudRadial Content Downloader] Navigation detected');
         handleContentIdChange();
     });
 
@@ -445,6 +445,6 @@
         createUI();
     }
 
-    console.log('[Itiliti Content Downloader] Script loaded and monitoring...');
-    console.log('[Itiliti Content Downloader] Endpoints:', API_ENDPOINTS.map(e => e.key).join(', '));
+    console.log('[CloudRadial Content Downloader] Script loaded and monitoring...');
+    console.log('[CloudRadial Content Downloader] Endpoints:', API_ENDPOINTS.map(e => e.key).join(', '));
 })();
