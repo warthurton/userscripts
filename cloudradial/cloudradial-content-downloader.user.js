@@ -20,6 +20,32 @@
 (function () {
     'use strict';
 
+    // Block the chatwidget script from loading
+    const originalCreateElement = document.createElement;
+    document.createElement = function(tagName, ...args) {
+        const element = originalCreateElement.apply(document, [tagName, ...args]);
+        
+        if (tagName.toLowerCase() === 'script') {
+            const originalSetAttribute = element.setAttribute;
+            element.setAttribute = function(name, value) {
+                if (name === 'src' && value && value.includes('crchat-chatwidget.js')) {
+                    console.log('[CloudRadial Content Downloader] Blocking chatwidget script');
+                    return; // Don't set the src attribute
+                }
+                return originalSetAttribute.apply(this, [name, value]);
+            };
+        }
+        
+        return element;
+    };
+
+    // Also block if script is already in the page
+    const chatwidgetScript = document.querySelector('script[src*="crchat-chatwidget.js"]');
+    if (chatwidgetScript) {
+        console.log('[CloudRadial Content Downloader] Removing existing chatwidget script');
+        chatwidgetScript.remove();
+    }
+
     let currentContentId = null;
     const API_ENDPOINTS = [
         {
