@@ -20,81 +20,6 @@
 (function () {
     'use strict';
 
-    // Block the chatwidget script from loading
-    const BLOCKED_SCRIPT = 'crchat-chatwidget.js';
-    
-    // Override createElement to block script creation
-    const originalCreateElement = document.createElement;
-    document.createElement = function(tagName, ...args) {
-        const element = originalCreateElement.apply(document, [tagName, ...args]);
-        
-        if (tagName.toLowerCase() === 'script') {
-            const originalSetAttribute = element.setAttribute;
-            element.setAttribute = function(name, value) {
-                if (name === 'src' && value && value.includes(BLOCKED_SCRIPT)) {
-                    console.log('[CloudRadial Content Downloader] Blocking chatwidget script via setAttribute');
-                    return; // Don't set the src attribute
-                }
-                return originalSetAttribute.apply(this, [name, value]);
-            };
-            
-            // Also override the src property setter
-            const descriptor = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, 'src');
-            if (descriptor) {
-                Object.defineProperty(element, 'src', {
-                    get: descriptor.get,
-                    set: function(value) {
-                        if (value && value.includes(BLOCKED_SCRIPT)) {
-                            console.log('[CloudRadial Content Downloader] Blocking chatwidget script via src setter');
-                            return;
-                        }
-                        descriptor.set.call(this, value);
-                    },
-                    configurable: true
-                });
-            }
-        }
-        
-        return element;
-    };
-
-    // Remove existing script if already in page
-    function removeChatwidgetScript() {
-        const scripts = document.querySelectorAll(`script[src*="${BLOCKED_SCRIPT}"]`);
-        if (scripts.length > 0) {
-            scripts.forEach(script => {
-                console.log('[CloudRadial Content Downloader] Removing existing chatwidget script');
-                script.remove();
-            });
-        }
-    }
-
-    // Watch for script tags being added via MutationObserver
-    const scriptObserver = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-            mutation.addedNodes.forEach((node) => {
-                if (node.nodeType === 1 && node.tagName === 'SCRIPT') {
-                    const src = node.getAttribute('src') || node.src;
-                    if (src && src.includes(BLOCKED_SCRIPT)) {
-                        console.log('[CloudRadial Content Downloader] Blocking chatwidget script via MutationObserver');
-                        node.remove();
-                    }
-                }
-            });
-        });
-    });
-    
-    // Start observing after DOM is ready
-    window.addEventListener('DOMContentLoaded', () => {
-        removeChatwidgetScript();
-        if (document.body) {
-            scriptObserver.observe(document.body, {
-                childList: true,
-                subtree: true
-            });
-        }
-    });
-
     let currentContentId = null;
     const API_ENDPOINTS = [
         {
@@ -162,6 +87,12 @@
         if (lastDownload && (now - lastDownload) < 60000) {
             const secondsLeft = Math.ceil((60000 - (now - lastDownload)) / 1000);
             showToast(`Content ${contentId} downloaded recently. Wait ${secondsLeft}s before downloading again.`, 4000);
+            
+            // If in batch mode, still continue to next item
+            const batchState = localStorage.getItem('cloudradial-batch-download');
+            if (batchState) {
+                setTimeout(() => continueNextBatchDownload(), 2000);
+            }
             return 0;
         }
 
@@ -199,6 +130,13 @@
 
             console.log(`[CloudRadial Content Downloader] Downloaded zip with ${count} file(s)`);
             showToast(`Downloaded ${count} file(s) as zip`);
+            
+            // If in batch download mode, continue to next item
+            const batchState = localStorage.getItem('cloudradial-batch-download');
+            if (batchState) {
+                setTimeout(() => continueNextBatchDownload(), 2000);
+            }
+            
             return count;
         } else {
             showToast('No data available yet. Please wait for API calls to complete.', 4000);
@@ -238,6 +176,14 @@
             <span style="color: #10a37f; font-weight: 500;">📦</span>
             <span>Content ID: ${contentId} | API Calls: ${fileCountDisplay}</span>
         `;
+    }
+
+    /**
+     * Get content ID from URL
+     */
+    function getContentIdFromURL() {
+        const match = window.location.pathname.match(/\/app\/admin\/content\/(\d+)/);
+        return match ? match[1] : null;
     }
 
     /**
@@ -404,15 +350,17 @@
     }
 
     /**
-     * Get all content IDs from templates API
+     * Get all content IDs from intercepted templates data
      */
     async function getAllContentIds() {
+        if (!interceptedData['templates']) {
+            console.error('[CloudRadial Content Downloader] No templates data available. Please wait for page to load.');
+            showToast('No templates data available yet. Please wait for the page to load.', 4000);
+            return [];
+        }
+
         try {
-            const response = await fetch('https://portal.itiliti.io/api/content/templates?s=0&t=999&d=a');
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            const data = await response.json();
+            const data = interceptedData['templates'].data;
             
             // Extract IDs from the response
             let ids = [];
@@ -422,10 +370,10 @@
                 ids = data.data.map(item => item.id).filter(id => id);
             }
             
-            console.log(`[CloudRadial Content Downloader] Found ${ids.length} content IDs`);
+            console.log(`[CloudRadial Content Downloader] Found ${ids.length} content IDs from intercepted templates`);
             return ids;
         } catch (error) {
-            console.error('[CloudRadial Content Downloader] Error fetching content IDs:', error);
+            console.error('[CloudRadial Content Downloader] Error extracting content IDs:', error);
             return [];
         }
     }
@@ -440,27 +388,86 @@
             return;
         }
 
+        // Store the batch download state in localStorage
+        localStorage.setItem('cloudradial-batch-download', JSON.stringify({
+            ids: ids,
+            currentIndex: 0,
+            startTime: Date.now()
+        }));
+
         showToast(`Starting download of ${ids.length} items...`);
         console.log(`[CloudRadial Content Downloader] Starting batch download of ${ids.length} items:`, ids);
 
-        let completed = 0;
-        for (const id of ids) {
-            try {
-                console.log(`[CloudRadial Content Downloader] Navigating to content ${id}...`);
-                showToast(`Downloading ${completed + 1}/${ids.length}...`);
-                
-                // Navigate to the content page
-                window.location.href = `/app/admin/content/${id}`;
-                
-                // Wait for the page to load and auto-download to happen
-                await new Promise(resolve => setTimeout(resolve, 5000));
-                completed++;
-            } catch (error) {
-                console.error(`[CloudRadial Content Downloader] Error downloading content ${id}:`, error);
-            }
-        }
+        // Navigate to the first content
+        const firstId = ids[0];
+        console.log(`[CloudRadial Content Downloader] Navigating to first content ${firstId}...`);
+        window.location.href = `/app/admin/content/${firstId}`;
+    }
 
-        showToast(`Completed download of ${completed}/${ids.length} items`);
+    /**
+     * Check if we're in batch download mode and continue if needed
+     */
+    function checkBatchDownloadState() {
+        const batchState = localStorage.getItem('cloudradial-batch-download');
+        if (!batchState) return;
+
+        try {
+            const state = JSON.parse(batchState);
+            const { ids, currentIndex } = state;
+
+            // Check if batch download timed out (over 1 hour old)
+            if (Date.now() - state.startTime > 3600000) {
+                console.log('[CloudRadial Content Downloader] Batch download timed out, clearing state');
+                localStorage.removeItem('cloudradial-batch-download');
+                return;
+            }
+
+            console.log(`[CloudRadial Content Downloader] Batch download in progress: ${currentIndex + 1}/${ids.length}`);
+            
+            // Wait for auto-download to complete, then move to next
+            // We'll check after the download completes
+        } catch (error) {
+            console.error('[CloudRadial Content Downloader] Error parsing batch state:', error);
+            localStorage.removeItem('cloudradial-batch-download');
+        }
+    }
+
+    /**
+     * Move to next item in batch download
+     */
+    function continueNextBatchDownload() {
+        const batchState = localStorage.getItem('cloudradial-batch-download');
+        if (!batchState) return;
+
+        try {
+            const state = JSON.parse(batchState);
+            const { ids, currentIndex } = state;
+            const nextIndex = currentIndex + 1;
+
+            if (nextIndex >= ids.length) {
+                // Batch complete
+                console.log('[CloudRadial Content Downloader] Batch download complete!');
+                showToast(`Batch download complete! Downloaded ${ids.length} items`);
+                localStorage.removeItem('cloudradial-batch-download');
+                return;
+            }
+
+            // Update state and navigate to next
+            state.currentIndex = nextIndex;
+            localStorage.setItem('cloudradial-batch-download', JSON.stringify(state));
+
+            const nextId = ids[nextIndex];
+            console.log(`[CloudRadial Content Downloader] Moving to next content ${nextId} (${nextIndex + 1}/${ids.length})...`);
+            showToast(`Downloading ${nextIndex + 1}/${ids.length}...`);
+            
+            // Small delay before navigation
+            setTimeout(() => {
+                window.location.href = `/app/admin/content/${nextId}`;
+            }, 1000);
+        } catch (error) {
+            console.error('[CloudRadial Content Downloader] Error in batch continuation:', error);
+            localStorage.removeItem('cloudradial-batch-download');
+        }
     }
 
     /**
@@ -543,16 +550,25 @@
         setTimeout(tryInsertIntoNavbar, 500);
         setTimeout(tryInsertIntoNavbar, 1000);
 
-        // Add download all button if on root content page
+        // Add download buttons if on root content page
         if (isRootContentPage()) {
-            const downloadAllBtn = document.createElement('button');
-            downloadAllBtn.id = 'cloudradial-download-all-btn';
-            downloadAllBtn.textContent = 'Download All';
-            downloadAllBtn.style.cssText = `
+            // Container for buttons
+            const btnContainer = document.createElement('div');
+            btnContainer.style.cssText = `
                 position: fixed;
                 bottom: 20px;
                 left: 50%;
                 transform: translateX(-50%);
+                display: flex;
+                gap: 10px;
+                z-index: 10000;
+            `;
+
+            // Download templates button
+            const downloadTemplatesBtn = document.createElement('button');
+            downloadTemplatesBtn.id = 'cloudradial-download-templates-btn';
+            downloadTemplatesBtn.textContent = 'Download Templates';
+            downloadTemplatesBtn.style.cssText = `
                 padding: 12px 20px;
                 background: linear-gradient(to bottom, #10a37f, #0d8c6d) !important;
                 border: 1px solid #10a37f !important;
@@ -561,7 +577,46 @@
                 cursor: pointer;
                 font-size: 13px;
                 font-weight: 600;
-                z-index: 10000;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            `;
+            downloadTemplatesBtn.addEventListener('mouseover', () => {
+                downloadTemplatesBtn.style.background = 'linear-gradient(to bottom, #0d8c6d, #0a7558) !important';
+            });
+            downloadTemplatesBtn.addEventListener('mouseout', () => {
+                downloadTemplatesBtn.style.background = 'linear-gradient(to bottom, #10a37f, #0d8c6d) !important';
+            });
+            downloadTemplatesBtn.addEventListener('click', async () => {
+                if (interceptedData['templates']) {
+                    const zip = new JSZip();
+                    zip.file('templates.json', JSON.stringify(interceptedData['templates'].data, null, 2));
+                    const blob = await zip.generateAsync({ type: 'blob' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `cloudradial-templates-${Date.now()}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    showToast('Downloaded templates list');
+                } else {
+                    showToast('No templates data intercepted yet. Please wait or refresh the page.', 4000);
+                }
+            });
+
+            // Download all button
+            const downloadAllBtn = document.createElement('button');
+            downloadAllBtn.id = 'cloudradial-download-all-btn';
+            downloadAllBtn.textContent = 'Download All Content';
+            downloadAllBtn.style.cssText = `
+                padding: 12px 20px;
+                background: linear-gradient(to bottom, #10a37f, #0d8c6d) !important;
+                border: 1px solid #10a37f !important;
+                color: white !important;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 13px;
+                font-weight: 600;
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             `;
             downloadAllBtn.addEventListener('mouseover', () => {
@@ -575,9 +630,12 @@
                 downloadAllBtn.textContent = 'Processing...';
                 await downloadAllContent();
                 downloadAllBtn.disabled = false;
-                downloadAllBtn.textContent = 'Download All';
+                downloadAllBtn.textContent = 'Download All Content';
             });
-            document.body.appendChild(downloadAllBtn);
+
+            btnContainer.appendChild(downloadTemplatesBtn);
+            btnContainer.appendChild(downloadAllBtn);
+            document.body.appendChild(btnContainer);
         }
 
         // Toast notification
@@ -603,6 +661,9 @@
         // Initial content ID check
         handleContentIdChange();
         updateStatusDisplay();
+        
+        // Check if we're in batch download mode
+        checkBatchDownloadState();
 
         console.log('[CloudRadial Content Downloader] UI created and monitoring...');
     }
