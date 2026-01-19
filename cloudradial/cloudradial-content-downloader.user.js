@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CloudRadial Content Downloader
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.14
+// @version      1.0.15
 // @description  Auto-download content data from CloudRadial admin portal
 // @author       warthurton
 // @match        https://portal.itiliti.io/app/admin/content*
@@ -1136,7 +1136,7 @@
         {
             const downloadPSABtn = document.createElement('button');
             downloadPSABtn.id = 'cloudradial-download-psa-btn';
-            downloadPSABtn.textContent = 'PSA';
+            downloadPSABtn.textContent = 'Tokens';
             downloadPSABtn.title = 'Download PSA data';
             downloadPSABtn.style.cssText = `
                 padding: 4px 10px;
