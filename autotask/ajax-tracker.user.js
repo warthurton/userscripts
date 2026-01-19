@@ -44,7 +44,20 @@
 
   // Generate a unique session ID
   function generateSessionId() {
-    return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Prefer cryptographically secure randomness when available
+    let randomPart;
+    if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+      const bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+      randomPart = Array.from(bytes)
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('')
+        .slice(0, 9);
+    } else {
+      // Fallback: non-cryptographic, retained only for environments without Web Crypto
+      randomPart = Math.random().toString(36).substr(2, 9);
+    }
+    return `session_${Date.now()}_${randomPart}`;
   }
 
   // Get or create current session ID
