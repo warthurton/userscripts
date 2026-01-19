@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CloudRadial Content Downloader
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.6
+// @version      1.0.7
 // @description  Auto-download content data from CloudRadial admin portal
 // @author       warthurton
 // @match        https://portal.itiliti.io/app/admin/content*
@@ -826,7 +826,7 @@
             downloadAllQuestionsBtn.title = 'Batch download all questions';
             downloadAllQuestionsBtn.style.cssText = `
                 padding: 4px 10px;
-                margin-left: 12px;
+                margin-left: 8px;
                 background: #10a37f !important;
                 border: 1px solid #0d8c6d !important;
                 color: white !important;
@@ -851,7 +851,43 @@
                 downloadAllQuestionsBtn.textContent = 'All';
             });
 
+            const resetBtn = document.createElement('button');
+            resetBtn.id = 'cloudradial-reset-btn';
+            resetBtn.textContent = 'Reset';
+            resetBtn.title = 'Reset in-progress batch download';
+            resetBtn.style.cssText = `
+                padding: 4px 10px;
+                margin-left: 8px;
+                background: #d32f2f !important;
+                border: 1px solid #b71c1c !important;
+                color: white !important;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 11px;
+                font-weight: 500;
+                height: auto;
+                line-height: 1;
+            `;
+            resetBtn.addEventListener('mouseover', () => {
+                resetBtn.style.background = '#b71c1c !important';
+            });
+            resetBtn.addEventListener('mouseout', () => {
+                resetBtn.style.background = '#d32f2f !important';
+            });
+            resetBtn.addEventListener('click', () => {
+                const batchState = localStorage.getItem('cloudradial-batch-download');
+                if (batchState) {
+                    localStorage.removeItem('cloudradial-batch-download');
+                    log(`✓ Batch download state cleared`);
+                    showToast('Batch download reset');
+                } else {
+                    log(`ℹ No batch download in progress`);
+                    showToast('No batch download to reset', 2000);
+                }
+            });
+
             statusContainer.appendChild(downloadAllQuestionsBtn);
+            statusContainer.appendChild(resetBtn);
         }
 
         // Try immediately and with retries
@@ -879,12 +915,12 @@
         `;
         document.body.appendChild(toast);
 
-        // Add manual download button for tokens and questions pages
+        // Add manual download button for tokens page only (not questions - questions uses navbar buttons)
         const pageType = getCurrentPageType();
-        if (pageType === 'tokens' || pageType === 'questions') {
+        if (pageType === 'tokens') {
             const manualDownloadBtn = document.createElement('button');
             manualDownloadBtn.id = 'cloudradial-manual-download-btn';
-            manualDownloadBtn.textContent = `Download ${pageType === 'tokens' ? 'PSA Data' : 'Questions'}`;
+            manualDownloadBtn.textContent = 'Download PSA Data';
             manualDownloadBtn.style.cssText = `
                 position: fixed;
                 bottom: 20px;
