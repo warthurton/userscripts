@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CloudRadial Content Downloader
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.1
+// @version      1.0.3
 // @description  Auto-download content data from CloudRadial admin portal
 // @author       warthurton
 // @match        https://portal.itiliti.io/app/admin/content*
@@ -251,9 +251,11 @@
      */
     function handleContentIdChange() {
         const newContentId = getContentIdFromURL();
+        const currentPage = getCurrentPageType();
 
+        // Only process if we have a content ID (detail pages, not root pages)
+        // Root pages (/app/admin/questions/, /app/admin/content/, etc.) have no content ID
         if (newContentId && newContentId !== currentContentId) {
-            const currentPage = getCurrentPageType();
             const itemType = currentPage === 'questions' ? 'Question' : 'Content';
             console.log(`[CloudRadial Content Downloader] ${itemType} ID changed to: ${newContentId}`);
             currentContentId = newContentId;
@@ -264,6 +266,20 @@
             // Start timeout to download after 10 seconds if not all data is fetched
             startAutoDownloadTimer();
 
+            updateStatusDisplay();
+        } else if (!newContentId) {
+            // On root pages - no auto-download
+            console.log('[CloudRadial Content Downloader] On root page, no content ID - disabling auto-download');
+            currentContentId = null;
+            
+            // Clear any pending timers
+            if (autoDownloadTimer) {
+                clearTimeout(autoDownloadTimer);
+                autoDownloadTimer = null;
+            }
+            
+            // Clear intercepted data
+            Object.keys(interceptedData).forEach(key => delete interceptedData[key]);
             updateStatusDisplay();
         }
     }
@@ -376,11 +392,13 @@
     XMLHttpRequest.prototype.send = function (...args) {
         this.addEventListener('load', function () {
             const url = this._url;
+            const currentPage = getCurrentPageType();
 
             // Check if this is one of our target endpoints
             let matchedEndpoint = null;
             for (const endpoint of API_ENDPOINTS) {
-                if (url && url.includes(endpoint.pattern)) {
+                // Must match both the URL pattern AND the current page type
+                if (url && url.includes(endpoint.pattern) && endpoint.page === currentPage) {
                     matchedEndpoint = endpoint;
                     break;
                 }
