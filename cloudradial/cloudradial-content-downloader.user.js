@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CloudRadial Content Downloader
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.12
+// @version      1.0.13
 // @description  Auto-download content data from CloudRadial admin portal
 // @author       warthurton
 // @match        https://portal.itiliti.io/app/admin/content*
@@ -834,6 +834,7 @@
                 font-weight: 500;
                 height: auto;
                 line-height: 1;
+                display: none;
             `;
             downloadTemplatesBtn.addEventListener('mouseover', () => {
                 downloadTemplatesBtn.style.background = '#0d8c6d !important';
@@ -876,6 +877,7 @@
                 font-weight: 500;
                 height: auto;
                 line-height: 1;
+                display: none;
             `;
             downloadAllBtn.addEventListener('mouseover', () => {
                 downloadAllBtn.style.background = '#0d8c6d !important';
@@ -907,6 +909,7 @@
                 font-weight: 500;
                 height: auto;
                 line-height: 1;
+                display: none;
             `;
             resetContentBtn.addEventListener('mouseover', () => {
                 resetContentBtn.style.background = '#b71c1c !important';
@@ -954,6 +957,7 @@
                 font-weight: 500;
                 height: auto;
                 line-height: 1;
+                display: none;
             `;
             resumeContentBtn.addEventListener('mouseover', () => {
                 resumeContentBtn.style.background = '#f57c00 !important';
@@ -1010,6 +1014,7 @@
                 font-weight: 500;
                 height: auto;
                 line-height: 1;
+                display: none;
             `;
             downloadAllQuestionsBtn.addEventListener('mouseover', () => {
                 downloadAllQuestionsBtn.style.background = '#0d8c6d !important';
@@ -1041,6 +1046,7 @@
                 font-weight: 500;
                 height: auto;
                 line-height: 1;
+                display: none;
             `;
             resetBtn.addEventListener('mouseover', () => {
                 resetBtn.style.background = '#b71c1c !important';
@@ -1088,6 +1094,7 @@
                 font-weight: 500;
                 height: auto;
                 line-height: 1;
+                display: none;
             `;
             resumeBtn.addEventListener('mouseover', () => {
                 resumeBtn.style.background = '#f57c00 !important';
@@ -1143,6 +1150,7 @@
                 font-weight: 500;
                 height: auto;
                 line-height: 1;
+                display: none;
             `;
             downloadPSABtn.addEventListener('mouseover', () => {
                 downloadPSABtn.style.background = '#0d8c6d !important';
