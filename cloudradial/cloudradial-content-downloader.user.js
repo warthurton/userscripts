@@ -219,9 +219,11 @@
     function updateStatusDisplay() {
         if (!statusDisplay) return;
 
+        const currentPage = getCurrentPageType();
+        const expectedCount = currentPage === 'content' ? 3 : 1;
         const contentId = currentContentId ? `<span style="color: #10a37f; font-weight: 600;">${currentContentId}</span>` : '<span style="color: #999;">loading...</span>';
         const fileCount = Object.keys(interceptedData).length;
-        const fileCountDisplay = `<span style="color: #10a37f; font-weight: 600;">${fileCount}/3</span>`;
+        const fileCountDisplay = `<span style="color: #10a37f; font-weight: 600;">${fileCount}/${expectedCount}</span>`;
 
         statusDisplay.innerHTML = `
             <span style="color: #10a37f; font-weight: 500;">📦</span>
@@ -233,8 +235,13 @@
      * Get content ID from URL
      */
     function getContentIdFromURL() {
-        const match = window.location.pathname.match(/\/app\/admin\/content\/(\d+)/);
-        return match ? match[1] : null;
+        const contentMatch = window.location.pathname.match(/\/app\/admin\/content\/(\d+)/);
+        if (contentMatch) return contentMatch[1];
+        
+        const questionMatch = window.location.pathname.match(/\/app\/admin\/questions\/(\d+)/);
+        if (questionMatch) return questionMatch[1];
+        
+        return null;
     }
 
     /**
@@ -244,7 +251,9 @@
         const newContentId = getContentIdFromURL();
 
         if (newContentId && newContentId !== currentContentId) {
-            console.log(`[CloudRadial Content Downloader] Content ID changed to: ${newContentId}`);
+            const currentPage = getCurrentPageType();
+            const itemType = currentPage === 'questions' ? 'Question' : 'Content';
+            console.log(`[CloudRadial Content Downloader] ${itemType} ID changed to: ${newContentId}`);
             currentContentId = newContentId;
 
             // Clear previous data
@@ -269,10 +278,17 @@
 
         // Set new timer
         autoDownloadTimer = setTimeout(() => {
+            const currentPage = getCurrentPageType();
+            const expectedCount = currentPage === 'content' ? 3 : 1;
             const dataCount = Object.keys(interceptedData).length;
-            if (dataCount > 0 && dataCount < 3) {
-                console.log(`[CloudRadial Content Downloader] Auto-download triggered with ${dataCount}/3 files`);
+            
+            if (dataCount > 0 && dataCount < expectedCount) {
+                console.log(`[CloudRadial Content Downloader] Auto-download triggered with ${dataCount}/${expectedCount} files`);
                 showToast(`Auto-downloading ${dataCount} available file(s)...`);
+                createAndDownloadZip();
+            } else if (dataCount >= expectedCount) {
+                console.log(`[CloudRadial Content Downloader] Auto-download triggered with all ${dataCount} files`);
+                showToast('All data received, downloading...');
                 createAndDownloadZip();
             }
         }, 10000);
@@ -282,7 +298,10 @@
      * Check if all data is collected and download
      */
     function checkAndDownloadIfComplete() {
-        if (Object.keys(interceptedData).length === 3) {
+        const currentPage = getCurrentPageType();
+        const expectedCount = currentPage === 'content' ? 3 : 1; // Content needs 3 APIs, others need 1
+        
+        if (Object.keys(interceptedData).length >= expectedCount) {
             // Clear the auto-download timer since we have all data
             if (autoDownloadTimer) {
                 clearTimeout(autoDownloadTimer);
