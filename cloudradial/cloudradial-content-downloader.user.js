@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CloudRadial Content Downloader
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.9
+// @version      1.0.10
 // @description  Auto-download content data from CloudRadial admin portal
 // @author       warthurton
 // @match        https://portal.itiliti.io/app/admin/content*
@@ -240,13 +240,14 @@
 
         const currentPage = getCurrentPageType();
         const expectedCount = currentPage === 'content' ? 3 : 1;
-        const contentId = currentContentId ? `<span style="color: #10a37f; font-weight: 600;">${currentContentId}</span>` : '<span style="color: #999;">loading...</span>';
+        const isRootPage = !currentContentId && (isRootContentPage() || isQuestionsListPage() || isTokensPage());
+        const contentId = currentContentId ? `<span style="color: #10a37f; font-weight: 600;">${currentContentId}</span>` : (isRootPage ? '' : '<span style="color: #999;">loading...</span>');
         const fileCount = Object.keys(interceptedData).length;
         const fileCountDisplay = `<span style="color: #10a37f; font-weight: 600;">${fileCount}/${expectedCount}</span>`;
 
         statusDisplay.innerHTML = `
             <span style="color: #10a37f; font-weight: 500;">📦</span>
-            <span>Content ID: ${contentId} | API Calls: ${fileCountDisplay}</span>
+            <span>${contentId ? `Content ID: ${contentId} | ` : ''}API Calls: ${fileCountDisplay}</span>
         `;
     }
 
@@ -290,6 +291,7 @@
             startAutoDownloadTimer();
 
             updateStatusDisplay();
+            updateButtonVisibility();
         } else if (!newContentId) {
             // On root pages - no auto-download
             log(`✓ On root page (${window.location.pathname}) - disabling auto-download`);
@@ -310,6 +312,7 @@
                 log(`✓ Cleared root page data (was: ${clearedKeys.join(', ')})`);
             }
             updateStatusDisplay();
+            updateButtonVisibility();
         }
     }
 
@@ -1181,6 +1184,7 @@
             lastUrl = window.location.href;
             log(`→ URL changed to: ${window.location.pathname}`);
             handleContentIdChange();
+            updateButtonVisibility();
         }
         // Re-insert if navbar structure changes
         if (!document.getElementById('cloudradial-downloader-status')) {
@@ -1194,6 +1198,7 @@
     window.addEventListener('popstate', () => {
         log(`→ History navigation detected`);
         handleContentIdChange();
+        updateButtonVisibility();
     });
 
     // Wait for page to load before creating UI
