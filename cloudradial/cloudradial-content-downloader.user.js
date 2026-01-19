@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CloudRadial Content Downloader
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.11
+// @version      1.0.12
 // @description  Auto-download content data from CloudRadial admin portal
 // @author       warthurton
 // @match        https://portal.itiliti.io/app/admin/content*
@@ -286,9 +286,14 @@
             Object.keys(processedEndpoints).forEach(key => delete processedEndpoints[key]);
             log(`✓ Cleared intercepted data (was: ${clearedKeys.join(', ') || 'none'})`);
 
-            // Start timeout to download after 10 seconds if not all data is fetched
-            log(`✓ Starting auto-download timer (10s timeout)`);
-            startAutoDownloadTimer();
+            // Only start auto-download timer if in batch download mode
+            const batchState = localStorage.getItem('cloudradial-batch-download');
+            if (batchState) {
+                log(`✓ In batch mode - starting auto-download timer (10s timeout)`);
+                startAutoDownloadTimer();
+            } else {
+                log(`ℹ Manual navigation - auto-download disabled`);
+            }
 
             updateStatusDisplay();
             updateButtonVisibility();
@@ -574,10 +579,11 @@
         showToast(`Starting download of ${ids.length} items...`);
         console.log(`[CloudRadial Content Downloader] Starting batch download of ${ids.length} items:`, ids);
 
-        // Navigate to the first content
+        // Navigate to the first content using SPA navigation
         const firstId = ids[0];
         console.log(`[CloudRadial Content Downloader] Navigating to first content ${firstId}...`);
-        window.location.href = `/app/admin/content/${firstId}`;
+        history.pushState(null, '', `/app/admin/content/${firstId}`);
+        window.dispatchEvent(new PopStateEvent('popstate'));
     }
 
     /**
@@ -601,10 +607,11 @@
         showToast(`Starting download of ${ids.length} questions...`);
         console.log(`[CloudRadial Content Downloader] Starting batch download of ${ids.length} questions:`, ids);
 
-        // Navigate to the first question
+        // Navigate to the first question using SPA navigation
         const firstId = ids[0];
         console.log(`[CloudRadial Content Downloader] Navigating to first question ${firstId}...`);
-        window.location.href = `/app/admin/questions/${firstId}`;
+        history.pushState(null, '', `/app/admin/questions/${firstId}`);
+        window.dispatchEvent(new PopStateEvent('popstate'));
     }
 
     /**
@@ -673,10 +680,11 @@
             log(`→ Moving to next ${itemType}: ${nextId} (${nextIndex + 1}/${ids.length})`);
             showToast(`Downloading ${nextIndex + 1}/${ids.length}...`);
             
-            // Small delay before navigation
+            // Small delay before SPA navigation
             setTimeout(() => {
                 log(`→ Navigating to: ${urlPath}/${nextId}`);
-                window.location.href = `${urlPath}/${nextId}`;
+                history.pushState(null, '', `${urlPath}/${nextId}`);
+                window.dispatchEvent(new PopStateEvent('popstate'));
             }, 1000);
         } catch (error) {
             log(`✗ Error in batch continuation:`, error.message);
@@ -689,6 +697,7 @@
      */
     function updateButtonVisibility() {
         const batchState = localStorage.getItem('cloudradial-batch-download');
+        const currentPage = getCurrentPageType();
         let hasContentBatch = false;
         let hasQuestionsBatch = false;
 
@@ -703,22 +712,31 @@
         }
 
         // Content page buttons
+        const downloadTemplatesBtn = document.getElementById('cloudradial-download-templates-btn');
         const downloadAllBtn = document.getElementById('cloudradial-download-all-btn');
         const resetContentBtn = document.getElementById('cloudradial-reset-content-btn');
         const resumeContentBtn = document.getElementById('cloudradial-resume-content-btn');
 
-        if (downloadAllBtn) downloadAllBtn.style.display = hasContentBatch ? 'none' : 'inline-block';
-        if (resetContentBtn) resetContentBtn.style.display = hasContentBatch ? 'inline-block' : 'none';
-        if (resumeContentBtn) resumeContentBtn.style.display = hasContentBatch ? 'inline-block' : 'none';
+        const isContentPage = isRootContentPage();
+        if (downloadTemplatesBtn) downloadTemplatesBtn.style.display = isContentPage ? 'inline-block' : 'none';
+        if (downloadAllBtn) downloadAllBtn.style.display = (isContentPage && !hasContentBatch) ? 'inline-block' : 'none';
+        if (resetContentBtn) resetContentBtn.style.display = (isContentPage && hasContentBatch) ? 'inline-block' : 'none';
+        if (resumeContentBtn) resumeContentBtn.style.display = (isContentPage && hasContentBatch) ? 'inline-block' : 'none';
 
         // Questions page buttons
         const downloadAllQuestionsBtn = document.getElementById('cloudradial-download-all-questions-btn');
         const resetBtn = document.getElementById('cloudradial-reset-btn');
         const resumeBtn = document.getElementById('cloudradial-resume-btn');
 
-        if (downloadAllQuestionsBtn) downloadAllQuestionsBtn.style.display = hasQuestionsBatch ? 'none' : 'inline-block';
-        if (resetBtn) resetBtn.style.display = hasQuestionsBatch ? 'inline-block' : 'none';
-        if (resumeBtn) resumeBtn.style.display = hasQuestionsBatch ? 'inline-block' : 'none';
+        const isQuestionsPage = isQuestionsListPage();
+        if (downloadAllQuestionsBtn) downloadAllQuestionsBtn.style.display = (isQuestionsPage && !hasQuestionsBatch) ? 'inline-block' : 'none';
+        if (resetBtn) resetBtn.style.display = (isQuestionsPage && hasQuestionsBatch) ? 'inline-block' : 'none';
+        if (resumeBtn) resumeBtn.style.display = (isQuestionsPage && hasQuestionsBatch) ? 'inline-block' : 'none';
+
+        // Tokens page button
+        const downloadPSABtn = document.getElementById('cloudradial-download-psa-btn');
+        const isTokensPageNow = isTokensPage();
+        if (downloadPSABtn) downloadPSABtn.style.display = isTokensPageNow ? 'inline-block' : 'none';
     }
 
     /**
@@ -796,8 +814,10 @@
         statusContainer.appendChild(statusDisplay);
         statusContainer.appendChild(debugToggle);
 
-        // Add small buttons to navbar (root pages only)
-        if (isRootContentPage()) {
+        // Create ALL buttons upfront (visibility controlled by updateButtonVisibility)
+        
+        // Content page buttons
+        {
             const downloadTemplatesBtn = document.createElement('button');
             downloadTemplatesBtn.id = 'cloudradial-download-templates-btn';
             downloadTemplatesBtn.textContent = 'Templates';
@@ -951,7 +971,8 @@
                             const nextId = ids[currentIndex];
                             log(`→ Resuming content batch download at item ${currentIndex + 1}/${ids.length} (ID: ${nextId})`);
                             showToast(`Resuming at ${currentIndex + 1}/${ids.length}...`);
-                            window.location.href = `/app/admin/content/${nextId}`;
+                            history.pushState(null, '', `/app/admin/content/${nextId}`);
+                            window.dispatchEvent(new PopStateEvent('popstate'));
                         } else {
                             showToast('No content batch download to resume', 2000);
                         }
@@ -969,13 +990,10 @@
             statusContainer.appendChild(downloadAllBtn);
             statusContainer.appendChild(resetContentBtn);
             statusContainer.appendChild(resumeContentBtn);
-            
-            // Set initial visibility
-            updateButtonVisibility();
         }
 
-        // Add download all button for questions list page
-        if (isQuestionsListPage()) {
+        // Questions page buttons
+        {
             const downloadAllQuestionsBtn = document.createElement('button');
             downloadAllQuestionsBtn.id = 'cloudradial-download-all-questions-btn';
             downloadAllQuestionsBtn.textContent = 'All';
@@ -1087,7 +1105,8 @@
                             const nextId = ids[currentIndex];
                             log(`→ Resuming questions batch download at item ${currentIndex + 1}/${ids.length} (ID: ${nextId})`);
                             showToast(`Resuming at ${currentIndex + 1}/${ids.length}...`);
-                            window.location.href = `/app/admin/questions/${nextId}`;
+                            history.pushState(null, '', `/app/admin/questions/${nextId}`);
+                            window.dispatchEvent(new PopStateEvent('popstate'));
                         } else {
                             showToast('No questions batch download to resume', 2000);
                         }
@@ -1104,13 +1123,10 @@
             statusContainer.appendChild(downloadAllQuestionsBtn);
             statusContainer.appendChild(resetBtn);
             statusContainer.appendChild(resumeBtn);
-            
-            // Set initial visibility
-            updateButtonVisibility();
         }
 
-        // Add download button for tokens page
-        if (isTokensPage()) {
+        // Tokens page button
+        {
             const downloadPSABtn = document.createElement('button');
             downloadPSABtn.id = 'cloudradial-download-psa-btn';
             downloadPSABtn.textContent = 'PSA';
@@ -1140,6 +1156,9 @@
 
             statusContainer.appendChild(downloadPSABtn);
         }
+
+        // Set initial button visibility based on current page
+        updateButtonVisibility();
 
         // Try immediately and with retries
         tryInsertIntoNavbar();
