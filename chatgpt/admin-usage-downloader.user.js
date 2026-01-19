@@ -1,20 +1,18 @@
 // ==UserScript==
 // @name         ChatGPT Admin Usage Downloader
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.1
+// @version      1.2
 // @description  Auto-download analytics data from ChatGPT admin usage page
+// @author       warthurton
 // @match        https://chatgpt.com/admin/usage
 // @icon         https://favicons-blue.vercel.app/?domain=chatgpt.com
 // @run-at       document-start
+// @grant        none
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js
-//
 // @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/chatgpt/admin-usage-downloader.user.js
 // @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/chatgpt/admin-usage-downloader.user.js
 // @homepageURL  https://github.com/warthurton/userscripts
 // @supportURL   https://github.com/warthurton/userscripts/issues
-//
-// @grant        none
-// @author       warthurton
 // ==/UserScript==
 
 (function () {
