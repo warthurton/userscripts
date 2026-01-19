@@ -166,11 +166,13 @@
 
         if (count > 0) {
             // Generate and download the zip file
+            const currentPage = getCurrentPageType();
+            const pagePrefix = currentPage === 'questions' ? 'questions' : currentPage === 'tokens' ? 'tokens' : 'content';
             const blob = await zip.generateAsync({ type: 'blob' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `cloudradial-content-${contentId}.zip`;
+            a.download = `cloudradial-${pagePrefix}-${contentId}.zip`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
