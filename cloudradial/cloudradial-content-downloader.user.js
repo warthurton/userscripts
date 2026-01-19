@@ -5,6 +5,8 @@
 // @description  Auto-download content data from CloudRadial admin portal
 // @author       warthurton
 // @match        https://portal.itiliti.io/app/admin/content*
+// @match        https://portal.itiliti.io/app/admin/tokens*
+// @match        https://portal.itiliti.io/app/admin/questions*
 // @icon         https://favicons-blue.vercel.app/?domain=itiliti.io
 // @run-at       document-start
 // @grant        none
@@ -23,17 +25,32 @@
         {
             key: 'templates',
             pattern: '/api/content/templates?',
-            filename: 'templates.json'
+            filename: 'templates.json',
+            page: 'content'
         },
         {
             key: 'content',
             pattern: '/api/content/content?',
-            filename: 'content.json'
+            filename: 'content.json',
+            page: 'content'
         },
         {
             key: 'assessments',
             pattern: '/api/content/assessments/options?',
-            filename: 'assessments-options.json'
+            filename: 'assessments-options.json',
+            page: 'content'
+        },
+        {
+            key: 'psa',
+            pattern: '/api/partner/psa?',
+            filename: 'psa.json',
+            page: 'tokens'
+        },
+        {
+            key: 'questionTemplates',
+            pattern: '/api/catalog/questionTemplates?',
+            filename: 'questionTemplates.json',
+            page: 'questions'
         }
     ];
 
@@ -44,10 +61,46 @@
     const lastDownloadTimes = {}; // Map of contentId -> timestamp
 
     /**
+     * Get current page type
+     */
+    function getCurrentPageType() {
+        const pathname = window.location.pathname;
+        if (pathname.includes('/app/admin/content')) {
+            return 'content';
+        } else if (pathname.includes('/app/admin/tokens')) {
+            return 'tokens';
+        } else if (pathname.includes('/app/admin/questions')) {
+            return 'questions';
+        }
+        return null;
+    }
+
+    /**
      * Check if on root content page
      */
     function isRootContentPage() {
         return window.location.pathname === '/app/admin/content' || window.location.pathname === '/app/admin/content/';
+    }
+
+    /**
+     * Check if on tokens page
+     */
+    function isTokensPage() {
+        return window.location.pathname === '/app/admin/tokens' || window.location.pathname === '/app/admin/tokens/';
+    }
+
+    /**
+     * Check if on questions list page
+     */
+    function isQuestionsListPage() {
+        return window.location.pathname === '/app/admin/questions' || window.location.pathname === '/app/admin/questions/';
+    }
+
+    /**
+     * Check if on specific question detail page
+     */
+    function isQuestionDetailPage() {
+        return /^\/app\/admin\/questions\/\d+/.test(window.location.pathname);
     }
 
     /**
@@ -246,11 +299,12 @@
     const originalFetch = window.fetch;
     window.fetch = async function (...args) {
         const url = typeof args[0] === 'string' ? args[0] : args[0]?.url;
+        const currentPage = getCurrentPageType();
 
         // Check if this is one of our target API endpoints
         let matchedEndpoint = null;
         for (const endpoint of API_ENDPOINTS) {
-            if (url && url.includes(endpoint.pattern)) {
+            if (url && url.includes(endpoint.pattern) && endpoint.page === currentPage) {
                 matchedEndpoint = endpoint;
                 break;
             }
@@ -377,6 +431,35 @@
     }
 
     /**
+     * Get all question IDs from intercepted questionTemplates data
+     */
+    async function getAllQuestionIds() {
+        if (!interceptedData['questionTemplates']) {
+            console.error('[CloudRadial Content Downloader] No question templates data available. Please wait for page to load.');
+            showToast('No question templates data available yet. Please wait for the page to load.', 4000);
+            return [];
+        }
+
+        try {
+            const data = interceptedData['questionTemplates'].data;
+            
+            // Extract IDs from the response
+            let ids = [];
+            if (Array.isArray(data)) {
+                ids = data.map(item => item.id).filter(id => id);
+            } else if (data.data && Array.isArray(data.data)) {
+                ids = data.data.map(item => item.id).filter(id => id);
+            }
+            
+            console.log(`[CloudRadial Content Downloader] Found ${ids.length} question IDs from intercepted templates`);
+            return ids;
+        } catch (error) {
+            console.error('[CloudRadial Content Downloader] Error extracting question IDs:', error);
+            return [];
+        }
+    }
+
+    /**
      * Download all content IDs sequentially
      */
     async function downloadAllContent() {
@@ -390,7 +473,8 @@
         localStorage.setItem('cloudradial-batch-download', JSON.stringify({
             ids: ids,
             currentIndex: 0,
-            startTime: Date.now()
+            startTime: Date.now(),
+            type: 'content'
         }));
 
         showToast(`Starting download of ${ids.length} items...`);
@@ -400,6 +484,33 @@
         const firstId = ids[0];
         console.log(`[CloudRadial Content Downloader] Navigating to first content ${firstId}...`);
         window.location.href = `/app/admin/content/${firstId}`;
+    }
+
+    /**
+     * Download all question IDs sequentially
+     */
+    async function downloadAllQuestions() {
+        const ids = await getAllQuestionIds();
+        if (ids.length === 0) {
+            showToast('No question IDs found');
+            return;
+        }
+
+        // Store the batch download state in localStorage
+        localStorage.setItem('cloudradial-batch-download', JSON.stringify({
+            ids: ids,
+            currentIndex: 0,
+            startTime: Date.now(),
+            type: 'questions'
+        }));
+
+        showToast(`Starting download of ${ids.length} questions...`);
+        console.log(`[CloudRadial Content Downloader] Starting batch download of ${ids.length} questions:`, ids);
+
+        // Navigate to the first question
+        const firstId = ids[0];
+        console.log(`[CloudRadial Content Downloader] Navigating to first question ${firstId}...`);
+        window.location.href = `/app/admin/questions/${firstId}`;
     }
 
     /**
@@ -439,7 +550,7 @@
 
         try {
             const state = JSON.parse(batchState);
-            const { ids, currentIndex } = state;
+            const { ids, currentIndex, type = 'content' } = state;
             const nextIndex = currentIndex + 1;
 
             if (nextIndex >= ids.length) {
@@ -455,12 +566,15 @@
             localStorage.setItem('cloudradial-batch-download', JSON.stringify(state));
 
             const nextId = ids[nextIndex];
-            console.log(`[CloudRadial Content Downloader] Moving to next content ${nextId} (${nextIndex + 1}/${ids.length})...`);
+            const itemType = type === 'questions' ? 'question' : 'content';
+            const urlPath = type === 'questions' ? '/app/admin/questions' : '/app/admin/content';
+            
+            console.log(`[CloudRadial Content Downloader] Moving to next ${itemType} ${nextId} (${nextIndex + 1}/${ids.length})...`);
             showToast(`Downloading ${nextIndex + 1}/${ids.length}...`);
             
             // Small delay before navigation
             setTimeout(() => {
-                window.location.href = `/app/admin/content/${nextId}`;
+                window.location.href = `${urlPath}/${nextId}`;
             }, 1000);
         } catch (error) {
             console.error('[CloudRadial Content Downloader] Error in batch continuation:', error);
@@ -636,6 +750,51 @@
             document.body.appendChild(btnContainer);
         }
 
+        // Add download all button for questions list page
+        if (isQuestionsListPage()) {
+            const btnContainer = document.createElement('div');
+            btnContainer.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                display: flex;
+                gap: 10px;
+                z-index: 10000;
+            `;
+
+            const downloadAllQuestionsBtn = document.createElement('button');
+            downloadAllQuestionsBtn.id = 'cloudradial-download-all-questions-btn';
+            downloadAllQuestionsBtn.textContent = 'Download All Questions';
+            downloadAllQuestionsBtn.style.cssText = `
+                padding: 12px 20px;
+                background: linear-gradient(to bottom, #10a37f, #0d8c6d) !important;
+                border: 1px solid #10a37f !important;
+                color: white !important;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 13px;
+                font-weight: 600;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            `;
+            downloadAllQuestionsBtn.addEventListener('mouseover', () => {
+                downloadAllQuestionsBtn.style.background = 'linear-gradient(to bottom, #0d8c6d, #0a7558) !important';
+            });
+            downloadAllQuestionsBtn.addEventListener('mouseout', () => {
+                downloadAllQuestionsBtn.style.background = 'linear-gradient(to bottom, #10a37f, #0d8c6d) !important';
+            });
+            downloadAllQuestionsBtn.addEventListener('click', async () => {
+                downloadAllQuestionsBtn.disabled = true;
+                downloadAllQuestionsBtn.textContent = 'Processing...';
+                await downloadAllQuestions();
+                downloadAllQuestionsBtn.disabled = false;
+                downloadAllQuestionsBtn.textContent = 'Download All Questions';
+            });
+
+            btnContainer.appendChild(downloadAllQuestionsBtn);
+            document.body.appendChild(btnContainer);
+        }
+
         // Toast notification
         const toast = document.createElement('div');
         toast.id = 'cloudradial-toast';
@@ -655,6 +814,39 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         `;
         document.body.appendChild(toast);
+
+        // Add manual download button for tokens and questions pages
+        const pageType = getCurrentPageType();
+        if (pageType === 'tokens' || pageType === 'questions') {
+            const manualDownloadBtn = document.createElement('button');
+            manualDownloadBtn.id = 'cloudradial-manual-download-btn';
+            manualDownloadBtn.textContent = `Download ${pageType === 'tokens' ? 'PSA Data' : 'Questions'}`;
+            manualDownloadBtn.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                padding: 12px 20px;
+                background: linear-gradient(to bottom, #10a37f, #0d8c6d) !important;
+                border: 1px solid #10a37f !important;
+                color: white !important;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 13px;
+                font-weight: 600;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                z-index: 10000;
+            `;
+            manualDownloadBtn.addEventListener('mouseover', () => {
+                manualDownloadBtn.style.background = 'linear-gradient(to bottom, #0d8c6d, #0a7558) !important';
+            });
+            manualDownloadBtn.addEventListener('mouseout', () => {
+                manualDownloadBtn.style.background = 'linear-gradient(to bottom, #10a37f, #0d8c6d) !important';
+            });
+            manualDownloadBtn.addEventListener('click', async () => {
+                createAndDownloadZip();
+            });
+            document.body.appendChild(manualDownloadBtn);
+        }
 
         // Initial content ID check
         handleContentIdChange();

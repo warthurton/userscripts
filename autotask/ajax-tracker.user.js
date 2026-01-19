@@ -316,75 +316,101 @@
     }, true);
   }
 
+  // Wait for JSZip to be available
+  function waitForJSZip(timeout = 10000) {
+    return new Promise((resolve, reject) => {
+      const startTime = Date.now();
+      const checkJSZip = setInterval(() => {
+        if (typeof JSZip !== 'undefined') {
+          clearInterval(checkJSZip);
+          log('JSZip is available');
+          resolve();
+        } else if (Date.now() - startTime > timeout) {
+          clearInterval(checkJSZip);
+          log('JSZip failed to load within timeout');
+          reject(new Error('JSZip library failed to load'));
+        }
+      }, 100);
+    });
+  }
+
   // Export session data as ZIP
   async function exportSessionData() {
-    const sessionId = getSessionId();
-    const key = STORAGE_KEYS.sessionData + sessionId;
-
-    let sessionData = [];
     try {
-      const stored = (typeof GM_getValue === 'function')
-        ? GM_getValue(key, '[]')
-        : localStorage.getItem(key) || '[]';
-      sessionData = JSON.parse(stored);
-    } catch (e) {
-      log('Error loading session data for export:', e);
-      alert('Error loading session data');
-      return;
-    }
-
-    if (sessionData.length === 0) {
-      alert('No session data to export');
-      return;
-    }
-
-    log('Exporting session data, pages:', sessionData.length);
-
-    // Create ZIP
-    const zip = new JSZip();
-
-    // Add session summary
-    const summary = {
-      sessionId,
-      pageCount: sessionData.length,
-      exportedAt: new Date().toISOString(),
-      userAgent: navigator.userAgent,
-    };
-    zip.file('session-summary.json', JSON.stringify(summary, null, 2));
-
-    // Add each page's data
-    sessionData.forEach((pageData, index) => {
-      const pageFolder = zip.folder(`page_${index + 1}_${pageData.timestamp.replace(/:/g, '-')}`);
-
-      // Page info
-      pageFolder.file('page-info.json', JSON.stringify(pageData.pageInfo || {}, null, 2));
-
-      // Form fields
-      pageFolder.file('form-fields.json', JSON.stringify(pageData.formFields || {}, null, 2));
-
-      // ViewState
-      if (pageData.viewState || pageData.eventValidation) {
-        pageFolder.file('viewstate.json', JSON.stringify({
-          viewState: pageData.viewState,
-          eventValidation: pageData.eventValidation,
-          viewStateGenerator: pageData.viewStateGenerator,
-        }, null, 2));
+      log('Starting export...');
+      
+      // Wait for JSZip to be available
+      if (typeof JSZip === 'undefined') {
+        log('JSZip not available, waiting...');
+        await waitForJSZip();
       }
 
-      // Ajax calls
-      if (pageData.ajaxCalls && pageData.ajaxCalls.length > 0) {
-        const ajaxFolder = pageFolder.folder('ajax-calls');
-        pageData.ajaxCalls.forEach((call, callIndex) => {
-          ajaxFolder.file(`call_${callIndex + 1}_${call.method}_${call.timestamp.replace(/:/g, '-')}.json`, JSON.stringify(call, null, 2));
-        });
+      const sessionId = getSessionId();
+      const key = STORAGE_KEYS.sessionData + sessionId;
+
+      let sessionData = [];
+      try {
+        const stored = (typeof GM_getValue === 'function')
+          ? GM_getValue(key, '[]')
+          : localStorage.getItem(key) || '[]';
+        sessionData = JSON.parse(stored);
+      } catch (e) {
+        log('Error loading session data for export:', e);
+        alert('Error loading session data: ' + e.message);
+        return;
       }
 
-      // Full page data
-      pageFolder.file('full-data.json', JSON.stringify(pageData, null, 2));
-    });
+      if (sessionData.length === 0) {
+        alert('No session data to export. Enable tracking and perform some actions first.');
+        return;
+      }
 
-    // Generate and download ZIP
-    try {
+      log('Exporting session data, pages:', sessionData.length);
+
+      // Create ZIP
+      const zip = new JSZip();
+
+      // Add session summary
+      const summary = {
+        sessionId,
+        pageCount: sessionData.length,
+        exportedAt: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+      };
+      zip.file('session-summary.json', JSON.stringify(summary, null, 2));
+
+      // Add each page's data
+      sessionData.forEach((pageData, index) => {
+        const pageFolder = zip.folder(`page_${index + 1}_${pageData.timestamp.replace(/:/g, '-')}`);
+
+        // Page info
+        pageFolder.file('page-info.json', JSON.stringify(pageData.pageInfo || {}, null, 2));
+
+        // Form fields
+        pageFolder.file('form-fields.json', JSON.stringify(pageData.formFields || {}, null, 2));
+
+        // ViewState
+        if (pageData.viewState || pageData.eventValidation) {
+          pageFolder.file('viewstate.json', JSON.stringify({
+            viewState: pageData.viewState,
+            eventValidation: pageData.eventValidation,
+            viewStateGenerator: pageData.viewStateGenerator,
+          }, null, 2));
+        }
+
+        // Ajax calls
+        if (pageData.ajaxCalls && pageData.ajaxCalls.length > 0) {
+          const ajaxFolder = pageFolder.folder('ajax-calls');
+          pageData.ajaxCalls.forEach((call, callIndex) => {
+            ajaxFolder.file(`call_${callIndex + 1}_${call.method}_${call.timestamp.replace(/:/g, '-')}.json`, JSON.stringify(call, null, 2));
+          });
+        }
+
+        // Full page data
+        pageFolder.file('full-data.json', JSON.stringify(pageData, null, 2));
+      });
+
+      // Generate and download ZIP
       const blob = await zip.generateAsync({ type: 'blob' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -397,8 +423,8 @@
       log('Export complete');
       alert('Session data exported successfully!');
     } catch (e) {
-      log('Error generating ZIP:', e);
-      alert('Error generating export file');
+      log('Error exporting session data:', e);
+      alert('Error exporting data: ' + e.message);
     }
   }
 
@@ -496,7 +522,10 @@
       setEnabled(e.target.checked);
     });
 
-    document.getElementById('ajax-tracker-export').addEventListener('click', exportSessionData);
+    document.getElementById('ajax-tracker-export').addEventListener('click', (e) => {
+      e.preventDefault();
+      exportSessionData().catch(err => log('Export error:', err));
+    });
     document.getElementById('ajax-tracker-clear').addEventListener('click', clearSessionData);
     document.getElementById('ajax-tracker-new-session').addEventListener('click', startNewSession);
 
@@ -652,6 +681,10 @@
   // Initialize
   function init() {
     log('Initializing...');
+    log('JSZip available:', typeof JSZip !== 'undefined');
+    log('GM_getValue available:', typeof GM_getValue === 'function');
+    log('GM_setValue available:', typeof GM_setValue === 'function');
+    log('GM_registerMenuCommand available:', typeof GM_registerMenuCommand === 'function');
 
     // Check enabled state
     isEnabled = getEnabled();
@@ -702,8 +735,20 @@
 
   // Register menu commands
   if (typeof GM_registerMenuCommand === 'function') {
-    GM_registerMenuCommand('Export Session Data', exportSessionData);
-    GM_registerMenuCommand('Clear Session Data', clearSessionData);
-    GM_registerMenuCommand('Start New Session', startNewSession);
+    GM_registerMenuCommand('Export Session Data', () => {
+      log('Menu: Export Session Data clicked');
+      exportSessionData().catch(err => {
+        log('Menu export error:', err);
+        alert('Export failed: ' + err.message);
+      });
+    });
+    GM_registerMenuCommand('Clear Session Data', () => {
+      log('Menu: Clear Session Data clicked');
+      clearSessionData();
+    });
+    GM_registerMenuCommand('Start New Session', () => {
+      log('Menu: Start New Session clicked');
+      startNewSession();
+    });
   }
 })();
