@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CloudRadial Content Downloader
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.8
+// @version      1.0.9
 // @description  Auto-download content data from CloudRadial admin portal
 // @author       warthurton
 // @match        https://portal.itiliti.io/app/admin/content*
@@ -682,6 +682,43 @@
     }
 
     /**
+     * Update button visibility based on batch download state
+     */
+    function updateButtonVisibility() {
+        const batchState = localStorage.getItem('cloudradial-batch-download');
+        let hasContentBatch = false;
+        let hasQuestionsBatch = false;
+
+        if (batchState) {
+            try {
+                const state = JSON.parse(batchState);
+                if (state.type === 'content') hasContentBatch = true;
+                if (state.type === 'questions') hasQuestionsBatch = true;
+            } catch (e) {
+                // Invalid state, ignore
+            }
+        }
+
+        // Content page buttons
+        const downloadAllBtn = document.getElementById('cloudradial-download-all-btn');
+        const resetContentBtn = document.getElementById('cloudradial-reset-content-btn');
+        const resumeContentBtn = document.getElementById('cloudradial-resume-content-btn');
+
+        if (downloadAllBtn) downloadAllBtn.style.display = hasContentBatch ? 'none' : 'inline-block';
+        if (resetContentBtn) resetContentBtn.style.display = hasContentBatch ? 'inline-block' : 'none';
+        if (resumeContentBtn) resumeContentBtn.style.display = hasContentBatch ? 'inline-block' : 'none';
+
+        // Questions page buttons
+        const downloadAllQuestionsBtn = document.getElementById('cloudradial-download-all-questions-btn');
+        const resetBtn = document.getElementById('cloudradial-reset-btn');
+        const resumeBtn = document.getElementById('cloudradial-resume-btn');
+
+        if (downloadAllQuestionsBtn) downloadAllQuestionsBtn.style.display = hasQuestionsBatch ? 'none' : 'inline-block';
+        if (resetBtn) resetBtn.style.display = hasQuestionsBatch ? 'inline-block' : 'none';
+        if (resumeBtn) resumeBtn.style.display = hasQuestionsBatch ? 'inline-block' : 'none';
+    }
+
+    /**
      * Try to insert status container into navbar
      */
     let statusContainer = null;
@@ -863,12 +900,14 @@
                             localStorage.removeItem('cloudradial-batch-download');
                             log(`✓ Content batch download state cleared`);
                             showToast('Batch download reset');
+                            updateButtonVisibility();
                         } else {
                             showToast('No content batch download to reset', 2000);
                         }
                     } catch (e) {
                         localStorage.removeItem('cloudradial-batch-download');
                         showToast('Batch download state cleared');
+                        updateButtonVisibility();
                     }
                 } else {
                     log(`ℹ No batch download in progress`);
@@ -927,6 +966,9 @@
             statusContainer.appendChild(downloadAllBtn);
             statusContainer.appendChild(resetContentBtn);
             statusContainer.appendChild(resumeContentBtn);
+            
+            // Set initial visibility
+            updateButtonVisibility();
         }
 
         // Add download all button for questions list page
@@ -994,12 +1036,14 @@
                             localStorage.removeItem('cloudradial-batch-download');
                             log(`✓ Questions batch download state cleared`);
                             showToast('Batch download reset');
+                            updateButtonVisibility();
                         } else {
                             showToast('No questions batch download to reset', 2000);
                         }
                     } catch (e) {
                         localStorage.removeItem('cloudradial-batch-download');
                         showToast('Batch download state cleared');
+                        updateButtonVisibility();
                     }
                 } else {
                     log(`ℹ No batch download in progress`);
@@ -1057,6 +1101,9 @@
             statusContainer.appendChild(downloadAllQuestionsBtn);
             statusContainer.appendChild(resetBtn);
             statusContainer.appendChild(resumeBtn);
+            
+            // Set initial visibility
+            updateButtonVisibility();
         }
 
         // Try immediately and with retries
