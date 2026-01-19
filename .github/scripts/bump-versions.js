@@ -3,19 +3,25 @@ const path = require('path');
 const { execSync, execFileSync } = require('child_process');
 
 /**
- * Parse version from userscript header (e.g., "1.2.3" -> [1, 2])
- * Returns [major, minor] - patch is excluded per requirements
+ * Parse version from userscript header
+ * Handles both 2-part (1.0) and 3-part (1.0.0) formats
+ * Returns [major, minor, patch]
  */
 function parseVersion(content) {
     const versionMatch = content.match(/@version\s+([\d.]+)/);
     if (!versionMatch) return null;
 
     const parts = versionMatch[1].split('.').map(Number);
-    return [parts[0] || 0, parts[1] || 0]; // major.minor only
+    return [
+        parts[0] || 0,      // major
+        parts[1] || 0,      // minor
+        parts[2] || 0       // patch (default 0 for 2-part versions)
+    ];
 }
 
 /**
  * Format version as major.minor (no patch)
+ * This normalizes all versions back to 2-part format for releases
  */
 function formatVersion(major, minor) {
     return `${major}.${minor}`;
@@ -37,7 +43,7 @@ function getMainVersion(filePath) {
 
 /**
  * Compare versions: returns -1 if a < b, 0 if equal, 1 if a > b
- * Comparison is at major.minor level only
+ * Comparison is at major.minor level only (ignores patch)
  */
 function compareVersions(versionA, versionB) {
     if (!versionA || !versionB) return null;
@@ -52,7 +58,7 @@ function compareVersions(versionA, versionB) {
         return versionA[1] > versionB[1] ? 1 : -1;
     }
 
-    return 0; // Equal
+    return 0; // Equal (ignoring patch version)
 }
 
 /**
