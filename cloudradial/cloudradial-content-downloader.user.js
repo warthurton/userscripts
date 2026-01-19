@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CloudRadial Content Downloader
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.7
+// @version      1.0.8
 // @description  Auto-download content data from CloudRadial admin portal
 // @author       warthurton
 // @match        https://portal.itiliti.io/app/admin/content*
@@ -59,6 +59,7 @@
     let debugMode = true;
     let statusDisplay = null;
     const lastDownloadTimes = {}; // Map of contentId -> timestamp
+    const processedEndpoints = {}; // Track which endpoints we've already processed in this load
 
     /**
      * Enhanced logging function
@@ -278,9 +279,10 @@
             log(`✓ ${itemType} ID changed to: ${newContentId}`);
             currentContentId = newContentId;
 
-            // Clear previous data
+            // Clear previous data and processed endpoints
             const clearedKeys = Object.keys(interceptedData);
             Object.keys(interceptedData).forEach(key => delete interceptedData[key]);
+            Object.keys(processedEndpoints).forEach(key => delete processedEndpoints[key]);
             log(`✓ Cleared intercepted data (was: ${clearedKeys.join(', ') || 'none'})`);
 
             // Start timeout to download after 10 seconds if not all data is fetched
@@ -300,9 +302,10 @@
                 autoDownloadTimer = null;
             }
             
-            // Clear intercepted data
+            // Clear intercepted data and processed endpoints
             const clearedKeys = Object.keys(interceptedData);
             Object.keys(interceptedData).forEach(key => delete interceptedData[key]);
+            Object.keys(processedEndpoints).forEach(key => delete processedEndpoints[key]);
             if (clearedKeys.length > 0) {
                 log(`✓ Cleared root page data (was: ${clearedKeys.join(', ')})`);
             }
@@ -397,17 +400,24 @@
         const response = await originalFetch.apply(this, args);
 
         if (matchedEndpoint && response.ok) {
+            // Skip if we've already processed this endpoint in the current load
+            if (processedEndpoints[matchedEndpoint.key]) {
+                log(`⊛ [FETCH] ${matchedEndpoint.key} already processed in this load, skipping duplicate`);
+                return response;
+            }
+            
             try {
                 const clonedResponse = response.clone();
                 const data = await clonedResponse.json();
 
                 log(`✓ [FETCH] ${matchedEndpoint.key} received`, { status: response.status, size: JSON.stringify(data).length });
 
-                // Store the data
+                // Store the data and mark as processed
                 interceptedData[matchedEndpoint.key] = {
                     data: data,
                     filename: matchedEndpoint.filename
                 };
+                processedEndpoints[matchedEndpoint.key] = true;
 
                 updateStatusDisplay();
                 checkAndDownloadIfComplete();
@@ -444,6 +454,12 @@
             }
 
             if (matchedEndpoint && this.status === 200) {
+                // Skip if we've already processed this endpoint in the current load
+                if (processedEndpoints[matchedEndpoint.key]) {
+                    log(`⊛ [XHR] ${matchedEndpoint.key} already processed in this load, skipping duplicate`);
+                    return;
+                }
+                
                 log(`→ [XHR] Intercepting ${matchedEndpoint.key} from ${currentPage} page`);
 
                 try {
@@ -451,11 +467,12 @@
 
                     log(`✓ [XHR] ${matchedEndpoint.key} received`, { status: this.status, size: this.responseText.length });
 
-                    // Store the data
+                    // Store the data and mark as processed
                     interceptedData[matchedEndpoint.key] = {
                         data: data,
                         filename: matchedEndpoint.filename
                     };
+                    processedEndpoints[matchedEndpoint.key] = true;
 
                     updateStatusDisplay();
                     checkAndDownloadIfComplete();
@@ -814,8 +831,102 @@
                 downloadAllBtn.textContent = 'Download All';
             });
 
+            const resetContentBtn = document.createElement('button');
+            resetContentBtn.id = 'cloudradial-reset-content-btn';
+            resetContentBtn.textContent = 'Reset';
+            resetContentBtn.title = 'Reset in-progress batch download';
+            resetContentBtn.style.cssText = `
+                padding: 4px 10px;
+                margin-left: 8px;
+                background: #d32f2f !important;
+                border: 1px solid #b71c1c !important;
+                color: white !important;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 11px;
+                font-weight: 500;
+                height: auto;
+                line-height: 1;
+            `;
+            resetContentBtn.addEventListener('mouseover', () => {
+                resetContentBtn.style.background = '#b71c1c !important';
+            });
+            resetContentBtn.addEventListener('mouseout', () => {
+                resetContentBtn.style.background = '#d32f2f !important';
+            });
+            resetContentBtn.addEventListener('click', () => {
+                const batchState = localStorage.getItem('cloudradial-batch-download');
+                if (batchState) {
+                    try {
+                        const state = JSON.parse(batchState);
+                        if (state.type === 'content') {
+                            localStorage.removeItem('cloudradial-batch-download');
+                            log(`✓ Content batch download state cleared`);
+                            showToast('Batch download reset');
+                        } else {
+                            showToast('No content batch download to reset', 2000);
+                        }
+                    } catch (e) {
+                        localStorage.removeItem('cloudradial-batch-download');
+                        showToast('Batch download state cleared');
+                    }
+                } else {
+                    log(`ℹ No batch download in progress`);
+                    showToast('No batch download to reset', 2000);
+                }
+            });
+
+            const resumeContentBtn = document.createElement('button');
+            resumeContentBtn.id = 'cloudradial-resume-content-btn';
+            resumeContentBtn.textContent = 'Resume';
+            resumeContentBtn.title = 'Resume interrupted batch download';
+            resumeContentBtn.style.cssText = `
+                padding: 4px 10px;
+                margin-left: 8px;
+                background: #ff9800 !important;
+                border: 1px solid #f57c00 !important;
+                color: white !important;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 11px;
+                font-weight: 500;
+                height: auto;
+                line-height: 1;
+            `;
+            resumeContentBtn.addEventListener('mouseover', () => {
+                resumeContentBtn.style.background = '#f57c00 !important';
+            });
+            resumeContentBtn.addEventListener('mouseout', () => {
+                resumeContentBtn.style.background = '#ff9800 !important';
+            });
+            resumeContentBtn.addEventListener('click', () => {
+                const batchState = localStorage.getItem('cloudradial-batch-download');
+                if (batchState) {
+                    try {
+                        const state = JSON.parse(batchState);
+                        if (state.type === 'content') {
+                            const { ids, currentIndex } = state;
+                            const nextId = ids[currentIndex];
+                            log(`→ Resuming content batch download at item ${currentIndex + 1}/${ids.length} (ID: ${nextId})`);
+                            showToast(`Resuming at ${currentIndex + 1}/${ids.length}...`);
+                            window.location.href = `/app/admin/content/${nextId}`;
+                        } else {
+                            showToast('No content batch download to resume', 2000);
+                        }
+                    } catch (e) {
+                        log(`✗ Error resuming batch download:`, e.message);
+                        showToast('Error resuming batch download', 2000);
+                    }
+                } else {
+                    log(`ℹ No batch download in progress`);
+                    showToast('No batch download to resume', 2000);
+                }
+            });
+
             statusContainer.appendChild(downloadTemplatesBtn);
             statusContainer.appendChild(downloadAllBtn);
+            statusContainer.appendChild(resetContentBtn);
+            statusContainer.appendChild(resumeContentBtn);
         }
 
         // Add download all button for questions list page
@@ -877,17 +988,75 @@
             resetBtn.addEventListener('click', () => {
                 const batchState = localStorage.getItem('cloudradial-batch-download');
                 if (batchState) {
-                    localStorage.removeItem('cloudradial-batch-download');
-                    log(`✓ Batch download state cleared`);
-                    showToast('Batch download reset');
+                    try {
+                        const state = JSON.parse(batchState);
+                        if (state.type === 'questions') {
+                            localStorage.removeItem('cloudradial-batch-download');
+                            log(`✓ Questions batch download state cleared`);
+                            showToast('Batch download reset');
+                        } else {
+                            showToast('No questions batch download to reset', 2000);
+                        }
+                    } catch (e) {
+                        localStorage.removeItem('cloudradial-batch-download');
+                        showToast('Batch download state cleared');
+                    }
                 } else {
                     log(`ℹ No batch download in progress`);
                     showToast('No batch download to reset', 2000);
                 }
             });
 
+            const resumeBtn = document.createElement('button');
+            resumeBtn.id = 'cloudradial-resume-btn';
+            resumeBtn.textContent = 'Resume';
+            resumeBtn.title = 'Resume interrupted batch download';
+            resumeBtn.style.cssText = `
+                padding: 4px 10px;
+                margin-left: 8px;
+                background: #ff9800 !important;
+                border: 1px solid #f57c00 !important;
+                color: white !important;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 11px;
+                font-weight: 500;
+                height: auto;
+                line-height: 1;
+            `;
+            resumeBtn.addEventListener('mouseover', () => {
+                resumeBtn.style.background = '#f57c00 !important';
+            });
+            resumeBtn.addEventListener('mouseout', () => {
+                resumeBtn.style.background = '#ff9800 !important';
+            });
+            resumeBtn.addEventListener('click', () => {
+                const batchState = localStorage.getItem('cloudradial-batch-download');
+                if (batchState) {
+                    try {
+                        const state = JSON.parse(batchState);
+                        if (state.type === 'questions') {
+                            const { ids, currentIndex } = state;
+                            const nextId = ids[currentIndex];
+                            log(`→ Resuming questions batch download at item ${currentIndex + 1}/${ids.length} (ID: ${nextId})`);
+                            showToast(`Resuming at ${currentIndex + 1}/${ids.length}...`);
+                            window.location.href = `/app/admin/questions/${nextId}`;
+                        } else {
+                            showToast('No questions batch download to resume', 2000);
+                        }
+                    } catch (e) {
+                        log(`✗ Error resuming batch download:`, e.message);
+                        showToast('Error resuming batch download', 2000);
+                    }
+                } else {
+                    log(`ℹ No batch download in progress`);
+                    showToast('No batch download to resume', 2000);
+                }
+            });
+
             statusContainer.appendChild(downloadAllQuestionsBtn);
             statusContainer.appendChild(resetBtn);
+            statusContainer.appendChild(resumeBtn);
         }
 
         // Try immediately and with retries
