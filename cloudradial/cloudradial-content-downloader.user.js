@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CloudRadial Content Downloader
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.3
+// @version      1.0.4
 // @description  Auto-download content data from CloudRadial admin portal
 // @author       warthurton
 // @match        https://portal.itiliti.io/app/admin/content*
@@ -59,6 +59,19 @@
     let debugMode = true;
     let statusDisplay = null;
     const lastDownloadTimes = {}; // Map of contentId -> timestamp
+
+    /**
+     * Enhanced logging function
+     */
+    function log(message, data = null) {
+        const timestamp = new Date().toLocaleTimeString();
+        const prefix = `[${timestamp}] [CloudRadial]`;
+        if (data !== null) {
+            console.log(`${prefix} ${message}`, data);
+        } else {
+            console.log(`${prefix} ${message}`);
+        }
+    }
 
     /**
      * Get current page type
@@ -137,6 +150,7 @@
         
         if (lastDownload && (now - lastDownload) < 60000) {
             const secondsLeft = Math.ceil((60000 - (now - lastDownload)) / 1000);
+            log(`⚠ Download rate limit: ${contentId} was downloaded ${secondsLeft}s ago, waiting...`);
             showToast(`Content ${contentId} downloaded recently. Wait ${secondsLeft}s before downloading again.`, 4000);
             
             // If in batch mode, still continue to next item
@@ -181,17 +195,19 @@
             // Update last download time for this content ID
             lastDownloadTimes[contentId] = Date.now();
 
-            console.log(`[CloudRadial Content Downloader] Downloaded zip with ${count} file(s)`);
+            log(`✓ Downloaded ${count} files as: cloudradial-${pagePrefix}-${contentId}.zip`);
             showToast(`Downloaded ${count} file(s) as zip`);
             
             // If in batch download mode, continue to next item
             const batchState = localStorage.getItem('cloudradial-batch-download');
             if (batchState) {
+                log(`✓ In batch mode, continuing to next item in 2s...`);
                 setTimeout(() => continueNextBatchDownload(), 2000);
             }
             
             return count;
         } else {
+            log(`✗ No data available to download`);
             showToast('No data available yet. Please wait for API calls to complete.', 4000);
             return 0;
         }
@@ -253,33 +269,43 @@
         const newContentId = getContentIdFromURL();
         const currentPage = getCurrentPageType();
 
+        log(`URL: ${window.location.pathname} | Page Type: ${currentPage} | New ID: ${newContentId} | Current ID: ${currentContentId}`);
+
         // Only process if we have a content ID (detail pages, not root pages)
         // Root pages (/app/admin/questions/, /app/admin/content/, etc.) have no content ID
         if (newContentId && newContentId !== currentContentId) {
             const itemType = currentPage === 'questions' ? 'Question' : 'Content';
-            console.log(`[CloudRadial Content Downloader] ${itemType} ID changed to: ${newContentId}`);
+            log(`✓ ${itemType} ID changed to: ${newContentId}`);
             currentContentId = newContentId;
 
             // Clear previous data
+            const clearedKeys = Object.keys(interceptedData);
             Object.keys(interceptedData).forEach(key => delete interceptedData[key]);
+            log(`✓ Cleared intercepted data (was: ${clearedKeys.join(', ') || 'none'})`);
 
             // Start timeout to download after 10 seconds if not all data is fetched
+            log(`✓ Starting auto-download timer (10s timeout)`);
             startAutoDownloadTimer();
 
             updateStatusDisplay();
         } else if (!newContentId) {
             // On root pages - no auto-download
-            console.log('[CloudRadial Content Downloader] On root page, no content ID - disabling auto-download');
+            log(`✓ On root page (${window.location.pathname}) - disabling auto-download`);
             currentContentId = null;
             
             // Clear any pending timers
             if (autoDownloadTimer) {
+                log(`✓ Cleared pending auto-download timer`);
                 clearTimeout(autoDownloadTimer);
                 autoDownloadTimer = null;
             }
             
             // Clear intercepted data
+            const clearedKeys = Object.keys(interceptedData);
             Object.keys(interceptedData).forEach(key => delete interceptedData[key]);
+            if (clearedKeys.length > 0) {
+                log(`✓ Cleared root page data (was: ${clearedKeys.join(', ')})`);
+            }
             updateStatusDisplay();
         }
     }
@@ -291,23 +317,30 @@
     function startAutoDownloadTimer() {
         // Clear any existing timer
         if (autoDownloadTimer) {
+            log(`✓ Cleared previous auto-download timer`);
             clearTimeout(autoDownloadTimer);
         }
 
         // Set new timer
+        log(`➤ Auto-download timer started (10s delay)`);
         autoDownloadTimer = setTimeout(() => {
             const currentPage = getCurrentPageType();
             const expectedCount = currentPage === 'content' ? 3 : 1;
             const dataCount = Object.keys(interceptedData).length;
             
+            log(`⏱ Timer fired: ${dataCount}/${expectedCount} files ready`);
+            log(`  Intercepted keys: ${Object.keys(interceptedData).join(', ') || 'none'}`);
+            
             if (dataCount > 0 && dataCount < expectedCount) {
-                console.log(`[CloudRadial Content Downloader] Auto-download triggered with ${dataCount}/${expectedCount} files`);
+                log(`⚠ Auto-download triggered with incomplete data (${dataCount}/${expectedCount})`);
                 showToast(`Auto-downloading ${dataCount} available file(s)...`);
                 createAndDownloadZip();
             } else if (dataCount >= expectedCount) {
-                console.log(`[CloudRadial Content Downloader] Auto-download triggered with all ${dataCount} files`);
+                log(`✓ Auto-download triggered with complete data (${dataCount}/${expectedCount})`);
                 showToast('All data received, downloading...');
                 createAndDownloadZip();
+            } else {
+                log(`✗ No data collected, skipping auto-download`);
             }
         }, 10000);
     }
@@ -318,15 +351,19 @@
     function checkAndDownloadIfComplete() {
         const currentPage = getCurrentPageType();
         const expectedCount = currentPage === 'content' ? 3 : 1; // Content needs 3 APIs, others need 1
+        const dataCount = Object.keys(interceptedData).length;
         
-        if (Object.keys(interceptedData).length >= expectedCount) {
+        log(`📊 API check: ${dataCount}/${expectedCount} | Keys: ${Object.keys(interceptedData).join(', ') || 'none'}`);
+        
+        if (dataCount >= expectedCount) {
             // Clear the auto-download timer since we have all data
             if (autoDownloadTimer) {
+                log(`✓ All data received, cancelling timer`);
                 clearTimeout(autoDownloadTimer);
                 autoDownloadTimer = null;
             }
 
-            console.log('[CloudRadial Content Downloader] All API calls completed, auto-downloading...');
+            log(`✓ All ${dataCount} APIs complete, triggering auto-download`);
             showToast('All data received, downloading...');
             createAndDownloadZip();
         }
@@ -342,15 +379,18 @@
         let matchedEndpoint = null;
         for (const endpoint of API_ENDPOINTS) {
             if (url && url.includes(endpoint.pattern) && endpoint.page === currentPage) {
+                // Special case: questionTemplates should only be captured on root questions page
+                if (endpoint.key === 'questionTemplates' && !isQuestionsListPage()) {
+                    log(`⊘ Skipping ${endpoint.key} (not on root questions page)`);
+                    continue;
+                }
                 matchedEndpoint = endpoint;
                 break;
             }
         }
 
         if (matchedEndpoint) {
-            if (debugMode) {
-                console.log(`[CloudRadial Content Downloader] Intercepted ${matchedEndpoint.key}:`, url);
-            }
+            log(`→ [FETCH] Intercepting ${matchedEndpoint.key} from ${currentPage} page`);
         }
 
         const response = await originalFetch.apply(this, args);
@@ -360,9 +400,7 @@
                 const clonedResponse = response.clone();
                 const data = await clonedResponse.json();
 
-                if (debugMode) {
-                    console.log(`[CloudRadial Content Downloader] Data received for ${matchedEndpoint.key}:`, data);
-                }
+                log(`✓ [FETCH] ${matchedEndpoint.key} received`, { status: response.status, size: JSON.stringify(data).length });
 
                 // Store the data
                 interceptedData[matchedEndpoint.key] = {
@@ -373,7 +411,7 @@
                 updateStatusDisplay();
                 checkAndDownloadIfComplete();
             } catch (error) {
-                console.error(`[CloudRadial Content Downloader] Error processing ${matchedEndpoint.key}:`, error);
+                log(`✗ [FETCH] Error processing ${matchedEndpoint.key}:`, error.message);
             }
         }
 
@@ -399,22 +437,23 @@
             for (const endpoint of API_ENDPOINTS) {
                 // Must match both the URL pattern AND the current page type
                 if (url && url.includes(endpoint.pattern) && endpoint.page === currentPage) {
+                    // Special case: questionTemplates should only be captured on root questions page
+                    if (endpoint.key === 'questionTemplates' && !isQuestionsListPage()) {
+                        log(`⊘ Skipping ${endpoint.key} (not on root questions page)`);
+                        continue;
+                    }
                     matchedEndpoint = endpoint;
                     break;
                 }
             }
 
             if (matchedEndpoint && this.status === 200) {
-                if (debugMode) {
-                    console.log(`[CloudRadial Content Downloader] XHR Intercepted ${matchedEndpoint.key}:`, url);
-                }
+                log(`→ [XHR] Intercepting ${matchedEndpoint.key} from ${currentPage} page`);
 
                 try {
                     const data = JSON.parse(this.responseText);
 
-                    if (debugMode) {
-                        console.log(`[CloudRadial Content Downloader] XHR Data received for ${matchedEndpoint.key}:`, data);
-                    }
+                    log(`✓ [XHR] ${matchedEndpoint.key} received`, { status: this.status, size: this.responseText.length });
 
                     // Store the data
                     interceptedData[matchedEndpoint.key] = {
@@ -425,7 +464,7 @@
                     updateStatusDisplay();
                     checkAndDownloadIfComplete();
                 } catch (error) {
-                    console.error(`[CloudRadial Content Downloader] Error processing XHR ${matchedEndpoint.key}:`, error);
+                    log(`✗ [XHR] Error processing ${matchedEndpoint.key}:`, error.message);
                 }
             }
         });
@@ -557,25 +596,29 @@
      */
     function checkBatchDownloadState() {
         const batchState = localStorage.getItem('cloudradial-batch-download');
-        if (!batchState) return;
+        if (!batchState) {
+            log(`ℹ No batch download in progress`);
+            return;
+        }
 
         try {
             const state = JSON.parse(batchState);
-            const { ids, currentIndex } = state;
+            const { ids, currentIndex, type = 'content' } = state;
 
             // Check if batch download timed out (over 1 hour old)
             if (Date.now() - state.startTime > 3600000) {
-                console.log('[CloudRadial Content Downloader] Batch download timed out, clearing state');
+                log(`✗ Batch download timed out (over 1 hour), clearing state`);
                 localStorage.removeItem('cloudradial-batch-download');
                 return;
             }
 
-            console.log(`[CloudRadial Content Downloader] Batch download in progress: ${currentIndex + 1}/${ids.length}`);
+            log(`✓ Batch download in progress: ${currentIndex + 1}/${ids.length} (${type}s)`);
+            log(`  IDs: [${ids.join(', ')}]`);
             
             // Wait for auto-download to complete, then move to next
             // We'll check after the download completes
         } catch (error) {
-            console.error('[CloudRadial Content Downloader] Error parsing batch state:', error);
+            log(`✗ Error parsing batch state:`, error.message);
             localStorage.removeItem('cloudradial-batch-download');
         }
     }
@@ -585,7 +628,10 @@
      */
     function continueNextBatchDownload() {
         const batchState = localStorage.getItem('cloudradial-batch-download');
-        if (!batchState) return;
+        if (!batchState) {
+            log(`ℹ No batch download to continue`);
+            return;
+        }
 
         try {
             const state = JSON.parse(batchState);
@@ -594,7 +640,7 @@
 
             if (nextIndex >= ids.length) {
                 // Batch complete
-                console.log('[CloudRadial Content Downloader] Batch download complete!');
+                log(`✓ Batch download complete! Downloaded ${ids.length} items`);
                 showToast(`Batch download complete! Downloaded ${ids.length} items`);
                 localStorage.removeItem('cloudradial-batch-download');
                 return;
@@ -608,15 +654,16 @@
             const itemType = type === 'questions' ? 'question' : 'content';
             const urlPath = type === 'questions' ? '/app/admin/questions' : '/app/admin/content';
             
-            console.log(`[CloudRadial Content Downloader] Moving to next ${itemType} ${nextId} (${nextIndex + 1}/${ids.length})...`);
+            log(`→ Moving to next ${itemType}: ${nextId} (${nextIndex + 1}/${ids.length})`);
             showToast(`Downloading ${nextIndex + 1}/${ids.length}...`);
             
             // Small delay before navigation
             setTimeout(() => {
+                log(`→ Navigating to: ${urlPath}/${nextId}`);
                 window.location.href = `${urlPath}/${nextId}`;
             }, 1000);
         } catch (error) {
-            console.error('[CloudRadial Content Downloader] Error in batch continuation:', error);
+            log(`✗ Error in batch continuation:`, error.message);
             localStorage.removeItem('cloudradial-batch-download');
         }
     }
@@ -696,45 +743,30 @@
         statusContainer.appendChild(statusDisplay);
         statusContainer.appendChild(debugToggle);
 
-        // Try immediately and with retries
-        tryInsertIntoNavbar();
-        setTimeout(tryInsertIntoNavbar, 500);
-        setTimeout(tryInsertIntoNavbar, 1000);
-
-        // Add download buttons if on root content page
+        // Add small buttons to navbar (root pages only)
         if (isRootContentPage()) {
-            // Container for buttons
-            const btnContainer = document.createElement('div');
-            btnContainer.style.cssText = `
-                position: fixed;
-                bottom: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                display: flex;
-                gap: 10px;
-                z-index: 10000;
-            `;
-
-            // Download templates button
             const downloadTemplatesBtn = document.createElement('button');
             downloadTemplatesBtn.id = 'cloudradial-download-templates-btn';
-            downloadTemplatesBtn.textContent = 'Download Templates';
+            downloadTemplatesBtn.textContent = 'Templates';
+            downloadTemplatesBtn.title = 'Download templates list';
             downloadTemplatesBtn.style.cssText = `
-                padding: 12px 20px;
-                background: linear-gradient(to bottom, #10a37f, #0d8c6d) !important;
-                border: 1px solid #10a37f !important;
+                padding: 4px 10px;
+                margin-left: 12px;
+                background: #10a37f !important;
+                border: 1px solid #0d8c6d !important;
                 color: white !important;
-                border-radius: 6px;
+                border-radius: 4px;
                 cursor: pointer;
-                font-size: 13px;
-                font-weight: 600;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                font-size: 11px;
+                font-weight: 500;
+                height: auto;
+                line-height: 1;
             `;
             downloadTemplatesBtn.addEventListener('mouseover', () => {
-                downloadTemplatesBtn.style.background = 'linear-gradient(to bottom, #0d8c6d, #0a7558) !important';
+                downloadTemplatesBtn.style.background = '#0d8c6d !important';
             });
             downloadTemplatesBtn.addEventListener('mouseout', () => {
-                downloadTemplatesBtn.style.background = 'linear-gradient(to bottom, #10a37f, #0d8c6d) !important';
+                downloadTemplatesBtn.style.background = '#10a37f !important';
             });
             downloadTemplatesBtn.addEventListener('click', async () => {
                 if (interceptedData['templates']) {
@@ -755,84 +787,81 @@
                 }
             });
 
-            // Download all button
             const downloadAllBtn = document.createElement('button');
             downloadAllBtn.id = 'cloudradial-download-all-btn';
-            downloadAllBtn.textContent = 'Download All Content';
+            downloadAllBtn.textContent = 'Download All';
+            downloadAllBtn.title = 'Batch download all content';
             downloadAllBtn.style.cssText = `
-                padding: 12px 20px;
-                background: linear-gradient(to bottom, #10a37f, #0d8c6d) !important;
-                border: 1px solid #10a37f !important;
+                padding: 4px 10px;
+                margin-left: 8px;
+                background: #10a37f !important;
+                border: 1px solid #0d8c6d !important;
                 color: white !important;
-                border-radius: 6px;
+                border-radius: 4px;
                 cursor: pointer;
-                font-size: 13px;
-                font-weight: 600;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                font-size: 11px;
+                font-weight: 500;
+                height: auto;
+                line-height: 1;
             `;
             downloadAllBtn.addEventListener('mouseover', () => {
-                downloadAllBtn.style.background = 'linear-gradient(to bottom, #0d8c6d, #0a7558) !important';
+                downloadAllBtn.style.background = '#0d8c6d !important';
             });
             downloadAllBtn.addEventListener('mouseout', () => {
-                downloadAllBtn.style.background = 'linear-gradient(to bottom, #10a37f, #0d8c6d) !important';
+                downloadAllBtn.style.background = '#10a37f !important';
             });
             downloadAllBtn.addEventListener('click', async () => {
                 downloadAllBtn.disabled = true;
                 downloadAllBtn.textContent = 'Processing...';
                 await downloadAllContent();
                 downloadAllBtn.disabled = false;
-                downloadAllBtn.textContent = 'Download All Content';
+                downloadAllBtn.textContent = 'Download All';
             });
 
-            btnContainer.appendChild(downloadTemplatesBtn);
-            btnContainer.appendChild(downloadAllBtn);
-            document.body.appendChild(btnContainer);
+            statusContainer.appendChild(downloadTemplatesBtn);
+            statusContainer.appendChild(downloadAllBtn);
         }
 
         // Add download all button for questions list page
         if (isQuestionsListPage()) {
-            const btnContainer = document.createElement('div');
-            btnContainer.style.cssText = `
-                position: fixed;
-                bottom: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                display: flex;
-                gap: 10px;
-                z-index: 10000;
-            `;
-
             const downloadAllQuestionsBtn = document.createElement('button');
             downloadAllQuestionsBtn.id = 'cloudradial-download-all-questions-btn';
-            downloadAllQuestionsBtn.textContent = 'Download All Questions';
+            downloadAllQuestionsBtn.textContent = 'Download All';
+            downloadAllQuestionsBtn.title = 'Batch download all questions';
             downloadAllQuestionsBtn.style.cssText = `
-                padding: 12px 20px;
-                background: linear-gradient(to bottom, #10a37f, #0d8c6d) !important;
-                border: 1px solid #10a37f !important;
+                padding: 4px 10px;
+                margin-left: 12px;
+                background: #10a37f !important;
+                border: 1px solid #0d8c6d !important;
                 color: white !important;
-                border-radius: 6px;
+                border-radius: 4px;
                 cursor: pointer;
-                font-size: 13px;
-                font-weight: 600;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                font-size: 11px;
+                font-weight: 500;
+                height: auto;
+                line-height: 1;
             `;
             downloadAllQuestionsBtn.addEventListener('mouseover', () => {
-                downloadAllQuestionsBtn.style.background = 'linear-gradient(to bottom, #0d8c6d, #0a7558) !important';
+                downloadAllQuestionsBtn.style.background = '#0d8c6d !important';
             });
             downloadAllQuestionsBtn.addEventListener('mouseout', () => {
-                downloadAllQuestionsBtn.style.background = 'linear-gradient(to bottom, #10a37f, #0d8c6d) !important';
+                downloadAllQuestionsBtn.style.background = '#10a37f !important';
             });
             downloadAllQuestionsBtn.addEventListener('click', async () => {
                 downloadAllQuestionsBtn.disabled = true;
                 downloadAllQuestionsBtn.textContent = 'Processing...';
                 await downloadAllQuestions();
                 downloadAllQuestionsBtn.disabled = false;
-                downloadAllQuestionsBtn.textContent = 'Download All Questions';
+                downloadAllQuestionsBtn.textContent = 'Download All';
             });
 
-            btnContainer.appendChild(downloadAllQuestionsBtn);
-            document.body.appendChild(btnContainer);
+            statusContainer.appendChild(downloadAllQuestionsBtn);
         }
+
+        // Try immediately and with retries
+        tryInsertIntoNavbar();
+        setTimeout(tryInsertIntoNavbar, 500);
+        setTimeout(tryInsertIntoNavbar, 1000);
 
         // Toast notification
         const toast = document.createElement('div');
@@ -894,7 +923,7 @@
         // Check if we're in batch download mode
         checkBatchDownloadState();
 
-        console.log('[CloudRadial Content Downloader] UI created and monitoring...');
+        log(`✓ UI created and monitoring (Page: ${getCurrentPageType()})`);
     }
 
     // Watch for DOM and URL changes
@@ -902,7 +931,7 @@
     const observer = new MutationObserver(() => {
         if (window.location.href !== lastUrl) {
             lastUrl = window.location.href;
-            console.log('[CloudRadial Content Downloader] URL changed, checking for content ID...');
+            log(`→ URL changed to: ${window.location.pathname}`);
             handleContentIdChange();
         }
         // Re-insert if navbar structure changes
@@ -915,7 +944,7 @@
 
     // Also use popstate for history navigation
     window.addEventListener('popstate', () => {
-        console.log('[CloudRadial Content Downloader] Navigation detected');
+        log(`→ History navigation detected`);
         handleContentIdChange();
     });
 
@@ -926,6 +955,7 @@
         createUI();
     }
 
-    console.log('[CloudRadial Content Downloader] Script loaded and monitoring...');
-    console.log('[CloudRadial Content Downloader] Endpoints:', API_ENDPOINTS.map(e => e.key).join(', '));
+    log(`✓ Script initialized`);
+    log(`📡 Monitoring endpoints: ${API_ENDPOINTS.map(e => e.key).join(', ')}`);
+    log(`🌐 Current page: ${getCurrentPageType()} | URL: ${window.location.pathname}`);
 })();
