@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CloudRadial Content Downloader
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.13
+// @version      1.0.14
 // @description  Auto-download content data from CloudRadial admin portal
 // @author       warthurton
 // @match        https://portal.itiliti.io/app/admin/content*
@@ -863,7 +863,7 @@
 
             const downloadAllBtn = document.createElement('button');
             downloadAllBtn.id = 'cloudradial-download-all-btn';
-            downloadAllBtn.textContent = 'Download All';
+            downloadAllBtn.textContent = 'All';
             downloadAllBtn.title = 'Batch download all content';
             downloadAllBtn.style.cssText = `
                 padding: 4px 10px;
@@ -890,7 +890,7 @@
                 downloadAllBtn.textContent = 'Processing...';
                 await downloadAllContent();
                 downloadAllBtn.disabled = false;
-                downloadAllBtn.textContent = 'Download All';
+                downloadAllBtn.textContent = 'All';
             });
 
             const resetContentBtn = document.createElement('button');
