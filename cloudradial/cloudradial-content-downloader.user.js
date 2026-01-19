@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CloudRadial Content Downloader
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.4
+// @version      1.0.5
 // @description  Auto-download content data from CloudRadial admin portal
 // @author       warthurton
 // @match        https://portal.itiliti.io/app/admin/content*
@@ -354,6 +354,12 @@
         const dataCount = Object.keys(interceptedData).length;
         
         log(`📊 API check: ${dataCount}/${expectedCount} | Keys: ${Object.keys(interceptedData).join(', ') || 'none'}`);
+        
+        // Only auto-download on detail pages (when we have a currentContentId)
+        if (!currentContentId) {
+            log(`ℹ On root page, skipping auto-download`);
+            return;
+        }
         
         if (dataCount >= expectedCount) {
             // Clear the auto-download timer since we have all data
@@ -826,7 +832,7 @@
         if (isQuestionsListPage()) {
             const downloadAllQuestionsBtn = document.createElement('button');
             downloadAllQuestionsBtn.id = 'cloudradial-download-all-questions-btn';
-            downloadAllQuestionsBtn.textContent = 'Download All';
+            downloadAllQuestionsBtn.textContent = 'All';
             downloadAllQuestionsBtn.title = 'Batch download all questions';
             downloadAllQuestionsBtn.style.cssText = `
                 padding: 4px 10px;
@@ -852,7 +858,7 @@
                 downloadAllQuestionsBtn.textContent = 'Processing...';
                 await downloadAllQuestions();
                 downloadAllQuestionsBtn.disabled = false;
-                downloadAllQuestionsBtn.textContent = 'Download All';
+                downloadAllQuestionsBtn.textContent = 'All';
             });
 
             statusContainer.appendChild(downloadAllQuestionsBtn);
