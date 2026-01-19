@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CloudRadial Content Downloader
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.10
+// @version      1.0.11
 // @description  Auto-download content data from CloudRadial admin portal
 // @author       warthurton
 // @match        https://portal.itiliti.io/app/admin/content*
@@ -146,7 +146,7 @@
     async function createAndDownloadZip() {
         // Check if this content ID was recently downloaded (within 1 minute)
         const now = Date.now();
-        const contentId = currentContentId || 'unknown';
+        const contentId = currentContentId || 'all';
         const lastDownload = lastDownloadTimes[contentId];
         
         if (lastDownload && (now - lastDownload) < 60000) {
@@ -1109,6 +1109,38 @@
             updateButtonVisibility();
         }
 
+        // Add download button for tokens page
+        if (isTokensPage()) {
+            const downloadPSABtn = document.createElement('button');
+            downloadPSABtn.id = 'cloudradial-download-psa-btn';
+            downloadPSABtn.textContent = 'PSA';
+            downloadPSABtn.title = 'Download PSA data';
+            downloadPSABtn.style.cssText = `
+                padding: 4px 10px;
+                margin-left: 8px;
+                background: #10a37f !important;
+                border: 1px solid #0d8c6d !important;
+                color: white !important;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 11px;
+                font-weight: 500;
+                height: auto;
+                line-height: 1;
+            `;
+            downloadPSABtn.addEventListener('mouseover', () => {
+                downloadPSABtn.style.background = '#0d8c6d !important';
+            });
+            downloadPSABtn.addEventListener('mouseout', () => {
+                downloadPSABtn.style.background = '#10a37f !important';
+            });
+            downloadPSABtn.addEventListener('click', async () => {
+                createAndDownloadZip();
+            });
+
+            statusContainer.appendChild(downloadPSABtn);
+        }
+
         // Try immediately and with retries
         tryInsertIntoNavbar();
         setTimeout(tryInsertIntoNavbar, 500);
@@ -1133,39 +1165,6 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         `;
         document.body.appendChild(toast);
-
-        // Add manual download button for tokens page only (not questions - questions uses navbar buttons)
-        const pageType = getCurrentPageType();
-        if (pageType === 'tokens') {
-            const manualDownloadBtn = document.createElement('button');
-            manualDownloadBtn.id = 'cloudradial-manual-download-btn';
-            manualDownloadBtn.textContent = 'Download PSA Data';
-            manualDownloadBtn.style.cssText = `
-                position: fixed;
-                bottom: 20px;
-                right: 20px;
-                padding: 12px 20px;
-                background: linear-gradient(to bottom, #10a37f, #0d8c6d) !important;
-                border: 1px solid #10a37f !important;
-                color: white !important;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 13px;
-                font-weight: 600;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-                z-index: 10000;
-            `;
-            manualDownloadBtn.addEventListener('mouseover', () => {
-                manualDownloadBtn.style.background = 'linear-gradient(to bottom, #0d8c6d, #0a7558) !important';
-            });
-            manualDownloadBtn.addEventListener('mouseout', () => {
-                manualDownloadBtn.style.background = 'linear-gradient(to bottom, #10a37f, #0d8c6d) !important';
-            });
-            manualDownloadBtn.addEventListener('click', async () => {
-                createAndDownloadZip();
-            });
-            document.body.appendChild(manualDownloadBtn);
-        }
 
         // Initial content ID check
         handleContentIdChange();
