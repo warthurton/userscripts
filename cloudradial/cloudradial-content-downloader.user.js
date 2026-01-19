@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CloudRadial Content Downloader
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.5
+// @version      1.0.6
 // @description  Auto-download content data from CloudRadial admin portal
 // @author       warthurton
 // @match        https://portal.itiliti.io/app/admin/content*
@@ -385,11 +385,6 @@
         let matchedEndpoint = null;
         for (const endpoint of API_ENDPOINTS) {
             if (url && url.includes(endpoint.pattern) && endpoint.page === currentPage) {
-                // Special case: questionTemplates should only be captured on root questions page
-                if (endpoint.key === 'questionTemplates' && !isQuestionsListPage()) {
-                    log(`⊘ Skipping ${endpoint.key} (not on root questions page)`);
-                    continue;
-                }
                 matchedEndpoint = endpoint;
                 break;
             }
@@ -443,11 +438,6 @@
             for (const endpoint of API_ENDPOINTS) {
                 // Must match both the URL pattern AND the current page type
                 if (url && url.includes(endpoint.pattern) && endpoint.page === currentPage) {
-                    // Special case: questionTemplates should only be captured on root questions page
-                    if (endpoint.key === 'questionTemplates' && !isQuestionsListPage()) {
-                        log(`⊘ Skipping ${endpoint.key} (not on root questions page)`);
-                        continue;
-                    }
                     matchedEndpoint = endpoint;
                     break;
                 }
