@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Autotask - Close Tab Button
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.2
+// @version      1.3
 // @description  Adds a subtle Close Tab button to Autotask detail pages. Matches *Detail.mvc by default with configurable exclusions.
 // @author       warthurton
 // @match        https://ww*.autotask.net/Mvc/*Detail.mvc*

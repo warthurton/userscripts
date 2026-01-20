@@ -4,10 +4,8 @@ on:
     pull_request:
         types: [opened, synchronize, reopened]
         paths:
-            - "autotask/**/*.user.js"
-            - "chatgpt/**/*.user.js"
-            - "general/**/*.user.js"
-            - "!templates/**"
+            - "**/*.user.js"
+            - "!templates/**/*.user.js"
 
 permissions:
     contents: write
@@ -43,6 +41,6 @@ jobs:
               run: |
                   git config --local user.email "github-actions[bot]@users.noreply.github.com"
                   git config --local user.name "github-actions[bot]"
-                  git add autotask/ chatgpt/ general/
+                  git add **/*.user.js
                   git commit -m "chore: bump userscript versions"
                   git push
