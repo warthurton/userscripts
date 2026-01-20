@@ -99,24 +99,43 @@ function findUserscripts(dir) {
 }
 
 /**
+ * Get changed files in the PR
+ */
+function getChangedFiles() {
+    try {
+        // Get list of changed files in PR
+        const changedFiles = execSync('git diff --name-only origin/main...HEAD', { encoding: 'utf8' })
+            .split('\n')
+            .filter(f => f.endsWith('.user.js') && !f.includes('templates/'))
+            .map(f => path.join(process.cwd(), f));
+        return changedFiles;
+    } catch (error) {
+        console.error('Error getting changed files:', error.message);
+        return [];
+    }
+}
+
+/**
  * Main function
  */
 function main() {
     console.log('🔍 Checking userscript versions...\n');
 
-    const categories = ['autotask', 'chatgpt', 'general'];
-    let allUserscripts = [];
-
-    for (const category of categories) {
-        const categoryPath = path.join(process.cwd(), category);
-        if (fs.existsSync(categoryPath)) {
-            allUserscripts.push(...findUserscripts(categoryPath));
-        }
+    // Get only files that changed in this PR
+    const changedUserscripts = getChangedFiles();
+    
+    if (changedUserscripts.length === 0) {
+        console.log('ℹ️  No userscript files changed in this PR');
+        const fs = require('fs');
+        fs.appendFileSync(process.env.GITHUB_OUTPUT, 'changes=false\n');
+        return;
     }
+
+    console.log(`📝 Found ${changedUserscripts.length} changed userscript(s):\n${changedUserscripts.map(f => '  - ' + path.relative(process.cwd(), f)).join('\n')}\n`);
 
     let hasChanges = false;
 
-    for (const scriptPath of allUserscripts) {
+    for (const scriptPath of changedUserscripts) {
         const relativePath = path.relative(process.cwd(), scriptPath);
         console.log(`\n📄 Checking ${relativePath}`);
 
