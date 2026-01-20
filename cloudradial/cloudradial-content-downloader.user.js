@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CloudRadial Content Downloader
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.15
+// @version      1.0.16
 // @description  Auto-download content data from CloudRadial admin portal
 // @author       warthurton
 // @match        https://portal.itiliti.io/app/admin/content*
@@ -792,27 +792,58 @@
             gap: 8px;
         `;
 
-        const debugToggle = document.createElement('span');
-        debugToggle.style.cssText = `
-            font-size: 10px;
-            color: #999;
-            cursor: pointer;
-            text-decoration: underline;
-            user-select: none;
+        // Debug toggle container
+        const debugContainer = document.createElement('div');
+        debugContainer.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 4px;
             margin-left: 8px;
             border-left: 1px solid #ddd;
             padding-left: 8px;
         `;
-        debugToggle.textContent = 'debug';
-        debugToggle.title = 'Toggle debug logs in console';
-        debugToggle.addEventListener('click', () => {
-            debugMode = !debugMode;
+        
+        const debugCheckbox = document.createElement('input');
+        debugCheckbox.type = 'checkbox';
+        debugCheckbox.id = 'cloudradial-debug-checkbox';
+        debugCheckbox.checked = debugMode;
+        debugCheckbox.style.cssText = `
+            cursor: pointer;
+            margin: 0;
+        `;
+        debugCheckbox.title = 'Toggle debug logs in console';
+        
+        const debugLabel = document.createElement('label');
+        debugLabel.htmlFor = 'cloudradial-debug-checkbox';
+        debugLabel.textContent = 'debug';
+        debugLabel.style.cssText = `
+            font-size: 10px;
+            color: #999;
+            cursor: pointer;
+            user-select: none;
+        `;
+        
+        debugCheckbox.addEventListener('change', () => {
+            debugMode = debugCheckbox.checked;
             console.log(`[CloudRadial Content Downloader] Debug mode ${debugMode ? 'enabled' : 'disabled'}`);
             showToast(`Debug mode ${debugMode ? 'enabled' : 'disabled'}`);
         });
+        
+        debugContainer.appendChild(debugCheckbox);
+        debugContainer.appendChild(debugLabel);
 
         statusContainer.appendChild(statusDisplay);
-        statusContainer.appendChild(debugToggle);
+        statusContainer.appendChild(debugContainer);
+        
+        // Add click handler to re-evaluate button visibility
+        statusContainer.addEventListener('click', (e) => {
+            // Don't interfere with checkbox clicks
+            if (e.target !== debugCheckbox) {
+                log('UI clicked, re-evaluating button visibility');
+                updateButtonVisibility();
+            }
+        });
+        statusContainer.style.cursor = 'pointer';
 
         // Create ALL buttons upfront (visibility controlled by updateButtonVisibility)
         
