@@ -67,12 +67,49 @@ function compareVersions(versionA, versionB) {
 function updateVersion(filePath, newMajor, newMinor) {
     let content = fs.readFileSync(filePath, 'utf8');
     const newVersion = formatVersion(newMajor, newMinor);
+    const modifiedDate = new Date().toISOString();
 
     // Replace version in header
     content = content.replace(
         /@version\s+([\d.]+)/,
         `@version      ${newVersion}`
     );
+
+    // Add or update modified date after version line
+    const lines = content.split('\n');
+    let versionLineIndex = -1;
+    let modifiedLineIndex = -1;
+
+    for (let i = 0; i < lines.length; i++) {
+        if (lines[i].includes('@version')) {
+            versionLineIndex = i;
+        }
+        if (lines[i].includes('@modified')) {
+            modifiedLineIndex = i;
+        }
+    }
+
+    if (versionLineIndex >= 0) {
+        const modifiedLine = `// @modified     ${modifiedDate}`;
+        
+        // Check if @modified exists right after @version
+        if (modifiedLineIndex === versionLineIndex + 1) {
+            // Update existing modified line
+            lines[modifiedLineIndex] = modifiedLine;
+        } else {
+            // Remove any other @modified lines
+            for (let i = lines.length - 1; i >= 0; i--) {
+                if (lines[i].includes('@modified')) {
+                    lines.splice(i, 1);
+                    if (i < versionLineIndex) versionLineIndex--;
+                }
+            }
+            // Insert new modified line after version
+            lines.splice(versionLineIndex + 1, 0, modifiedLine);
+        }
+        
+        content = lines.join('\n');
+    }
 
     fs.writeFileSync(filePath, content, 'utf8');
     return newVersion;

@@ -7,10 +7,20 @@
 
 BUILD_DIR="build"
 
+# Get the script directory and repo root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+cd "$REPO_ROOT" || exit 1
+
+echo "[build] Working directory: $REPO_ROOT"
+
 if [ ! -d "$BUILD_DIR" ]; then
+    echo "[build] Creating build directory: $REPO_ROOT/$BUILD_DIR"
     mkdir -p "$BUILD_DIR"
 fi
 TARGET_PATH="$BUILD_DIR"
+
+echo "[build] Target directory: $REPO_ROOT/$TARGET_PATH"
 
 # Check if a specific file was provided
 if [ -n "$1" ]; then
@@ -48,11 +58,47 @@ for file in $USER_SCRIPTS; do
         # Extract just the filename
         FILENAME=$(basename "$file")
         
-        # Copy file to build directory
-        cp "$file" "$TARGET_PATH/$FILENAME"
-        echo "[build] Copied: $file -> $FILENAME"
-        COUNT=$((COUNT + 1))
+        # Get full paths for verification
+        SOURCE="$REPO_ROOT/$file"
+        DEST="$REPO_ROOT/$TARGET_PATH/$FILENAME"
+        
+        # Get current date/time in ISO 8601 format
+        MODIFIED_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        
+        # Copy file to build directory and add/update modified date
+        if cp "$file" "$TARGET_PATH/$FILENAME.tmp"; then
+            # Add or update the modified date comment after the version line
+            awk -v date="$MODIFIED_DATE" '
+/@version/ && !modified_added {
+    print;
+    getline;
+    if ($0 ~ /@modified/) {
+        print "// @modified     " date;
+    } else {
+        print "// @modified     " date;
+        print;
+    }
+    modified_added=1;
+    next;
+}
+/@modified/ { next; }
+{ print; }
+            ' "$TARGET_PATH/$FILENAME.tmp" > "$DEST"
+            rm "$TARGET_PATH/$FILENAME.tmp"
+            
+            echo "[build] ✓ Copied: $file -> $TARGET_PATH/$FILENAME"
+            # Verify the copy
+            if [ -f "$DEST" ]; then
+                SIZE=$(wc -c < "$DEST" | tr -d ' ')
+                echo "[build]   → Verified: $DEST ($SIZE bytes, modified: $MODIFIED_DATE)"
+            else
+                echo "[build]   ⚠ Warning: Destination file not found: $DEST"
+            fi
+            COUNT=$((COUNT + 1))
+        else
+            echo "[build] ✗ Failed to copy: $file"
+        fi
     fi
 done
 
-echo "[build] Copy complete! ($COUNT files copied)"
+echo "[build] Copy complete! ($COUNT files copied to $REPO_ROOT/$TARGET_PATH)"
