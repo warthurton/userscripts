@@ -7,10 +7,20 @@
 
 BUILD_DIR="build"
 
+# Get the script directory and repo root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+cd "$REPO_ROOT" || exit 1
+
+echo "[build] Working directory: $REPO_ROOT"
+
 if [ ! -d "$BUILD_DIR" ]; then
+    echo "[build] Creating build directory: $REPO_ROOT/$BUILD_DIR"
     mkdir -p "$BUILD_DIR"
 fi
 TARGET_PATH="$BUILD_DIR"
+
+echo "[build] Target directory: $REPO_ROOT/$TARGET_PATH"
 
 # Check if a specific file was provided
 if [ -n "$1" ]; then
@@ -48,11 +58,25 @@ for file in $USER_SCRIPTS; do
         # Extract just the filename
         FILENAME=$(basename "$file")
         
+        # Get full paths for verification
+        SOURCE="$REPO_ROOT/$file"
+        DEST="$REPO_ROOT/$TARGET_PATH/$FILENAME"
+        
         # Copy file to build directory
-        cp "$file" "$TARGET_PATH/$FILENAME"
-        echo "[build] Copied: $file -> $FILENAME"
-        COUNT=$((COUNT + 1))
+        if cp "$file" "$TARGET_PATH/$FILENAME"; then
+            echo "[build] ✓ Copied: $file -> $TARGET_PATH/$FILENAME"
+            # Verify the copy
+            if [ -f "$DEST" ]; then
+                SIZE=$(wc -c < "$DEST" | tr -d ' ')
+                echo "[build]   → Verified: $DEST ($SIZE bytes)"
+            else
+                echo "[build]   ⚠ Warning: Destination file not found: $DEST"
+            fi
+            COUNT=$((COUNT + 1))
+        else
+            echo "[build] ✗ Failed to copy: $file"
+        fi
     fi
 done
 
-echo "[build] Copy complete! ($COUNT files copied)"
+echo "[build] Copy complete! ($COUNT files copied to $REPO_ROOT/$TARGET_PATH)"

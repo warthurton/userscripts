@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChatGPT Admin Usage Downloader
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.4
+// @version      1.6
 // @description  Auto-download analytics data and statistics from ChatGPT admin usage page
 // @author       warthurton
 // @match        https://chatgpt.com/admin/usage
@@ -41,84 +41,103 @@
      * Extract statistics from the page DOM
      */
     function extractPageStatistics() {
+        console.log('[Analytics Downloader] Extracting page statistics...');
         const stats = {
             timestamp: new Date().toISOString(),
             metrics: {}
         };
 
-        // Find all metric containers
-        const containers = document.querySelectorAll('.border-token-border-default.my-6.flex.min-h-\\[80px\\]');
-        
-        // If the specific class query doesn't work, try broader search
-        let metricElements = [];
-        if (containers.length === 0) {
-            // Look for containers with the statistics structure
-            const allContainers = document.querySelectorAll('div.my-6.flex.min-h-\\[80px\\], div[class*="my-6"][class*="flex"][class*="min-h"]');
-            for (const container of allContainers) {
-                const metrics = container.querySelectorAll('.text-token-text-secondary.text-sm');
-                if (metrics.length >= 2) {
-                    metricElements.push(container);
-                }
-            }
-        } else {
-            metricElements = Array.from(containers);
-        }
-
-        // If still no results, try a more generic approach
-        if (metricElements.length === 0) {
-            const allDivs = document.querySelectorAll('div');
-            for (const div of allDivs) {
-                const labelElements = div.querySelectorAll('.text-token-text-secondary.text-sm');
-                const valueElements = div.querySelectorAll('.text-xl');
-                if (labelElements.length >= 2 && valueElements.length >= 2) {
-                    metricElements.push(div);
-                    break;
-                }
-            }
-        }
-
-        // Process each metric container
-        for (const container of metricElements) {
-            const metricDivs = container.querySelectorAll('.flex.w-0.grow.flex-col.justify-between');
+        try {
+            // Strategy 1: Look for text-xl elements (the values) and traverse up to find the container
+            const valueElements = document.querySelectorAll('.text-xl');
+            console.log(`[Analytics Downloader] Found ${valueElements.length} .text-xl elements`);
             
-            for (const metricDiv of metricDivs) {
-                // Get label
-                const labelElement = metricDiv.querySelector('.text-token-text-secondary.text-sm');
-                if (!labelElement) continue;
-                
-                const label = labelElement.textContent.trim();
-                
-                // Get value
-                const valueElement = metricDiv.querySelector('.text-xl');
-                if (!valueElement) continue;
-                
-                const value = valueElement.textContent.trim();
-                
-                // Get comparison percentage if exists
-                let comparison = null;
-                const comparisonContainer = metricDiv.querySelector('.inline-flex.items-center.text-green-500, .inline-flex.items-center.text-red-500');
-                if (comparisonContainer) {
-                    const percentageSpan = comparisonContainer.querySelector('span');
-                    if (percentageSpan) {
-                        comparison = {
-                            percentage: percentageSpan.textContent.trim(),
-                            trend: comparisonContainer.classList.contains('text-green-500') ? 'positive' : 'negative'
-                        };
+            if (valueElements.length === 0) {
+                console.warn('[Analytics Downloader] No .text-xl elements found - the page may not be fully loaded');
+                return stats;
+            }
+            
+            let processedCount = 0;
+            for (const valueEl of valueElements) {
+                try {
+                    // Look for the parent container with the metric structure
+                    let parent = valueEl.closest('.flex.w-0.grow.flex-col.justify-between');
+                    if (!parent) {
+                        parent = valueEl.closest('div[class*="flex"][class*="flex-col"]');
                     }
-                }
-                
-                // Create a key from the label (lowercase, replace spaces with underscores)
-                const key = label.toLowerCase().replace(/\s+/g, '_');
-                
-                stats.metrics[key] = {
-                    label: label,
-                    value: value
-                };
-                
-                if (comparison) {
-                    stats.metrics[key].comparison = comparison;
+                    
+                    if (!parent) {
+                        console.log('[Analytics Downloader] No parent found for .text-xl element:', valueEl.textContent.trim());
+                        continue;
+                    }
+                    
+                    // Get label - look for text-sm with secondary color
+                    const labelElement = parent.querySelector('.text-token-text-secondary.text-sm, .text-sm');
+                    if (!labelElement) {
+                        console.log('[Analytics Downloader] No label element found in parent');
+                        continue;
+                    }
+                    
+                    const label = labelElement.textContent.trim();
+                    
+                    // Skip if label doesn't look like a metric we want
+                    if (!label || label.length > 50) {
+                        console.log('[Analytics Downloader] Skipping label (too long or empty):', label);
+                        continue;
+                    }
+                    
+                    const value = valueEl.textContent.trim();
+                    console.log(`[Analytics Downloader] Processing: label="${label}", value="${value}"`);
+                    
+                    // Get comparison percentage if exists
+                    let comparison = null;
+                    const comparisonContainer = parent.querySelector('.inline-flex.items-center[class*="text-green"], .inline-flex.items-center[class*="text-red"]');
+                    if (comparisonContainer) {
+                        const percentageSpans = comparisonContainer.querySelectorAll('span');
+                        for (const span of percentageSpans) {
+                            const text = span.textContent.trim();
+                            if (text.includes('%')) {
+                                comparison = {
+                                    percentage: text,
+                                    trend: comparisonContainer.className.includes('green') ? 'positive' : 'negative'
+                                };
+                                console.log(`[Analytics Downloader] Found comparison: ${text} (${comparison.trend})`);
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // Create a key from the label (lowercase, replace spaces with underscores)
+                    const key = label.toLowerCase().replace(/\s+/g, '_').replace(/[^\w_]/g, '');
+                    
+                    if (key && value) {
+                        stats.metrics[key] = {
+                            label: label,
+                            value: value
+                        };
+                        
+                        if (comparison) {
+                            stats.metrics[key].comparison = comparison;
+                        }
+                        
+                        processedCount++;
+                        console.log(`[Analytics Downloader] ✓ Captured metric #${processedCount}: ${label} = ${value}`, comparison || '');
+                    }
+                } catch (innerError) {
+                    console.error('[Analytics Downloader] Error processing value element:', innerError);
                 }
             }
+
+            const metricCount = Object.keys(stats.metrics).length;
+            console.log(`[Analytics Downloader] Extracted ${metricCount} metrics total`);
+            
+            if (metricCount === 0) {
+                console.warn('[Analytics Downloader] No statistics found on page. Make sure you are on the usage page and the statistics section is loaded.');
+                console.log('[Analytics Downloader] DOM structure sample:', document.body.innerHTML.substring(0, 500));
+            }
+        } catch (error) {
+            console.error('[Analytics Downloader] Error in extractPageStatistics:', error);
+            console.error('[Analytics Downloader] Stack trace:', error.stack);
         }
 
         return stats;
@@ -154,12 +173,22 @@
         }
 
         // Extract and add page statistics
-        const pageStats = extractPageStatistics();
-        if (pageStats.metrics && Object.keys(pageStats.metrics).length > 0) {
-            const statsFilename = `${orgPrefix}chatgpt-statistics-${startDate}.json`;
-            zip.file(statsFilename, JSON.stringify(pageStats, null, 2));
-            count++;
-            console.log('[Analytics Downloader] Added page statistics to zip');
+        try {
+            const pageStats = extractPageStatistics();
+            console.log('[Analytics Downloader] Page stats extraction complete');
+            console.log('[Analytics Downloader] Page stats result:', JSON.stringify(pageStats, null, 2));
+            
+            if (pageStats.metrics && Object.keys(pageStats.metrics).length > 0) {
+                const statsFilename = `${orgPrefix}chatgpt-statistics-${startDate}.json`;
+                zip.file(statsFilename, JSON.stringify(pageStats, null, 2));
+                count++;
+                console.log('[Analytics Downloader] ✓ Successfully added page statistics to zip:', statsFilename);
+            } else {
+                console.warn('[Analytics Downloader] ⚠ No page statistics to add - metrics object is empty');
+            }
+        } catch (statsError) {
+            console.error('[Analytics Downloader] Error extracting or adding page statistics:', statsError);
+            console.error('[Analytics Downloader] Stack trace:', statsError.stack);
         }
 
         // Fetch missing reporting data if requested
