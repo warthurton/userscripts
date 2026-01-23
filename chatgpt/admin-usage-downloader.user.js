@@ -32,28 +32,54 @@
     // Store intercepted data
     const interceptedData = {};
     const reportingData = {};
-    let debugMode = true;
+    let debugMode = false;
+    let debugTimeout = null;
     let authToken = null;
     let downloadButton = null;
     let currentDate = null;
+    let debugCheckbox = null;
+
+    // Version info
+    const VERSION = GM_info?.script?.version || '1.6';
+
+    /**
+     * Reset debug timer - auto-disable debug after 5 minutes
+     */
+    function resetDebugTimer() {
+        if (debugTimeout) {
+            clearTimeout(debugTimeout);
+        }
+        if (debugMode) {
+            debugTimeout = setTimeout(() => {
+                debugMode = false;
+                if (debugCheckbox) {
+                    debugCheckbox.checked = false;
+                }
+                console.log('[Analytics Downloader] Debug mode auto-disabled after 5 minutes of inactivity');
+            }, 5 * 60 * 1000); // 5 minutes
+        }
+    }
 
     /**
      * Extract statistics from the page DOM
      */
     function extractPageStatistics() {
-        console.log('[Analytics Downloader] Extracting page statistics...');
+        if (debugMode) console.log('[Analytics Downloader] Extracting page statistics...');
+        const now = new Date();
+        const localTimestamp = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().slice(0, -1);
         const stats = {
-            timestamp: new Date().toISOString(),
+            timestamp: localTimestamp,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             metrics: {}
         };
 
         try {
             // Strategy 1: Look for text-xl elements (the values) and traverse up to find the container
             const valueElements = document.querySelectorAll('.text-xl');
-            console.log(`[Analytics Downloader] Found ${valueElements.length} .text-xl elements`);
+            if (debugMode) console.log(`[Analytics Downloader] Found ${valueElements.length} .text-xl elements`);
             
             if (valueElements.length === 0) {
-                console.warn('[Analytics Downloader] No .text-xl elements found - the page may not be fully loaded');
+                if (debugMode) console.warn('[Analytics Downloader] No .text-xl elements found - the page may not be fully loaded');
                 return stats;
             }
             
@@ -67,14 +93,14 @@
                     }
                     
                     if (!parent) {
-                        console.log('[Analytics Downloader] No parent found for .text-xl element:', valueEl.textContent.trim());
+                        if (debugMode) console.log('[Analytics Downloader] No parent found for .text-xl element:', valueEl.textContent.trim());
                         continue;
                     }
                     
                     // Get label - look for text-sm with secondary color
                     const labelElement = parent.querySelector('.text-token-text-secondary.text-sm, .text-sm');
                     if (!labelElement) {
-                        console.log('[Analytics Downloader] No label element found in parent');
+                        if (debugMode) console.log('[Analytics Downloader] No label element found in parent');
                         continue;
                     }
                     
@@ -82,12 +108,12 @@
                     
                     // Skip if label doesn't look like a metric we want
                     if (!label || label.length > 50) {
-                        console.log('[Analytics Downloader] Skipping label (too long or empty):', label);
+                        if (debugMode) console.log('[Analytics Downloader] Skipping label (too long or empty):', label);
                         continue;
                     }
                     
                     const value = valueEl.textContent.trim();
-                    console.log(`[Analytics Downloader] Processing: label="${label}", value="${value}"`);
+                    if (debugMode) console.log(`[Analytics Downloader] Processing: label="${label}", value="${value}"`);
                     
                     // Get comparison percentage if exists
                     let comparison = null;
@@ -101,7 +127,7 @@
                                     percentage: text,
                                     trend: comparisonContainer.className.includes('green') ? 'positive' : 'negative'
                                 };
-                                console.log(`[Analytics Downloader] Found comparison: ${text} (${comparison.trend})`);
+                                if (debugMode) console.log(`[Analytics Downloader] Found comparison: ${text} (${comparison.trend})`);
                                 break;
                             }
                         }
@@ -121,7 +147,7 @@
                         }
                         
                         processedCount++;
-                        console.log(`[Analytics Downloader] ✓ Captured metric #${processedCount}: ${label} = ${value}`, comparison || '');
+                        if (debugMode) console.log(`[Analytics Downloader] ✓ Captured metric #${processedCount}: ${label} = ${value}`, comparison || '');
                     }
                 } catch (innerError) {
                     console.error('[Analytics Downloader] Error processing value element:', innerError);
@@ -129,9 +155,9 @@
             }
 
             const metricCount = Object.keys(stats.metrics).length;
-            console.log(`[Analytics Downloader] Extracted ${metricCount} metrics total`);
+            if (debugMode) console.log(`[Analytics Downloader] Extracted ${metricCount} metrics total`);
             
-            if (metricCount === 0) {
+            if (metricCount === 0 && debugMode) {
                 console.warn('[Analytics Downloader] No statistics found on page. Make sure you are on the usage page and the statistics section is loaded.');
                 console.log('[Analytics Downloader] DOM structure sample:', document.body.innerHTML.substring(0, 500));
             }
@@ -175,21 +201,26 @@
         // Extract and add page statistics
         try {
             const pageStats = extractPageStatistics();
-            console.log('[Analytics Downloader] Page stats extraction complete');
-            console.log('[Analytics Downloader] Page stats result:', JSON.stringify(pageStats, null, 2));
+            if (debugMode) {
+                console.log('[Analytics Downloader] Page stats extraction complete');
+                console.log('[Analytics Downloader] Page stats result:', JSON.stringify(pageStats, null, 2));
+            }
             
             if (pageStats.metrics && Object.keys(pageStats.metrics).length > 0) {
                 const statsFilename = `${orgPrefix}chatgpt-statistics-${startDate}.json`;
                 zip.file(statsFilename, JSON.stringify(pageStats, null, 2));
                 count++;
-                console.log('[Analytics Downloader] ✓ Successfully added page statistics to zip:', statsFilename);
+                if (debugMode) console.log('[Analytics Downloader] ✓ Successfully added page statistics to zip:', statsFilename);
             } else {
-                console.warn('[Analytics Downloader] ⚠ No page statistics to add - metrics object is empty');
+                if (debugMode) console.warn('[Analytics Downloader] ⚠ No page statistics to add - metrics object is empty');
             }
         } catch (statsError) {
             console.error('[Analytics Downloader] Error extracting or adding page statistics:', statsError);
-            console.error('[Analytics Downloader] Stack trace:', statsError.stack);
+            if (debugMode) console.error('[Analytics Downloader] Stack trace:', statsError.stack);
         }
+
+        // Reset debug timer
+        resetDebugTimer();
 
         // Fetch missing reporting data if requested
         if (fetchMissing) {
@@ -209,7 +240,7 @@
                 if (!reportingData[reportType] && ACCOUNT_ID) {
                     try {
                         const reportUrl = `https://chatgpt.com/backend-api/accounts/${ACCOUNT_ID}/reporting?period=monthly&period_start=${fetchStartDate}&report_type=${reportType}`;
-                        console.log(`[Analytics Downloader] Fetching reporting data: ${reportType}`);
+                        if (debugMode) console.log(`[Analytics Downloader] Fetching reporting data: ${reportType}`);
 
                         const headers = {};
                         if (authToken) {
@@ -239,9 +270,9 @@
                                 zip.file(filename, JSON.stringify(data, null, 2));
                             }
                             count++;
-                            console.log(`[Analytics Downloader] Added to zip: ${filename}`);
+                            if (debugMode) console.log(`[Analytics Downloader] Added to zip: ${filename}`);
                         } else {
-                            console.warn(`[Analytics Downloader] Failed to fetch ${reportType}: ${response.status}`);
+                            if (debugMode) console.warn(`[Analytics Downloader] Failed to fetch ${reportType}: ${response.status}`);
                         }
                     } catch (error) {
                         console.error(`[Analytics Downloader] Error fetching reporting ${reportType}:`, error);
@@ -267,7 +298,6 @@
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
-            console.log(`[Analytics Downloader] Downloaded zip with ${count} file(s)`);
             showToast(`Downloaded ${count} file(s) as zip`);
             return count;
         } else {
@@ -397,7 +427,7 @@
                 const accountId = extractAccountId(url);
                 if (accountId) {
                     ACCOUNT_ID = accountId;
-                    console.log('[Analytics Downloader] Account ID captured:', ACCOUNT_ID);
+                    if (debugMode) console.log('[Analytics Downloader] Account ID captured:', ACCOUNT_ID);
                 }
             }
 
@@ -408,13 +438,13 @@
                     const auth = headers.get('Authorization');
                     if (auth && !authToken) {
                         authToken = auth;
-                        console.log('[Analytics Downloader] Auth token captured');
+                        if (debugMode) console.log('[Analytics Downloader] Auth token captured');
                     }
                 } else if (typeof headers === 'object') {
                     const auth = headers['Authorization'] || headers['authorization'];
                     if (auth && !authToken) {
                         authToken = auth;
-                        console.log('[Analytics Downloader] Auth token captured');
+                        if (debugMode) console.log('[Analytics Downloader] Auth token captured');
                     }
                 }
             }
@@ -433,13 +463,13 @@
             const periodStart = urlObj.searchParams.get('period_start');
 
             if (reportType && periodStart) {
-                console.log(`[Analytics Downloader] Intercepted reporting ${reportType}:`, url);
+                if (debugMode) console.log(`[Analytics Downloader] Intercepted reporting ${reportType}:`, url);
 
                 try {
                     const clonedResponse = response.clone();
                     const data = await clonedResponse.json();
 
-                    console.log(`[Analytics Downloader] Reporting data received for ${reportType}:`, data);
+                    if (debugMode) console.log(`[Analytics Downloader] Reporting data received for ${reportType}:`, data);
 
                     const orgPrefix = getOrgPrefix();
                     let csvContent = null;
@@ -489,16 +519,18 @@
         // Check if this is one of our target endpoints
         for (const endpoint of ENDPOINTS) {
             if (url && url.includes(`/analytics/${endpoint.key}`)) {
-                console.log(`[Analytics Downloader] Intercepted ${endpoint.key}:`, url);
+                if (debugMode) console.log(`[Analytics Downloader] Intercepted ${endpoint.key}:`, url);
 
                 const startDate = getStartDateFromUrl(url);
                 if (startDate) {
                     // Check if date changed - clear old data if so
                     if (currentDate && currentDate !== startDate) {
-                        console.log(`[Analytics Downloader] Date changed from ${currentDate} to ${startDate}, clearing old data`);
+                        if (debugMode) console.log(`[Analytics Downloader] Date changed from ${currentDate} to ${startDate}, clearing old data`);
                         // Clear old intercepted data
                         Object.keys(interceptedData).forEach(key => delete interceptedData[key]);
                         Object.keys(reportingData).forEach(key => delete reportingData[key]);
+                        // Reset debug timer on date change
+                        resetDebugTimer();
                     }
                     currentDate = startDate;
 
@@ -506,7 +538,7 @@
                         const clonedResponse = response.clone();
                         const data = await clonedResponse.json();
 
-                        console.log(`[Analytics Downloader] Data received for ${endpoint.key}:`, data);
+                        if (debugMode) console.log(`[Analytics Downloader] Data received for ${endpoint.key}:`, data);
 
                         const orgPrefix = getOrgPrefix();
 
@@ -548,23 +580,25 @@
             // Check if this is one of our target endpoints
             for (const endpoint of ENDPOINTS) {
                 if (url && url.includes(`/analytics/${endpoint.key}`)) {
-                    console.log(`[Analytics Downloader] XHR Intercepted ${endpoint.key}:`, url);
+                    if (debugMode) console.log(`[Analytics Downloader] XHR Intercepted ${endpoint.key}:`, url);
 
                     const startDate = getStartDateFromUrl(url);
                     if (startDate && this.status === 200) {
                         // Check if date changed - clear old data if so
                         if (currentDate && currentDate !== startDate) {
-                            console.log(`[Analytics Downloader] Date changed from ${currentDate} to ${startDate}, clearing old data`);
+                            if (debugMode) console.log(`[Analytics Downloader] Date changed from ${currentDate} to ${startDate}, clearing old data`);
                             // Clear old intercepted data
                             Object.keys(interceptedData).forEach(key => delete interceptedData[key]);
                             Object.keys(reportingData).forEach(key => delete reportingData[key]);
+                            // Reset debug timer on date change
+                            resetDebugTimer();
                         }
                         currentDate = startDate;
 
                         try {
                             const data = JSON.parse(this.responseText);
 
-                            console.log(`[Analytics Downloader] XHR Data received for ${endpoint.key}:`, data);
+                            if (debugMode) console.log(`[Analytics Downloader] XHR Data received for ${endpoint.key}:`, data);
 
                             const orgPrefix = getOrgPrefix();
 
@@ -612,24 +646,40 @@
         info.innerHTML = '<span style="color: #10a37f; font-weight: 500;">📊</span><span>Date: <span style="color: #999;">waiting...</span> | Files: <span style="color: #10a37f; font-weight: 600;">0</span></span>';
         info.id = 'data-count-info';
 
-        const debugToggle = document.createElement('span');
-        debugToggle.style.cssText = `
+        // Debug checkbox
+        const debugLabel = document.createElement('label');
+        debugLabel.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 4px;
             font-size: 10px;
             color: #999;
             cursor: pointer;
-            text-decoration: underline;
             user-select: none;
         `;
-        debugToggle.textContent = 'debug';
-        debugToggle.title = 'Toggle debug logs in console';
-        debugToggle.addEventListener('click', () => {
-            debugMode = !debugMode;
+        
+        debugCheckbox = document.createElement('input');
+        debugCheckbox.type = 'checkbox';
+        debugCheckbox.checked = false;
+        debugCheckbox.style.cssText = `
+            cursor: pointer;
+            margin: 0;
+        `;
+        debugCheckbox.addEventListener('change', () => {
+            debugMode = debugCheckbox.checked;
             console.log(`[Analytics Downloader] Debug mode ${debugMode ? 'enabled' : 'disabled'}`);
             showToast(`Debug mode ${debugMode ? 'enabled' : 'disabled'}`);
+            resetDebugTimer();
         });
+        
+        const debugLabelText = document.createElement('span');
+        debugLabelText.textContent = 'debug';
+        debugLabel.title = 'Enable debug logs in console (auto-disables after 5 min)';
+        debugLabel.appendChild(debugCheckbox);
+        debugLabel.appendChild(debugLabelText);
 
         infoContainer.appendChild(info);
-        infoContainer.appendChild(debugToggle);
+        infoContainer.appendChild(debugLabel);
 
         // Create download button to go under Export button
         downloadButton = document.createElement('button');
@@ -689,7 +739,7 @@
                 if (parentContainer) {
                     // Insert after the date picker's parent flex container
                     parentContainer.parentElement.insertBefore(infoContainer, parentContainer.nextSibling);
-                    console.log('[Analytics Downloader] Info display inserted under date picker');
+                    if (debugMode) console.log('[Analytics Downloader] Info display inserted under date picker');
                 }
             }
 
@@ -701,7 +751,7 @@
             if (exportButton && !document.querySelector('#analytics-download-btn')) {
                 downloadButton.id = 'analytics-download-btn';
                 exportButton.parentElement.appendChild(downloadButton);
-                console.log('[Analytics Downloader] Download button inserted after Export button');
+                if (debugMode) console.log('[Analytics Downloader] Download button inserted after Export button');
             }
         }
 
@@ -742,7 +792,10 @@
         createUI();
     }
 
-    console.log('[Analytics Downloader] Script loaded and monitoring...');
-    console.log('[Analytics Downloader] Looking for URLs matching:', BASE_URL_PATTERN);
-    console.log('[Analytics Downloader] Endpoints:', ENDPOINTS.map(e => e.key).join(', '));
+    // Always log version on load
+    console.log(`[Analytics Downloader] v${VERSION} loaded`);
+    if (debugMode) {
+        console.log('[Analytics Downloader] Looking for URLs matching:', BASE_URL_PATTERN);
+        console.log('[Analytics Downloader] Endpoints:', ENDPOINTS.map(e => e.key).join(', '));
+    }
 })();
