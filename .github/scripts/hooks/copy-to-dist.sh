@@ -69,24 +69,20 @@ for file in $USER_SCRIPTS; do
         if cp "$file" "$TARGET_PATH/$FILENAME.tmp"; then
             # Add or update the modified date comment after the version line
             awk -v date="$MODIFIED_DATE" '
-                /@version/ && !modified_added {
-                    print;
-                    # Check if next line is already a modified comment
-                    getline;
-                    if ($0 ~ /@modified/) {
-                        # Replace existing modified line
-                        print "// @modified    " date;
-                    } else {
-                        # Add new modified line and print the line we read
-                        print "// @modified    " date;
-                        print;
-                    }
-                    modified_added=1;
-                    next;
-                }
-                # Skip any existing modified lines that weren't right after version
-                /@modified/ { next; }
-                { print; }
+/@version/ && !modified_added {
+    print;
+    getline;
+    if ($0 ~ /@modified/) {
+        print "// @modified      " date;
+    } else {
+        print "// @modified      " date;
+        print;
+    }
+    modified_added=1;
+    next;
+}
+/@modified/ { next; }
+{ print; }
             ' "$TARGET_PATH/$FILENAME.tmp" > "$DEST"
             rm "$TARGET_PATH/$FILENAME.tmp"
             
