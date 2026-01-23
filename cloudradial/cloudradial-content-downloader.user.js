@@ -835,6 +835,16 @@
         statusContainer.appendChild(statusDisplay);
         statusContainer.appendChild(debugContainer);
 
+        
+        // Add click handler to re-evaluate button visibility
+        statusContainer.addEventListener('click', (e) => {
+            // Don't interfere with checkbox clicks
+            if (e.target !== debugCheckbox) {
+                log('UI clicked, re-evaluating button visibility');
+                updateButtonVisibility();
+            }
+        });
+        statusContainer.style.cursor = 'pointer';
 
         // Create ALL buttons upfront (visibility controlled by updateButtonVisibility)
         
