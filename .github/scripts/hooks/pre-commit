@@ -18,21 +18,27 @@ for file in $MODIFIED_FILES; do
     fi
     
     if [ -f "$file" ]; then
-        # Extract current version
-        CURRENT_VERSION=$(grep -m 1 '// @version' "$file" | grep -oP '\d+\.\d+\.\d+')
+        # Extract current version (use simpler method with tr and cut)
+        CURRENT_VERSION=$(grep -m 1 '@version' "$file" | tr -s ' ' | cut -d' ' -f3)
         
-        if [ -n "$CURRENT_VERSION" ]; then
+        # Check if version matches X.Y or X.Y.Z format
+        if [ -n "$CURRENT_VERSION" ] && [[ "$CURRENT_VERSION" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
             # Parse version components
             MAJOR=$(echo "$CURRENT_VERSION" | cut -d. -f1)
             MINOR=$(echo "$CURRENT_VERSION" | cut -d. -f2)
             PATCH=$(echo "$CURRENT_VERSION" | cut -d. -f3)
             
+            # If no PATCH version (for X.Y format), default to 0
+            if [ -z "$PATCH" ] || [ "$PATCH" = "$CURRENT_VERSION" ]; then
+                PATCH=0
+            fi
+            
             # Increment PATCH
             NEW_PATCH=$((PATCH + 1))
             NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
             
-            # Update version in file
-            sed -i "s|// @version      $CURRENT_VERSION|// @version      $NEW_VERSION|g" "$file"
+            # Update version in file (replace first occurrence only)
+            sed -i "0,/@version.*$CURRENT_VERSION/s/@version.*$CURRENT_VERSION/@version      $NEW_VERSION/" "$file"
             
             # Stage the updated file
             git add "$file"
