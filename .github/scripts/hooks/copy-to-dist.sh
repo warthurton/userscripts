@@ -73,9 +73,9 @@ for file in $USER_SCRIPTS; do
     print;
     getline;
     if ($0 ~ /@modified/) {
-        print "// @modified      " date;
+        print "// @modified     " date;
     } else {
-        print "// @modified      " date;
+        print "// @modified     " date;
         print;
     }
     modified_added=1;

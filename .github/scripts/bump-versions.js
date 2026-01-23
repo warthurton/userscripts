@@ -90,7 +90,7 @@ function updateVersion(filePath, newMajor, newMinor) {
     }
 
     if (versionLineIndex >= 0) {
-        const modifiedLine = `// @modified      ${modifiedDate}`;
+        const modifiedLine = `// @modified     ${modifiedDate}`;
         
         // Check if @modified exists right after @version
         if (modifiedLineIndex === versionLineIndex + 1) {
