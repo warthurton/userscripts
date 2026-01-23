@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CloudRadial Content Downloader
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.16
+// @version      1.0.17
 // @description  Auto-download content data from CloudRadial admin portal
 // @author       warthurton
 // @match        https://portal.itiliti.io/app/admin/content*
@@ -834,16 +834,7 @@
 
         statusContainer.appendChild(statusDisplay);
         statusContainer.appendChild(debugContainer);
-        
-        // Add click handler to re-evaluate button visibility
-        statusContainer.addEventListener('click', (e) => {
-            // Don't interfere with checkbox clicks
-            if (e.target !== debugCheckbox) {
-                log('UI clicked, re-evaluating button visibility');
-                updateButtonVisibility();
-            }
-        });
-        statusContainer.style.cursor = 'pointer';
+
 
         // Create ALL buttons upfront (visibility controlled by updateButtonVisibility)
         
@@ -852,7 +843,7 @@
             const downloadTemplatesBtn = document.createElement('button');
             downloadTemplatesBtn.id = 'cloudradial-download-templates-btn';
             downloadTemplatesBtn.textContent = 'Templates';
-            downloadTemplatesBtn.title = 'Download templates list';
+
             downloadTemplatesBtn.style.cssText = `
                 padding: 4px 10px;
                 margin-left: 12px;
