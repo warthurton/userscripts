@@ -10,16 +10,8 @@ This repository includes git hooks for automatic versioning and copying userscri
 
 Run the setup script from the repository root:
 
-**Linux/Mac:**
-
 ```bash
 bash .github/scripts/hooks/setup.sh
-```
-
-**Windows:**
-
-```cmd
-.github\scripts\hooks\setup.bat
 ```
 
 The setup will:
@@ -41,32 +33,16 @@ The setup will:
 
 You can manually copy all scripts to build/ anytime:
 
-**Linux/Mac:**
-
 ```bash
 bash .github/scripts/hooks/copy-to-dist.sh
-```
-
-**Windows:**
-
-```cmd
-.github\scripts\hooks\copy-to-dist.bat
 ```
 
 ### Updating Hooks
 
 When hooks are updated in the repository, run:
 
-**Linux/Mac:**
-
 ```bash
 bash .github/scripts/hooks/setup.sh -r
-```
-
-**Windows:**
-
-```cmd
-.github\scripts\hooks\setup.bat /r
 ```
 
 This updates the hooks without changing your copy to build/ configuration.

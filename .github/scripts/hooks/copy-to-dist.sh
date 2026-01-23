@@ -62,13 +62,39 @@ for file in $USER_SCRIPTS; do
         SOURCE="$REPO_ROOT/$file"
         DEST="$REPO_ROOT/$TARGET_PATH/$FILENAME"
         
-        # Copy file to build directory
-        if cp "$file" "$TARGET_PATH/$FILENAME"; then
+        # Get current date/time in ISO 8601 format
+        MODIFIED_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        
+        # Copy file to build directory and add/update modified date
+        if cp "$file" "$TARGET_PATH/$FILENAME.tmp"; then
+            # Add or update the modified date comment after the version line
+            awk -v date="$MODIFIED_DATE" '
+                /@version/ && !modified_added {
+                    print;
+                    # Check if next line is already a modified comment
+                    getline;
+                    if ($0 ~ /@modified/) {
+                        # Replace existing modified line
+                        print "// @modified    " date;
+                    } else {
+                        # Add new modified line and print the line we read
+                        print "// @modified    " date;
+                        print;
+                    }
+                    modified_added=1;
+                    next;
+                }
+                # Skip any existing modified lines that weren't right after version
+                /@modified/ { next; }
+                { print; }
+            ' "$TARGET_PATH/$FILENAME.tmp" > "$DEST"
+            rm "$TARGET_PATH/$FILENAME.tmp"
+            
             echo "[build] ✓ Copied: $file -> $TARGET_PATH/$FILENAME"
             # Verify the copy
             if [ -f "$DEST" ]; then
                 SIZE=$(wc -c < "$DEST" | tr -d ' ')
-                echo "[build]   → Verified: $DEST ($SIZE bytes)"
+                echo "[build]   → Verified: $DEST ($SIZE bytes, modified: $MODIFIED_DATE)"
             else
                 echo "[build]   ⚠ Warning: Destination file not found: $DEST"
             fi

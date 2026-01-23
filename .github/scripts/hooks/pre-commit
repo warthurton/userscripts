@@ -40,6 +40,10 @@ for file in $MODIFIED_FILES; do
             # Update version in file (replace first occurrence only)
             sed -i "0,/@version.*$CURRENT_VERSION/s/@version.*$CURRENT_VERSION/@version      $NEW_VERSION/" "$file"
             
+            # Remove any @modified lines to reduce deltas during development
+            # (copy-to-dist and GitHub actions will add it back)
+            sed -i '/@modified/d' "$file"
+            
             # Stage the updated file
             git add "$file"
             

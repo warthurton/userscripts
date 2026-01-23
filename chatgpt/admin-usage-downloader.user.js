@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChatGPT Admin Usage Downloader
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.6.2
+// @version      1.6.4
 // @description  Auto-download analytics data and statistics from ChatGPT admin usage page
 // @author       warthurton
 // @match        https://chatgpt.com/admin/usage
@@ -38,9 +38,52 @@
     let downloadButton = null;
     let currentDate = null;
     let debugCheckbox = null;
+    let dataLoadStartTime = null;
+    let thirtySecondTimeout = null;
 
     // Version info
-    const VERSION = GM_info?.script?.version || '1.6';
+    const VERSION = GM_info?.script?.version || '1.6.2';
+
+    /**
+     * Update download button state based on captured files
+     */
+    function updateDownloadButtonState() {
+        if (!downloadButton) return;
+
+        const capturedCount = Object.keys(interceptedData).length;
+        const allCaptured = capturedCount >= 5;
+        
+        if (allCaptured) {
+            // All 5 files captured - enable with normal styling
+            downloadButton.disabled = false;
+            downloadButton.style.background = 'linear-gradient(to bottom, #10a37f, #0d8c6d) !important';
+            downloadButton.style.cursor = 'pointer';
+            downloadButton.style.opacity = '1';
+            
+            // Clear the 30-second timeout if it exists
+            if (thirtySecondTimeout) {
+                clearTimeout(thirtySecondTimeout);
+                thirtySecondTimeout = null;
+            }
+        } else {
+            // Not all files captured yet
+            const elapsed = dataLoadStartTime ? (Date.now() - dataLoadStartTime) / 1000 : 0;
+            
+            if (elapsed >= 30) {
+                // More than 30 seconds - enable but make red
+                downloadButton.disabled = false;
+                downloadButton.style.background = 'linear-gradient(to bottom, #dc2626, #991b1b) !important';
+                downloadButton.style.cursor = 'pointer';
+                downloadButton.style.opacity = '1';
+            } else {
+                // Less than 30 seconds - keep disabled/grayed
+                downloadButton.disabled = true;
+                downloadButton.style.background = 'linear-gradient(to bottom, #9ca3af, #6b7280) !important';
+                downloadButton.style.cursor = 'not-allowed';
+                downloadButton.style.opacity = '0.6';
+            }
+        }
+    }
 
     /**
      * Reset debug timer - auto-disable debug after 5 minutes
@@ -531,7 +574,26 @@
                         Object.keys(reportingData).forEach(key => delete reportingData[key]);
                         // Reset debug timer on date change
                         resetDebugTimer();
+                        // Reset data load timer
+                        dataLoadStartTime = Date.now();
+                        if (thirtySecondTimeout) {
+                            clearTimeout(thirtySecondTimeout);
+                        }
+                        // Set 30-second timeout to enable button in red if not all files loaded
+                        thirtySecondTimeout = setTimeout(() => {
+                            updateDownloadButtonState();
+                        }, 30000);
                     }
+                    
+                    // Start timer on first data capture
+                    if (!dataLoadStartTime) {
+                        dataLoadStartTime = Date.now();
+                        // Set 30-second timeout to enable button in red if not all files loaded
+                        thirtySecondTimeout = setTimeout(() => {
+                            updateDownloadButtonState();
+                        }, 30000);
+                    }
+                    
                     currentDate = startDate;
 
                     try {
@@ -548,6 +610,9 @@
                             startDate: startDate,
                             filename: `${orgPrefix}${endpoint.filename}-${startDate}.json`
                         };
+                        
+                        // Update button state after capturing data
+                        updateDownloadButtonState();
                     } catch (error) {
                         console.error(`[Analytics Downloader] Error processing ${endpoint.key}:`, error);
                     }
@@ -592,7 +657,24 @@
                             Object.keys(reportingData).forEach(key => delete reportingData[key]);
                             // Reset debug timer on date change
                             resetDebugTimer();
+                            // Reset data load timer
+                            dataLoadStartTime = Date.now();
+                            if (thirtySecondTimeout) {
+                                clearTimeout(thirtySecondTimeout);
+                            }
+                            thirtySecondTimeout = setTimeout(() => {
+                                updateDownloadButtonState();
+                            }, 30000);
                         }
+                        
+                        // Start timer on first data capture
+                        if (!dataLoadStartTime) {
+                            dataLoadStartTime = Date.now();
+                            thirtySecondTimeout = setTimeout(() => {
+                                updateDownloadButtonState();
+                            }, 30000);
+                        }
+                        
                         currentDate = startDate;
 
                         try {
@@ -608,6 +690,9 @@
                                 startDate: startDate,
                                 filename: `${orgPrefix}chatgpt-${endpoint.filename}-${startDate}.json`
                             };
+                            
+                            // Update button state after capturing data
+                            updateDownloadButtonState();
                         } catch (error) {
                             console.error(`[Analytics Downloader] Error processing XHR ${endpoint.key}:`, error);
                         }
@@ -684,20 +769,39 @@
         // Create download button to go under Export button
         downloadButton = document.createElement('button');
         downloadButton.className = 'btn relative btn-secondary btn-small ms-2';
+        downloadButton.disabled = true; // Start disabled
         downloadButton.style.cssText = `
-            background: linear-gradient(to bottom, #10a37f, #0d8c6d) !important;
-            border-color: #10a37f !important;
+            background: linear-gradient(to bottom, #9ca3af, #6b7280) !important;
+            border-color: #9ca3af !important;
             color: white !important;
+            cursor: not-allowed !important;
+            opacity: 0.6 !important;
         `;
         downloadButton.innerHTML = '<div class="flex items-center justify-center">Download Zip</div>';
         downloadButton.addEventListener('mouseover', () => {
-            downloadButton.style.background = 'linear-gradient(to bottom, #0d8c6d, #0a7558) !important';
+            if (!downloadButton.disabled) {
+                const isRed = downloadButton.style.background.includes('dc2626');
+                if (isRed) {
+                    downloadButton.style.background = 'linear-gradient(to bottom, #b91c1c, #7f1d1d) !important';
+                } else {
+                    downloadButton.style.background = 'linear-gradient(to bottom, #0d8c6d, #0a7558) !important';
+                }
+            }
         });
         downloadButton.addEventListener('mouseout', () => {
-            downloadButton.style.background = 'linear-gradient(to bottom, #10a37f, #0d8c6d) !important';
+            if (!downloadButton.disabled) {
+                const isRed = downloadButton.style.background.includes('b91c1c') || downloadButton.style.background.includes('7f1d1d');
+                if (isRed) {
+                    downloadButton.style.background = 'linear-gradient(to bottom, #dc2626, #991b1b) !important';
+                } else {
+                    downloadButton.style.background = 'linear-gradient(to bottom, #10a37f, #0d8c6d) !important';
+                }
+            }
         });
         downloadButton.addEventListener('click', async () => {
-            await createAndDownloadZip(true);
+            if (!downloadButton.disabled) {
+                await createAndDownloadZip(true);
+            }
         });
 
         // Toast notification
