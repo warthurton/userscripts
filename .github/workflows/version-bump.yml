@@ -41,6 +41,6 @@ jobs:
               run: |
                   git config --local user.email "github-actions[bot]@users.noreply.github.com"
                   git config --local user.name "github-actions[bot]"
-                  git add **/*.user.js
+                  git add '**/*.user.js'
                   git commit -m "chore: bump userscript versions"
                   git push

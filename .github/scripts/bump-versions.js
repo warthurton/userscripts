@@ -126,7 +126,6 @@ function main() {
     
     if (changedUserscripts.length === 0) {
         console.log('ℹ️  No userscript files changed in this PR');
-        const fs = require('fs');
         fs.appendFileSync(process.env.GITHUB_OUTPUT, 'changes=false\n');
         return;
     }
@@ -201,7 +200,6 @@ function main() {
     // Set output for GitHub Actions using environment files (recommended)
     if (hasChanges) {
         console.log('\n✨ Version changes made!');
-        const fs = require('fs');
         fs.appendFileSync(process.env.GITHUB_OUTPUT, 'changes=true\n');
     } else {
         console.log('\n✅ No version changes needed');
