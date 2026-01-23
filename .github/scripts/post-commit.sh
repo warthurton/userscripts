@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Post-commit hook: Copy modified .user.js files to build/
-# This runs automatically after each commit
+# Post-commit logic: Copy modified .user.js files to build/
 
 # Check for disable flag
 if [ -f ".git/hooks/.disable-copy-to-dist" ]; then
