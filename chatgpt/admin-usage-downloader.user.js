@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ChatGPT Admin Usage Downloader
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.3
-// @description  Auto-download analytics data from ChatGPT admin usage page
+// @version      1.4
+// @description  Auto-download analytics data and statistics from ChatGPT admin usage page
 // @author       warthurton
 // @match        https://chatgpt.com/admin/usage
 // @icon         https://favicons-blue.vercel.app/?domain=chatgpt.com
@@ -38,6 +38,93 @@
     let currentDate = null;
 
     /**
+     * Extract statistics from the page DOM
+     */
+    function extractPageStatistics() {
+        const stats = {
+            timestamp: new Date().toISOString(),
+            metrics: {}
+        };
+
+        // Find all metric containers
+        const containers = document.querySelectorAll('.border-token-border-default.my-6.flex.min-h-\\[80px\\]');
+        
+        // If the specific class query doesn't work, try broader search
+        let metricElements = [];
+        if (containers.length === 0) {
+            // Look for containers with the statistics structure
+            const allContainers = document.querySelectorAll('div.my-6.flex.min-h-\\[80px\\], div[class*="my-6"][class*="flex"][class*="min-h"]');
+            for (const container of allContainers) {
+                const metrics = container.querySelectorAll('.text-token-text-secondary.text-sm');
+                if (metrics.length >= 2) {
+                    metricElements.push(container);
+                }
+            }
+        } else {
+            metricElements = Array.from(containers);
+        }
+
+        // If still no results, try a more generic approach
+        if (metricElements.length === 0) {
+            const allDivs = document.querySelectorAll('div');
+            for (const div of allDivs) {
+                const labelElements = div.querySelectorAll('.text-token-text-secondary.text-sm');
+                const valueElements = div.querySelectorAll('.text-xl');
+                if (labelElements.length >= 2 && valueElements.length >= 2) {
+                    metricElements.push(div);
+                    break;
+                }
+            }
+        }
+
+        // Process each metric container
+        for (const container of metricElements) {
+            const metricDivs = container.querySelectorAll('.flex.w-0.grow.flex-col.justify-between');
+            
+            for (const metricDiv of metricDivs) {
+                // Get label
+                const labelElement = metricDiv.querySelector('.text-token-text-secondary.text-sm');
+                if (!labelElement) continue;
+                
+                const label = labelElement.textContent.trim();
+                
+                // Get value
+                const valueElement = metricDiv.querySelector('.text-xl');
+                if (!valueElement) continue;
+                
+                const value = valueElement.textContent.trim();
+                
+                // Get comparison percentage if exists
+                let comparison = null;
+                const comparisonContainer = metricDiv.querySelector('.inline-flex.items-center.text-green-500, .inline-flex.items-center.text-red-500');
+                if (comparisonContainer) {
+                    const percentageSpan = comparisonContainer.querySelector('span');
+                    if (percentageSpan) {
+                        comparison = {
+                            percentage: percentageSpan.textContent.trim(),
+                            trend: comparisonContainer.classList.contains('text-green-500') ? 'positive' : 'negative'
+                        };
+                    }
+                }
+                
+                // Create a key from the label (lowercase, replace spaces with underscores)
+                const key = label.toLowerCase().replace(/\s+/g, '_');
+                
+                stats.metrics[key] = {
+                    label: label,
+                    value: value
+                };
+                
+                if (comparison) {
+                    stats.metrics[key].comparison = comparison;
+                }
+            }
+        }
+
+        return stats;
+    }
+
+    /**
      * Create and download a zip file with all collected data
      * @param {boolean} fetchMissing - If true, will attempt to fetch missing reporting data
      */
@@ -64,6 +151,15 @@
                 zip.file(item.jsonFilename, JSON.stringify(item.jsonData, null, 2));
             }
             count++;
+        }
+
+        // Extract and add page statistics
+        const pageStats = extractPageStatistics();
+        if (pageStats.metrics && Object.keys(pageStats.metrics).length > 0) {
+            const statsFilename = `${orgPrefix}chatgpt-statistics-${startDate}.json`;
+            zip.file(statsFilename, JSON.stringify(pageStats, null, 2));
+            count++;
+            console.log('[Analytics Downloader] Added page statistics to zip');
         }
 
         // Fetch missing reporting data if requested
