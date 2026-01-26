@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pre-commit hook for automatic PATCH version bumping
+# Pre-commit logic: Automatic PATCH version bumping
 # Increments the PATCH version in all modified .user.js files
 
 # Get list of modified .user.js files
