@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Minimal Search Switcher: Google <-> Bing <-> DuckDuckGo (DDG uses !bang submit)
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.1
+// @version      1.0.2
 // @description  Switch between Google, Bing, and DuckDuckGo search engines
 // @author       warthurton
 // @match        https://www.google.com/search*
@@ -23,6 +23,8 @@
     const isGoogle = host === "www.google.com";
     const isBing = host === "www.bing.com";
     const isDDG = host.includes("duckduckgo.com");
+    
+    console.log('[Search Switcher] Host:', host, '| Google:', isGoogle, '| Bing:', isBing, '| DDG:', isDDG);
 
     const getQuery = () => {
         const u = new URL(location.href);
@@ -35,7 +37,10 @@
     };
 
     const q = getQuery();
-    if (!q) return;
+    if (!q) {
+        console.log('[Search Switcher] No query found');
+        return;
+    }
 
     const containerId = "minimal-search-switcher";
     if (document.getElementById(containerId)) return;
@@ -79,7 +84,11 @@
         // DDG: use bangs and resubmit the current query
         const form = document.querySelector("form#search_form") || document.querySelector("form");
         const input = document.querySelector("input[name='q']");
-        if (!form || !input) return;
+        console.log('[Search Switcher] DDG form:', form, 'input:', input);
+        if (!form || !input) {
+            console.log('[Search Switcher] DDG: Missing form or input, aborting');
+            return;
+        }
 
         const setBangAndSubmit = (bang) => {
             const base = input.value.trim() || q;
