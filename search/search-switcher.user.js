@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Minimal Search Switcher: Google <-> Bing <-> DuckDuckGo (DDG uses !bang submit)
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.5
+// @version      1.0.6
 // @description  Switch between Google, Bing, and DuckDuckGo search engines
 // @author       warthurton
 // @match        https://www.google.com/search*
@@ -23,6 +23,26 @@
     const isGoogle = host === "www.google.com";
     const isBing = host === "www.bing.com";
     const isDDG = host.includes("duckduckgo.com");
+
+    // Check if we came from our script
+    const fromScript = sessionStorage.getItem('search-switcher-nav') === 'true';
+    if (fromScript) {
+        sessionStorage.removeItem('search-switcher-nav');
+    }
+
+    // Auto-redirect from Bing to DDG if enabled (and not from our script)
+    if (isBing && !fromScript) {
+        const autoRedirect = localStorage.getItem('search-switcher-bing-to-ddg') === 'true';
+        if (autoRedirect) {
+            const q = new URL(location.href).searchParams.get("q");
+            if (q) {
+                setTimeout(() => {
+                    location.href = `https://duckduckgo.com/?q=${encodeURIComponent(q)}`;
+                }, 5000);
+                return;
+            }
+        }
+    }
 
     // For DDG, retry with delays since content loads dynamically
     let retryCount = 0;
@@ -68,6 +88,9 @@
         a.style.cssText =
             "margin-left:8px;padding:6px 10px;border:1px solid #666;border-radius:16px;" +
             "text-decoration:none;font:12px/1 sans-serif;color:#202124;background:#f8f9fa;box-shadow:0 1px 3px rgba(0,0,0,0.1);";
+        a.addEventListener("click", () => {
+            sessionStorage.setItem('search-switcher-nav', 'true');
+        });
         return a;
     };
 
@@ -104,6 +127,7 @@
             }
 
             const setBangAndSubmit = (bang) => {
+                sessionStorage.setItem('search-switcher-nav', 'true');
                 const base = input.value.trim() || q;
                 const stripped = base.replace(/^!\w+\s+/i, ""); // remove existing bang if present
                 input.value = `${bang} ${stripped}`.trim();
@@ -118,6 +142,24 @@
             container.appendChild(makeLink("!b", `https://www.bing.com/search?q=${encodeURIComponent(q)}`));
             container.appendChild(makeLink("!d", `https://duckduckgo.com/?q=${encodeURIComponent(q)}`));
         } else if (isBing) {
+            // Add auto-redirect checkbox
+            const checkboxLabel = document.createElement("label");
+            checkboxLabel.style.cssText =
+                "margin-left:8px;padding:4px 8px;font:12px/1 sans-serif;color:#202124;white-space:nowrap;cursor:pointer;";
+            
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.checked = localStorage.getItem('search-switcher-bing-to-ddg') === 'true';
+            checkbox.style.cssText = "margin-right:4px;cursor:pointer;";
+            checkbox.addEventListener("change", (e) => {
+                localStorage.setItem('search-switcher-bing-to-ddg', e.target.checked.toString());
+            });
+            
+            const labelText = document.createTextNode("Auto→DDG");
+            checkboxLabel.appendChild(checkbox);
+            checkboxLabel.appendChild(labelText);
+            container.appendChild(checkboxLabel);
+
             container.appendChild(makeLink("!g", `https://www.google.com/search?q=${encodeURIComponent(q)}`));
             container.appendChild(makeLink("!d", `https://duckduckgo.com/?q=${encodeURIComponent(q)}`));
         } else {
