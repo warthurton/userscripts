@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Minimal Search Switcher: Google <-> Bing <-> DuckDuckGo (DDG uses !bang submit)
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.2
+// @version      1.0.3
 // @description  Switch between Google, Bing, and DuckDuckGo search engines
 // @author       warthurton
 // @match        https://www.google.com/search*
@@ -30,7 +30,7 @@
         const u = new URL(location.href);
         let q = u.searchParams.get("q");
         if (!q) {
-            const input = document.querySelector("input[name='q']");
+            const input = document.getElementById("search_form_input") || document.querySelector("input[name='q']");
             q = input && input.value;
         }
         return (q || "").trim();
@@ -75,15 +75,20 @@
     };
 
     // Prefer anchoring near the search form; otherwise pin top-right.
-    const anchor =
-        (isGoogle && (document.querySelector("form[role='search']") || document.querySelector("form"))) ||
-        (isBing && (document.querySelector("form#sb_form") || document.querySelector("form"))) ||
-        (isDDG && (document.querySelector("form#search_form") || document.querySelector("form")));
+    let anchor = null;
+    if (isGoogle) {
+        anchor = document.querySelector("form[role='search']") || document.querySelector("form");
+    } else if (isBing) {
+        anchor = document.querySelector("form#sb_form") || document.querySelector("form");
+    } else if (isDDG) {
+        const input = document.getElementById("search_form_input") || document.querySelector("input[name='q']");
+        anchor = input ? input.closest("form") : null;
+    }
 
     if (isDDG) {
         // DDG: use bangs and resubmit the current query
-        const form = document.querySelector("form#search_form") || document.querySelector("form");
-        const input = document.querySelector("input[name='q']");
+        const input = document.getElementById("search_form_input") || document.querySelector("input[name='q']");
+        const form = input ? input.closest("form") : null;
         console.log('[Search Switcher] DDG form:', form, 'input:', input);
         if (!form || !input) {
             console.log('[Search Switcher] DDG: Missing form or input, aborting');
@@ -99,14 +104,14 @@
             else form.submit();
         };
 
-        container.appendChild(makeBtn("Google", () => setBangAndSubmit("!g")));
-        container.appendChild(makeBtn("Bing", () => setBangAndSubmit("!b")));
+        container.appendChild(makeBtn("!g", () => setBangAndSubmit("!g")));
+        container.appendChild(makeBtn("!b", () => setBangAndSubmit("!b")));
     } else if (isGoogle) {
-        container.appendChild(makeLink("Bing", `https://www.bing.com/search?q=${encodeURIComponent(q)}`));
-        container.appendChild(makeLink("DDG", `https://duckduckgo.com/?q=${encodeURIComponent(q)}`));
+        container.appendChild(makeLink("!b", `https://www.bing.com/search?q=${encodeURIComponent(q)}`));
+        container.appendChild(makeLink("!d", `https://duckduckgo.com/?q=${encodeURIComponent(q)}`));
     } else if (isBing) {
-        container.appendChild(makeLink("Google", `https://www.google.com/search?q=${encodeURIComponent(q)}`));
-        container.appendChild(makeLink("DDG", `https://duckduckgo.com/?q=${encodeURIComponent(q)}`));
+        container.appendChild(makeLink("!g", `https://www.google.com/search?q=${encodeURIComponent(q)}`));
+        container.appendChild(makeLink("!d", `https://duckduckgo.com/?q=${encodeURIComponent(q)}`));
     } else {
         return;
     }
