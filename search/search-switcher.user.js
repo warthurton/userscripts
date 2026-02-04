@@ -107,7 +107,11 @@
     // Prefer anchoring near the search form; otherwise pin top-right.
     let anchor = null;
     if (isGoogle) {
-        anchor = document.querySelector("form[role='search']") || document.querySelector("form");
+        // Try multiple selectors for Google's various layouts
+        anchor = document.querySelector('div[role="navigation"]') ||
+                 document.querySelector('form[role="search"]') ||
+                 document.querySelector('#searchform') ||
+                 document.querySelector('form');
     } else if (isBing) {
         anchor = document.querySelector("form#sb_form") || document.querySelector("form");
     } else if (isDDG) {
@@ -172,8 +176,14 @@
         }
 
         if (anchor) {
+            // Insert at the end of the anchor element
             anchor.appendChild(container);
+            // For Google, ensure proper spacing
+            if (isGoogle) {
+                container.style.cssText = "margin:8px 0;display:inline-block;white-space:nowrap;";
+            }
         } else {
+            // Fallback: fixed position top-right
             container.style.cssText = "position:fixed;top:12px;right:12px;z-index:999999;white-space:nowrap;";
             document.documentElement.appendChild(container);
         }
