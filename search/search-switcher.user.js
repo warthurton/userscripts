@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Minimal Search Switcher: Google <-> Bing <-> DuckDuckGo (DDG uses !bang submit)
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.4
+// @version      1.0.5
 // @description  Switch between Google, Bing, and DuckDuckGo search engines
 // @author       warthurton
 // @match        https://www.google.com/search*
@@ -23,8 +23,6 @@
     const isGoogle = host === "www.google.com";
     const isBing = host === "www.bing.com";
     const isDDG = host.includes("duckduckgo.com");
-    
-    console.log('[Search Switcher] Host:', host, '| Google:', isGoogle, '| Bing:', isBing, '| DDG:', isDDG);
 
     // For DDG, retry with delays since content loads dynamically
     let retryCount = 0;
@@ -43,10 +41,8 @@
     const init = () => {
         const q = getQuery();
         if (!q) {
-            console.log('[Search Switcher] No query found');
             if (isDDG && retryCount < maxRetries) {
                 retryCount++;
-                console.log(`[Search Switcher] Retrying in 200ms (${retryCount}/${maxRetries})`);
                 setTimeout(init, 200);
             }
             return;
@@ -99,12 +95,9 @@
             // DDG: use bangs and resubmit the current query
             const input = document.getElementById("search_form_input") || document.querySelector("input[name='q']");
             const form = input ? input.closest("form") : null;
-            console.log('[Search Switcher] DDG form:', form, 'input:', input);
             if (!form || !input) {
-                console.log('[Search Switcher] DDG: Missing form or input');
                 if (retryCount < maxRetries) {
                     retryCount++;
-                    console.log(`[Search Switcher] Retrying in 200ms (${retryCount}/${maxRetries})`);
                     setTimeout(init, 200);
                 }
                 return;
