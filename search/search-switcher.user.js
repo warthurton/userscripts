@@ -30,16 +30,16 @@
         sessionStorage.removeItem('search-switcher-nav');
     }
 
-    // Auto-redirect from Bing to DDG if enabled (and not from our script)
+    // Setup auto-redirect from Bing to DDG if enabled (and not from our script)
+    let redirectTimeout = null;
     if (isBing && !fromScript) {
         const autoRedirect = localStorage.getItem('search-switcher-bing-to-ddg') === 'true';
         if (autoRedirect) {
             const q = new URL(location.href).searchParams.get("q");
             if (q) {
-                setTimeout(() => {
+                redirectTimeout = setTimeout(() => {
                     location.href = `https://duckduckgo.com/?q=${encodeURIComponent(q)}`;
                 }, 5000);
-                return;
             }
         }
     }
@@ -90,6 +90,7 @@
             "text-decoration:none;font:12px/1 sans-serif;color:#202124;background:#f8f9fa;box-shadow:0 1px 3px rgba(0,0,0,0.1);";
         a.addEventListener("click", () => {
             sessionStorage.setItem('search-switcher-nav', 'true');
+            if (redirectTimeout) clearTimeout(redirectTimeout);
         });
         return a;
     };
@@ -153,6 +154,10 @@
             checkbox.style.cssText = "margin-right:4px;cursor:pointer;";
             checkbox.addEventListener("change", (e) => {
                 localStorage.setItem('search-switcher-bing-to-ddg', e.target.checked.toString());
+                // Cancel pending redirect if user unchecks during wait period
+                if (!e.target.checked && redirectTimeout) {
+                    clearTimeout(redirectTimeout);
+                }
             });
             
             const labelText = document.createTextNode("Auto→DDG");
