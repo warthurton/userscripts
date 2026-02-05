@@ -25,7 +25,7 @@
     const host = location.hostname;
     const isGoogle = host === "www.google.com";
     const isBing = host === "www.bing.com";
-    const isDDG = host.includes("duckduckgo.com");
+    const isDDG = host === "duckduckgo.com";
 
     // Check if we came from our script via URL parameter
     const urlParams = new URL(location.href).searchParams;
