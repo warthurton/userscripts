@@ -12,8 +12,8 @@ fi
 echo "[pre-commit] Updating PATCH versions..."
 
 for file in $MODIFIED_FILES; do
-    # Skip template file
-    if [[ "$file" == *"templates/userscript-template.user.js" ]]; then
+    # Skip files in excluded directories (templates, build, .github, etc.)
+    if [[ "$file" == templates/* ]] || [[ "$file" == build/* ]] || [[ "$file" == .github/* ]]; then
         continue
     fi
     
