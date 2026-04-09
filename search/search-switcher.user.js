@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Minimal Search Switcher: Google <-> Bing <-> DuckDuckGo (DDG uses !bang submit)
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.1.4
+// @version      1.1.7
 // @description  Switch between Google, Bing, and DuckDuckGo search engines
 // @author       warthurton
 // @match        https://www.google.com/search*
@@ -257,6 +257,52 @@
       return newTabLabel;
     };
 
+    const makeAutoRedirectToggle = () => {
+      const autoLabel = document.createElement("label");
+      autoLabel.title = "Auto redirect Bing -> DuckDuckGo";
+      autoLabel.style.cssText =
+        "margin-left:8px;height:28px;padding:0 8px;display:inline-flex;align-items:center;gap:4px;" +
+        "border:1px solid #666;border-radius:16px;background:#f8f9fa;" +
+        "box-shadow:0 1px 3px rgba(0,0,0,0.1);cursor:pointer;box-sizing:border-box;";
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = prefs.autoRedirect;
+      checkbox.style.cssText =
+        "cursor:pointer;width:10px;height:10px;margin:0;";
+
+      const syncAutoToggleVisualState = (enabled) => {
+        autoLabel.style.borderColor = enabled ? "#0f7b0f" : "#666";
+        autoLabel.style.background = enabled ? "#e9f8ea" : "#f8f9fa";
+        autoLabel.style.color = enabled ? "#0f7b0f" : "#202124";
+        checkbox.style.accentColor = enabled ? "#0f7b0f" : "#666";
+      };
+
+      checkbox.addEventListener("change", (e) => {
+        syncAutoToggleVisualState(e.target.checked);
+        GM.setValue("bing-to-ddg", e.target.checked);
+        // Cancel pending redirect if user disables during wait period.
+        if (!e.target.checked && redirectTimeout) {
+          clearTimeout(redirectTimeout);
+          clearInterval(countdownInterval);
+          const countdownBtn = document.getElementById(
+            "search-switcher-countdown",
+          );
+          if (countdownBtn) countdownBtn.remove();
+        }
+      });
+
+      autoLabel.appendChild(checkbox);
+      autoLabel.insertAdjacentHTML(
+        "beforeend",
+        `<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7h-9"/><path d="M20 12h-12"/><path d="M20 17H9"/><circle cx="6" cy="7" r="2"/><circle cx="4" cy="12" r="2"/><circle cx="6" cy="17" r="2"/></svg>`,
+      );
+
+      syncAutoToggleVisualState(checkbox.checked);
+
+      return autoLabel;
+    };
+
     const styleDDGHeaderContainer = (el) => {
       el.style.cssText =
         "display:flex;align-items:center;flex-wrap:wrap;gap:6px;" +
@@ -285,6 +331,8 @@
         document.querySelector("form");
     } else if (isBing) {
       anchor =
+        document.querySelector("form#sb_form .b_searchboxForm") ||
+        document.querySelector(".b_searchboxForm") ||
         document.querySelector("form#sb_form") ||
         document.querySelector("form");
     } else if (isDDG) {
@@ -319,31 +367,7 @@
     } else if (isBing) {
       // Add auto-redirect checkbox (only if not in new tab mode)
       if (!prefs.openInNewTab) {
-        const checkboxLabel = document.createElement("label");
-        checkboxLabel.style.cssText =
-          "margin-left:8px;padding:4px 8px;font:12px/1 sans-serif;color:#202124;white-space:nowrap;cursor:pointer;";
-
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.checked = prefs.autoRedirect;
-        checkbox.style.cssText = "margin-right:4px;cursor:pointer;";
-        checkbox.addEventListener("change", (e) => {
-          GM.setValue("bing-to-ddg", e.target.checked);
-          // Cancel pending redirect if user unchecks during wait period
-          if (!e.target.checked && redirectTimeout) {
-            clearTimeout(redirectTimeout);
-            clearInterval(countdownInterval);
-            const countdownBtn = document.getElementById(
-              "search-switcher-countdown",
-            );
-            if (countdownBtn) countdownBtn.remove();
-          }
-        });
-
-        const labelText = document.createTextNode("Auto→DDG");
-        checkboxLabel.appendChild(checkbox);
-        checkboxLabel.appendChild(labelText);
-        container.appendChild(checkboxLabel);
+        container.appendChild(makeAutoRedirectToggle());
       }
 
       container.appendChild(
@@ -402,6 +426,13 @@
         } else {
           anchor.appendChild(container);
         }
+      } else if (
+        isBing &&
+        anchor.classList &&
+        anchor.classList.contains("b_searchboxForm")
+      ) {
+        // Match DDG/Google by keeping controls with the search box wrapper.
+        anchor.appendChild(container);
       } else if (isGoogle && anchor.tagName === "FORM") {
         // For Google, mount after the form element itself so we don't inject
         // controls inside the autocomplete / submit button area.
@@ -436,6 +467,12 @@
         isGoogle &&
         anchor.classList &&
         anchor.classList.contains("A8SBwf")
+      ) {
+        styleDDGHeaderContainer(container);
+      } else if (
+        isBing &&
+        anchor.classList &&
+        anchor.classList.contains("b_searchboxForm")
       ) {
         styleDDGHeaderContainer(container);
       } else if (isGoogle && anchor.tagName === "FORM") {
