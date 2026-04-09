@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Minimal Search Switcher: Google <-> Bing <-> DuckDuckGo (DDG uses !bang submit)
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.7
+// @version      1.1.4
 // @description  Switch between Google, Bing, and DuckDuckGo search engines
 // @author       warthurton
 // @match        https://www.google.com/search*
@@ -20,359 +20,442 @@
 // ==/UserScript==
 
 (function () {
-    'use strict';
+  "use strict";
 
-    const host = location.hostname;
-    const isGoogle = host === "www.google.com";
-    const isBing = host === "www.bing.com";
-    const isDDG = host === "duckduckgo.com";
+  const host = location.hostname;
+  const isGoogle = host === "www.google.com";
+  const isBing = host === "www.bing.com";
+  const isDDG = host === "duckduckgo.com";
 
-    // Check if we came from our script via URL parameter
-    const urlParams = new URL(location.href).searchParams;
-    const fromScript = urlParams.get('ss_nav') === '1';
-    
-    // Clean up the URL parameter if present
-    if (fromScript) {
-        const cleanUrl = new URL(location.href);
-        cleanUrl.searchParams.delete('ss_nav');
-        history.replaceState(null, '', cleanUrl.toString());
+  // Check if we came from our script via URL parameter
+  const urlParams = new URL(location.href).searchParams;
+  const fromScript = urlParams.get("ss_nav") === "1";
+
+  // Clean up the URL parameter if present
+  if (fromScript) {
+    const cleanUrl = new URL(location.href);
+    cleanUrl.searchParams.delete("ss_nav");
+    history.replaceState(null, "", cleanUrl.toString());
+  }
+
+  // Preferences cache (populated asynchronously)
+  const prefs = { openInNewTab: false, autoRedirect: false };
+  // Auto-redirect variables
+  let redirectTimeout = null;
+  let countdownInterval = null;
+  let secondsLeft = 5;
+
+  // Load preferences, then initialize timer and UI
+  Promise.all([
+    GM.getValue("new-tab", false),
+    GM.getValue("bing-to-ddg", false),
+  ]).then(([openInNewTabVal, autoRedirectVal]) => {
+    prefs.openInNewTab = openInNewTabVal;
+    prefs.autoRedirect = autoRedirectVal;
+
+    // Setup auto-redirect from Bing to DDG if enabled (and not from our script)
+    if (isBing && !fromScript && !prefs.openInNewTab && prefs.autoRedirect) {
+      const q = new URL(location.href).searchParams.get("q");
+      if (q) {
+        const countdownBtn = document.createElement("button");
+        countdownBtn.id = "search-switcher-countdown";
+        countdownBtn.textContent = `→DDG (${secondsLeft}s)`;
+        countdownBtn.style.cssText =
+          "position:fixed;top:12px;right:12px;z-index:999999;" +
+          "padding:10px 16px;border:2px solid #d93025;border-radius:20px;" +
+          "background:#fff;color:#d93025;cursor:pointer;font:14px/1 sans-serif;" +
+          "font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.2);";
+        countdownBtn.addEventListener("click", () => {
+          clearTimeout(redirectTimeout);
+          clearInterval(countdownInterval);
+          countdownBtn.remove();
+        });
+        document.body.appendChild(countdownBtn);
+
+        countdownInterval = setInterval(() => {
+          secondsLeft--;
+          countdownBtn.textContent = `→DDG (${secondsLeft}s)`;
+          if (secondsLeft <= 0) {
+            clearInterval(countdownInterval);
+          }
+        }, 1000);
+
+        redirectTimeout = setTimeout(() => {
+          clearInterval(countdownInterval);
+          location.href = `https://duckduckgo.com/?q=${encodeURIComponent(q)}`;
+        }, 5000);
+      }
     }
 
-    // Preferences cache (populated asynchronously)
-    const prefs = { openInNewTab: false, autoRedirect: false };
-    // Auto-redirect variables
-    let redirectTimeout = null;
-    let countdownInterval = null;
-    let secondsLeft = 5;
-
-    // Load preferences, then initialize timer and UI
-    Promise.all([
-        GM.getValue('new-tab', false),
-        GM.getValue('bing-to-ddg', false)
-    ]).then(([openInNewTabVal, autoRedirectVal]) => {
-        prefs.openInNewTab = openInNewTabVal;
-        prefs.autoRedirect = autoRedirectVal;
-
-        // Setup auto-redirect from Bing to DDG if enabled (and not from our script)
-        if (isBing && !fromScript && !prefs.openInNewTab && prefs.autoRedirect) {
-            const q = new URL(location.href).searchParams.get("q");
-            if (q) {
-                const countdownBtn = document.createElement("button");
-                countdownBtn.id = "search-switcher-countdown";
-                countdownBtn.textContent = `→DDG (${secondsLeft}s)`;
-                countdownBtn.style.cssText =
-                    "position:fixed;top:12px;right:12px;z-index:999999;" +
-                    "padding:10px 16px;border:2px solid #d93025;border-radius:20px;" +
-                    "background:#fff;color:#d93025;cursor:pointer;font:14px/1 sans-serif;" +
-                    "font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.2);";
-                countdownBtn.addEventListener("click", () => {
-                    clearTimeout(redirectTimeout);
-                    clearInterval(countdownInterval);
-                    countdownBtn.remove();
-                });
-                document.body.appendChild(countdownBtn);
-
-                countdownInterval = setInterval(() => {
-                    secondsLeft--;
-                    countdownBtn.textContent = `→DDG (${secondsLeft}s)`;
-                    if (secondsLeft <= 0) {
-                        clearInterval(countdownInterval);
-                    }
-                }, 1000);
-
-                redirectTimeout = setTimeout(() => {
-                    clearInterval(countdownInterval);
-                    location.href = `https://duckduckgo.com/?q=${encodeURIComponent(q)}`;
-                }, 5000);
+    // If arriving on Bing via our navigation, perform a natural search
+    if (isBing && fromScript) {
+      GM.getValue("pending-bing-search", null).then(async (pending) => {
+        if (pending) {
+          await GM.setValue("pending-bing-search", null);
+          // Perform Bing search by filling input and submitting
+          let attempts = 0;
+          const maxAttempts = 15;
+          const trySearch = () => {
+            const input =
+              document.querySelector("#sb_form_q") ||
+              document.querySelector('input[name="q"]');
+            const form =
+              document.querySelector("#sb_form") ||
+              (input && input.closest("form"));
+            const submitBtn =
+              document.querySelector("#search_icon") ||
+              document.querySelector('label[for="sb_form_go"]') ||
+              (form && form.querySelector('button[type="submit"]'));
+            if (input && form) {
+              input.focus();
+              input.value = pending;
+              input.dispatchEvent(new Event("input", { bubbles: true }));
+              input.dispatchEvent(new Event("change", { bubbles: true }));
+              if (submitBtn) {
+                submitBtn.click();
+              } else {
+                form.submit();
+              }
+              return true;
             }
+            return false;
+          };
+          const tick = () => {
+            attempts++;
+            if (trySearch()) return;
+            if (attempts < maxAttempts) setTimeout(tick, 200);
+          };
+          tick();
         }
+      });
+    }
 
-        // If arriving on Bing via our navigation, perform a natural search
-        if (isBing && fromScript) {
-            GM.getValue('pending-bing-search', null).then(async (pending) => {
-                if (pending) {
-                    await GM.setValue('pending-bing-search', null);
-                    // Perform Bing search by filling input and submitting
-                    let attempts = 0;
-                    const maxAttempts = 15;
-                    const trySearch = () => {
-                        const input = document.querySelector('#sb_form_q') || document.querySelector('input[name="q"]');
-                        const form = document.querySelector('#sb_form') || (input && input.closest('form'));
-                        const submitBtn = document.querySelector('#search_icon') || document.querySelector('label[for="sb_form_go"]') || (form && form.querySelector('button[type="submit"]'));
-                        if (input && form) {
-                            input.focus();
-                            input.value = pending;
-                            input.dispatchEvent(new Event('input', { bubbles: true }));
-                            input.dispatchEvent(new Event('change', { bubbles: true }));
-                            if (submitBtn) {
-                                submitBtn.click();
-                            } else {
-                                form.submit();
-                            }
-                            return true;
-                        }
-                        return false;
-                    };
-                    const tick = () => {
-                        attempts++;
-                        if (trySearch()) return;
-                        if (attempts < maxAttempts) setTimeout(tick, 200);
-                    };
-                    tick();
-                }
-            });
-        }
+    // Finally, start UI initialization after preferences load
+    init();
+  });
 
-        // Finally, start UI initialization after preferences load
-        init();
-    });
+  // For DDG, retry with delays since content loads dynamically
+  let retryCount = 0;
+  const maxRetries = 10;
 
-    // For DDG, retry with delays since content loads dynamically
-    let retryCount = 0;
-    const maxRetries = 10;
+  const getQuery = () => {
+    const u = new URL(location.href);
+    let q = u.searchParams.get("q");
+    if (!q) {
+      const input =
+        document.getElementById("search_form_input") ||
+        document.querySelector("input[name='q']");
+      q = input && input.value;
+    }
+    return (q || "").trim();
+  };
 
-    const getQuery = () => {
-        const u = new URL(location.href);
-        let q = u.searchParams.get("q");
-        if (!q) {
-            const input = document.getElementById("search_form_input") || document.querySelector("input[name='q']");
-            q = input && input.value;
-        }
-        return (q || "").trim();
-    };
+  const init = () => {
+    const q = getQuery();
+    if (!q) {
+      if (isDDG && retryCount < maxRetries) {
+        retryCount++;
+        setTimeout(init, 200);
+      }
+      return;
+    }
 
-    const init = () => {
-        const q = getQuery();
-        if (!q) {
-            if (isDDG && retryCount < maxRetries) {
-                retryCount++;
-                setTimeout(init, 200);
-            }
-            return;
-        }
-
-        const containerId = "minimal-search-switcher";
-        if (document.getElementById(containerId)) return;
+    const containerId = "minimal-search-switcher";
+    if (document.getElementById(containerId)) return;
 
     const container = document.createElement("span");
     container.id = containerId;
     container.style.cssText = "margin-left:6px;white-space:nowrap;";
 
-    const styleBtn =
-        "margin-left:8px;padding:6px 10px;border:1px solid #666;border-radius:16px;" +
-        "background:#f8f9fa;color:#202124;cursor:pointer;font:12px/1 sans-serif;box-shadow:0 1px 3px rgba(0,0,0,0.1);";
+    const chipStyle =
+      "margin-left:8px;height:28px;padding:0 10px;border:1px solid #666;border-radius:16px;" +
+      "text-decoration:none;font:12px/1 sans-serif;color:#202124;background:#f8f9fa;" +
+      "box-shadow:0 1px 3px rgba(0,0,0,0.1);cursor:pointer;" +
+      "display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;";
 
     const makeBingSearchButton = (label, q) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.textContent = label;
-        btn.style.cssText =
-            "margin-left:8px;padding:6px 10px;border:1px solid #666;border-radius:16px;" +
-            "text-decoration:none;font:12px/1 sans-serif;color:#202124;background:#f8f9fa;box-shadow:0 1px 3px rgba(0,0,0,0.1);cursor:pointer;";
-        btn.addEventListener("click", async (e) => {
-            e.preventDefault();
-            await GM.setValue('pending-bing-search', q);
-            const url = new URL('https://www.bing.com/');
-            url.searchParams.set('ss_nav', '1');
-            if (prefs.openInNewTab) {
-                GM.openInTab(url.toString(), { active: false, insert: true, setParent: true });
-            } else {
-                location.href = url.toString();
-            }
-            if (redirectTimeout) clearTimeout(redirectTimeout);
-            if (countdownInterval) clearInterval(countdownInterval);
-        });
-        return btn;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = label;
+      btn.style.cssText = chipStyle;
+      btn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        await GM.setValue("pending-bing-search", q);
+        const url = new URL("https://www.bing.com/");
+        url.searchParams.set("ss_nav", "1");
+        if (prefs.openInNewTab) {
+          GM.openInTab(url.toString(), {
+            active: false,
+            insert: true,
+            setParent: true,
+          });
+        } else {
+          location.href = url.toString();
+        }
+        if (redirectTimeout) clearTimeout(redirectTimeout);
+        if (countdownInterval) clearInterval(countdownInterval);
+      });
+      return btn;
     };
 
     const makeLink = (label, href) => {
-        if (prefs.openInNewTab) {
-            // Use button with GM.openInTab for new tab mode
-            const btn = document.createElement("button");
-            btn.type = "button";
-            btn.textContent = label;
-            btn.style.cssText =
-                "margin-left:8px;padding:6px 10px;border:1px solid #666;border-radius:16px;" +
-                "text-decoration:none;font:12px/1 sans-serif;color:#202124;background:#f8f9fa;box-shadow:0 1px 3px rgba(0,0,0,0.1);cursor:pointer;";
-            btn.addEventListener("click", (e) => {
-                e.preventDefault();
-                GM.openInTab(href, { active: false, insert: true, setParent: true });
-                if (redirectTimeout) clearTimeout(redirectTimeout);
-                if (countdownInterval) clearInterval(countdownInterval);
-            });
-            return btn;
-        } else {
-            // Use anchor for same-tab navigation
-            const a = document.createElement("a");
-            a.textContent = label;
-            const url = new URL(href);
-            url.searchParams.set('ss_nav', '1');
-            a.href = url.toString();
-            a.target = "_self";
-            a.rel = "noreferrer";
-            a.style.cssText =
-                "margin-left:8px;padding:6px 10px;border:1px solid #666;border-radius:16px;" +
-                "text-decoration:none;font:12px/1 sans-serif;color:#202124;background:#f8f9fa;box-shadow:0 1px 3px rgba(0,0,0,0.1);";
-            a.addEventListener("click", () => {
-                if (redirectTimeout) clearTimeout(redirectTimeout);
-                if (countdownInterval) clearInterval(countdownInterval);
-            });
-            return a;
-        }
+      if (prefs.openInNewTab) {
+        // Use button with GM.openInTab for new tab mode
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = label;
+        btn.style.cssText = chipStyle;
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          GM.openInTab(href, { active: false, insert: true, setParent: true });
+          if (redirectTimeout) clearTimeout(redirectTimeout);
+          if (countdownInterval) clearInterval(countdownInterval);
+        });
+        return btn;
+      } else {
+        // Use anchor for same-tab navigation
+        const a = document.createElement("a");
+        a.textContent = label;
+        const url = new URL(href);
+        url.searchParams.set("ss_nav", "1");
+        a.href = url.toString();
+        a.target = "_self";
+        a.rel = "noreferrer";
+        a.style.cssText = chipStyle;
+        a.addEventListener("click", () => {
+          if (redirectTimeout) clearTimeout(redirectTimeout);
+          if (countdownInterval) clearInterval(countdownInterval);
+        });
+        return a;
+      }
     };
 
-    const makeBtn = (label, onClick) => {
-        const b = document.createElement("button");
-        b.type = "button";
-        b.textContent = label;
-        b.style.cssText = styleBtn;
-        b.addEventListener("click", onClick);
-        return b;
+    const makeNewTabToggle = (reloadOnChange = false) => {
+      const newTabLabel = document.createElement("label");
+      newTabLabel.title = "Open in new tab";
+      newTabLabel.style.cssText =
+        "margin-left:8px;height:28px;padding:0 8px;display:inline-flex;align-items:center;gap:4px;" +
+        "border:1px solid #666;border-radius:16px;background:#f8f9fa;" +
+        "box-shadow:0 1px 3px rgba(0,0,0,0.1);cursor:pointer;box-sizing:border-box;";
+
+      const newTabCheckbox = document.createElement("input");
+      newTabCheckbox.type = "checkbox";
+      newTabCheckbox.checked = prefs.openInNewTab;
+      newTabCheckbox.style.cssText =
+        "cursor:pointer;width:11px;height:11px;margin:0;";
+      newTabCheckbox.addEventListener("change", (e) => {
+        GM.setValue("new-tab", e.target.checked);
+        if (reloadOnChange) location.reload();
+      });
+
+      newTabLabel.appendChild(newTabCheckbox);
+      newTabLabel.insertAdjacentHTML(
+        "beforeend",
+        `<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`,
+      );
+
+      return newTabLabel;
+    };
+
+    const styleDDGHeaderContainer = (el) => {
+      el.style.cssText =
+        "display:flex;align-items:center;flex-wrap:wrap;gap:6px;" +
+        "vertical-align:middle;margin-left:12px;max-width:100%;";
+
+      // Child controls already set margin-left; reset here so flex gap controls spacing.
+      Array.from(el.children).forEach((child) => {
+        if (child && child.style) {
+          child.style.marginLeft = "0";
+        }
+      });
     };
 
     // Prefer anchoring near the search form; otherwise pin top-right.
     let anchor = null;
     if (isGoogle) {
-        // Try multiple selectors for Google's various layouts
-        anchor = document.querySelector('div[role="navigation"]') ||
-                 document.querySelector('form[role="search"]') ||
-                 document.querySelector('#searchform') ||
-                 document.querySelector('form');
+      // Prefer the search form itself; never use div[role="navigation"] (that's the tabs bar)
+      anchor =
+        document.querySelector("form.tsf .A8SBwf") ||
+        document.querySelector("form#tsf .A8SBwf") ||
+        document.querySelector(".A8SBwf") ||
+        document.querySelector("form.tsf") ||
+        document.querySelector("form#tsf") ||
+        document.querySelector('form[role="search"]') ||
+        document.querySelector("#searchform") ||
+        document.querySelector("form");
     } else if (isBing) {
-        anchor = document.querySelector("form#sb_form") || document.querySelector("form");
+      anchor =
+        document.querySelector("form#sb_form") ||
+        document.querySelector("form");
     } else if (isDDG) {
-        const input = document.getElementById("search_form_input") || document.querySelector("input[name='q']");
-        anchor = input ? input.closest("form") : null;
+      anchor =
+        document.querySelector(".header__content.header__search") ||
+        document.querySelector("#react-search-form") ||
+        document.querySelector("form#search_form") ||
+        (() => {
+          const input =
+            document.getElementById("search_form_input") ||
+            document.querySelector("input[name='q']");
+          return input ? input.closest("form") : null;
+        })();
     }
 
-        if (isDDG) {
-            // Add new tab checkbox
-            const newTabLabel = document.createElement("label");
-            newTabLabel.style.cssText =
-                "margin-left:8px;padding:4px 8px;font:12px/1 sans-serif;color:#202124;white-space:nowrap;cursor:pointer;";
-            
-            const newTabCheckbox = document.createElement("input");
-            newTabCheckbox.type = "checkbox";
-            newTabCheckbox.checked = prefs.openInNewTab;
-            newTabCheckbox.style.cssText = "margin-right:4px;cursor:pointer;";
-            newTabCheckbox.addEventListener("change", (e) => {
-                GM.setValue('new-tab', e.target.checked);
-            });
-            
-            const newTabText = document.createTextNode("New Tab");
-            newTabLabel.appendChild(newTabCheckbox);
-            newTabLabel.appendChild(newTabText);
-            container.appendChild(newTabLabel);
+    if (isDDG) {
+      // DDG: redirect to other search engines
+      container.appendChild(
+        makeLink(
+          "!g",
+          `https://www.google.com/search?q=${encodeURIComponent(q)}`,
+        ),
+      );
+      container.appendChild(makeBingSearchButton("!b", q));
+      container.appendChild(makeNewTabToggle(false));
+    } else if (isGoogle) {
+      container.appendChild(makeBingSearchButton("!b", q));
+      container.appendChild(
+        makeLink("!d", `https://duckduckgo.com/?q=${encodeURIComponent(q)}`),
+      );
+      container.appendChild(makeNewTabToggle(false));
+    } else if (isBing) {
+      // Add auto-redirect checkbox (only if not in new tab mode)
+      if (!prefs.openInNewTab) {
+        const checkboxLabel = document.createElement("label");
+        checkboxLabel.style.cssText =
+          "margin-left:8px;padding:4px 8px;font:12px/1 sans-serif;color:#202124;white-space:nowrap;cursor:pointer;";
 
-            // DDG: redirect to other search engines
-            container.appendChild(makeLink("!g", `https://www.google.com/search?q=${encodeURIComponent(q)}`));
-            container.appendChild(makeBingSearchButton("!b", q));
-        } else if (isGoogle) {
-            // Add new tab checkbox
-            const newTabLabel = document.createElement("label");
-            newTabLabel.style.cssText =
-                "margin-left:8px;padding:4px 8px;font:12px/1 sans-serif;color:#202124;white-space:nowrap;cursor:pointer;";
-            
-            const newTabCheckbox = document.createElement("input");
-            newTabCheckbox.type = "checkbox";
-            newTabCheckbox.checked = prefs.openInNewTab;
-            newTabCheckbox.style.cssText = "margin-right:4px;cursor:pointer;";
-            newTabCheckbox.addEventListener("change", (e) => {
-                GM.setValue('new-tab', e.target.checked);
-            });
-            
-            const newTabText = document.createTextNode("New Tab");
-            newTabLabel.appendChild(newTabCheckbox);
-            newTabLabel.appendChild(newTabText);
-            container.appendChild(newTabLabel);
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = prefs.autoRedirect;
+        checkbox.style.cssText = "margin-right:4px;cursor:pointer;";
+        checkbox.addEventListener("change", (e) => {
+          GM.setValue("bing-to-ddg", e.target.checked);
+          // Cancel pending redirect if user unchecks during wait period
+          if (!e.target.checked && redirectTimeout) {
+            clearTimeout(redirectTimeout);
+            clearInterval(countdownInterval);
+            const countdownBtn = document.getElementById(
+              "search-switcher-countdown",
+            );
+            if (countdownBtn) countdownBtn.remove();
+          }
+        });
 
-            container.appendChild(makeBingSearchButton("!b", q));
-            container.appendChild(makeLink("!d", `https://duckduckgo.com/?q=${encodeURIComponent(q)}`));
-        } else if (isBing) {
-            // Add new tab checkbox
-            const newTabLabel = document.createElement("label");
-            newTabLabel.style.cssText =
-                "margin-left:8px;padding:4px 8px;font:12px/1 sans-serif;color:#202124;white-space:nowrap;cursor:pointer;";
-            
-            const newTabCheckbox = document.createElement("input");
-            newTabCheckbox.type = "checkbox";
-            newTabCheckbox.checked = prefs.openInNewTab;
-            newTabCheckbox.style.cssText = "margin-right:4px;cursor:pointer;";
-            newTabCheckbox.addEventListener("change", (e) => {
-                GM.setValue('new-tab', e.target.checked);
-                // Reload to update UI
-                location.reload();
-            });
-            
-            const newTabText = document.createTextNode("New Tab");
-            newTabLabel.appendChild(newTabCheckbox);
-            newTabLabel.appendChild(newTabText);
-            container.appendChild(newTabLabel);
+        const labelText = document.createTextNode("Auto→DDG");
+        checkboxLabel.appendChild(checkbox);
+        checkboxLabel.appendChild(labelText);
+        container.appendChild(checkboxLabel);
+      }
 
-            // Add auto-redirect checkbox (only if not in new tab mode)
-            if (!prefs.openInNewTab) {
-                const checkboxLabel = document.createElement("label");
-                checkboxLabel.style.cssText =
-                    "margin-left:8px;padding:4px 8px;font:12px/1 sans-serif;color:#202124;white-space:nowrap;cursor:pointer;";
-                
-                const checkbox = document.createElement("input");
-                checkbox.type = "checkbox";
-                checkbox.checked = prefs.autoRedirect;
-                checkbox.style.cssText = "margin-right:4px;cursor:pointer;";
-                checkbox.addEventListener("change", (e) => {
-                    GM.setValue('bing-to-ddg', e.target.checked);
-                    // Cancel pending redirect if user unchecks during wait period
-                    if (!e.target.checked && redirectTimeout) {
-                        clearTimeout(redirectTimeout);
-                        clearInterval(countdownInterval);
-                        const countdownBtn = document.getElementById('search-switcher-countdown');
-                        if (countdownBtn) countdownBtn.remove();
-                    }
-                });
-                
-                const labelText = document.createTextNode("Auto→DDG");
-                checkboxLabel.appendChild(checkbox);
-                checkboxLabel.appendChild(labelText);
-                container.appendChild(checkboxLabel);
-            }
+      container.appendChild(
+        makeLink(
+          "!g",
+          `https://www.google.com/search?q=${encodeURIComponent(q)}`,
+        ),
+      );
+      container.appendChild(
+        makeLink("!d", `https://duckduckgo.com/?q=${encodeURIComponent(q)}`),
+      );
+      container.appendChild(makeNewTabToggle(true));
+    } else {
+      return;
+    }
 
-            container.appendChild(makeLink("!g", `https://www.google.com/search?q=${encodeURIComponent(q)}`));
-            container.appendChild(makeLink("!d", `https://duckduckgo.com/?q=${encodeURIComponent(q)}`));
+    if (anchor) {
+      // Find the search button and insert after it
+      let searchButton = null;
+      if (isGoogle) {
+        searchButton =
+          anchor.querySelector('button[jsname="Tg7LZd"]') ||
+          anchor.querySelector('button[aria-label="Search"][type="submit"]') ||
+          anchor.querySelector('button[type="submit"]') ||
+          anchor.querySelector("button");
+      } else if (isBing) {
+        searchButton =
+          anchor.querySelector("#search_icon") ||
+          anchor.querySelector('button[type="submit"]') ||
+          anchor.querySelector('label[for="sb_form_go"]');
+      } else if (isDDG) {
+        searchButton = anchor.querySelector('button[type="submit"]');
+      }
+
+      if (
+        isDDG &&
+        anchor.classList &&
+        anchor.classList.contains("header__search")
+      ) {
+        // DDG's current layout is more stable if we place controls beside #react-search-form.
+        const formWrapper = anchor.querySelector("#react-search-form");
+        if (formWrapper && formWrapper.nextSibling) {
+          anchor.insertBefore(container, formWrapper.nextSibling);
         } else {
-            return;
+          anchor.appendChild(container);
         }
-
-        if (anchor) {
-            // Find the search button and insert after it
-            let searchButton = null;
-            if (isGoogle) {
-                searchButton = anchor.querySelector('button[type="submit"]') || anchor.querySelector('button');
-            } else if (isBing) {
-                searchButton = anchor.querySelector('#search_icon') || anchor.querySelector('button[type="submit"]') || anchor.querySelector('label[for="sb_form_go"]');
-            } else if (isDDG) {
-                searchButton = anchor.querySelector('button[type="submit"]');
-            }
-            
-            if (searchButton) {
-                // Insert after the search button
-                if (searchButton.nextSibling) {
-                    searchButton.parentNode.insertBefore(container, searchButton.nextSibling);
-                } else {
-                    searchButton.parentNode.appendChild(container);
-                }
-            } else {
-                // Fallback: append to anchor
-                anchor.appendChild(container);
-            }
-            
-            // Ensure proper styling
-            container.style.cssText = "display:inline-block;white-space:nowrap;vertical-align:middle;margin-left:8px;";
+      } else if (
+        isGoogle &&
+        anchor.classList &&
+        anchor.classList.contains("A8SBwf")
+      ) {
+        // Match DDG strategy by mounting beside Google's main search-box wrapper.
+        const searchBoxWrapper = anchor.querySelector(".RNNXgb");
+        if (searchBoxWrapper && searchBoxWrapper.nextSibling) {
+          anchor.insertBefore(container, searchBoxWrapper.nextSibling);
         } else {
-            // Fallback: fixed position top-right
-            container.style.cssText = "position:fixed;top:12px;right:12px;z-index:999999;white-space:nowrap;";
-            document.documentElement.appendChild(container);
+          anchor.appendChild(container);
         }
-    };
+      } else if (isGoogle && anchor.tagName === "FORM") {
+        // For Google, mount after the form element itself so we don't inject
+        // controls inside the autocomplete / submit button area.
+        if (anchor.nextSibling) {
+          anchor.parentNode.insertBefore(container, anchor.nextSibling);
+        } else {
+          anchor.parentNode.appendChild(container);
+        }
+      } else if (searchButton) {
+        // Insert after the search button
+        if (searchButton.nextSibling) {
+          searchButton.parentNode.insertBefore(
+            container,
+            searchButton.nextSibling,
+          );
+        } else {
+          searchButton.parentNode.appendChild(container);
+        }
+      } else {
+        // Fallback: append to anchor
+        anchor.appendChild(container);
+      }
 
-    // Initialization starts after preferences load (see above)
+      // Ensure proper styling
+      if (
+        isDDG &&
+        anchor.classList &&
+        anchor.classList.contains("header__search")
+      ) {
+        styleDDGHeaderContainer(container);
+      } else if (
+        isGoogle &&
+        anchor.classList &&
+        anchor.classList.contains("A8SBwf")
+      ) {
+        styleDDGHeaderContainer(container);
+      } else if (isGoogle && anchor.tagName === "FORM") {
+        container.style.cssText =
+          "display:flex;align-items:center;flex-wrap:wrap;gap:6px;" +
+          "margin:4px 0 2px 4px;max-width:100%;";
+        Array.from(container.children).forEach((child) => {
+          if (child && child.style) child.style.marginLeft = "0";
+        });
+      } else {
+        container.style.cssText =
+          "display:inline-block;white-space:nowrap;vertical-align:middle;margin-left:8px;";
+      }
+    } else {
+      // Fallback: fixed position top-right
+      container.style.cssText =
+        "position:fixed;top:12px;right:12px;z-index:999999;white-space:nowrap;";
+      document.documentElement.appendChild(container);
+    }
+  };
+
+  // Initialization starts after preferences load (see above)
 })();
