@@ -1,9 +1,10 @@
 // ==UserScript==
 // @name         Auto Close Page (Countdown)
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.3
-// @description  Automatically closes pages after a configurable countdown. Domains can be assigned to 30s or 120s groups; others close after 5s. Includes an in-page settings UI.
+// @version      1.4.1
+// @description  Automatically closes pages after a configurable countdown for configured domains. Includes an in-page settings UI and quick add menu commands.
 // @author       warthurton
+// @match        *://*/*
 // @run-at       document-idle
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -16,41 +17,41 @@
 // ==/UserScript==
 
 (function () {
-  'use strict';
+  "use strict";
 
   const STORAGE_KEYS = {
-    d5: 'autoClose_domains_5',
-    d30: 'autoClose_domains_30',
-    d120: 'autoClose_domains_120',
+    d5: "autoClose_domains_5",
+    d30: "autoClose_domains_30",
+    d120: "autoClose_domains_120",
   };
 
   function getStoredDomains(key) {
-    const raw = (typeof GM_getValue === 'function') ? GM_getValue(key, '') : '';
+    const raw = typeof GM_getValue === "function" ? GM_getValue(key, "") : "";
     return parseDomains(raw);
   }
 
   function parseDomains(text) {
     return String(text)
       .split(/\n|,|\s+/)
-      .map(s => s.trim().toLowerCase())
+      .map((s) => s.trim().toLowerCase())
       .filter(Boolean);
   }
 
   function saveDomains(key, domains) {
-    const raw = domains.join('\n');
-    if (typeof GM_setValue === 'function') GM_setValue(key, raw);
+    const raw = domains.join("\n");
+    if (typeof GM_setValue === "function") GM_setValue(key, raw);
   }
 
   function hostnameMatchesList(hostname, list) {
     const h = hostname.toLowerCase();
-    return list.some(d => {
+    return list.some((d) => {
       const domain = d.toLowerCase();
-      return h === domain || h.endsWith('.' + domain);
+      return h === domain || h.endsWith("." + domain);
     });
   }
 
-  function computeCountdownSeconds() {
-    const h = location.hostname || '';
+  function getMatchedCountdownSeconds() {
+    const h = location.hostname || "";
     const d5 = getStoredDomains(STORAGE_KEYS.d5);
     const d30 = getStoredDomains(STORAGE_KEYS.d30);
     const d120 = getStoredDomains(STORAGE_KEYS.d120);
@@ -58,12 +59,33 @@
     if (hostnameMatchesList(h, d5)) return 5;
     if (hostnameMatchesList(h, d30)) return 30;
     if (hostnameMatchesList(h, d120)) return 120;
-    return 120; // default with no domain match
+    return null;
+  }
+
+  function assignHostToDuration(hostname, newSeconds) {
+    if (![5, 30, 120].includes(newSeconds)) return;
+    const host = (hostname || "").toLowerCase();
+    if (!host) return;
+
+    const lists = {
+      5: getStoredDomains(STORAGE_KEYS.d5),
+      30: getStoredDomains(STORAGE_KEYS.d30),
+      120: getStoredDomains(STORAGE_KEYS.d120),
+    };
+
+    for (const k of [5, 30, 120]) {
+      lists[k] = lists[k].filter((d) => d !== host);
+    }
+
+    lists[newSeconds].push(host);
+    saveDomains(STORAGE_KEYS.d5, lists[5]);
+    saveDomains(STORAGE_KEYS.d30, lists[30]);
+    saveDomains(STORAGE_KEYS.d120, lists[120]);
   }
 
   function createBanner(seconds, onCancel, onSaveDuration) {
-    const banner = document.createElement('div');
-    banner.id = 'auto-close-banner';
+    const banner = document.createElement("div");
+    banner.id = "auto-close-banner";
     banner.innerHTML = `
       <div class="acp-content">
         <button id="acp-count-btn" type="button" aria-label="Remaining time">${seconds}s</button>
@@ -102,24 +124,29 @@
       .acp-actions button { background: #1565c0; color: #fff; border: none; border-radius: 6px; padding: 8px 12px; cursor: pointer; }
       .acp-actions .acp-dismiss { background: #666; }
     `;
-    if (typeof GM_addStyle === 'function') GM_addStyle(style); else {
-      const s = document.createElement('style'); s.textContent = style; document.head.appendChild(s);
+    if (typeof GM_addStyle === "function") GM_addStyle(style);
+    else {
+      const s = document.createElement("style");
+      s.textContent = style;
+      document.head.appendChild(s);
     }
 
-    const countBtn = banner.querySelector('#acp-count-btn');
-    const settingsBtn = banner.querySelector('#acp-settings');
-    const selectEl = banner.querySelector('#acp-duration');
-    const saveBtn = banner.querySelector('#acp-save-duration');
+    const countBtn = banner.querySelector("#acp-count-btn");
+    const settingsBtn = banner.querySelector("#acp-settings");
+    const selectEl = banner.querySelector("#acp-duration");
+    const saveBtn = banner.querySelector("#acp-save-duration");
 
-    countBtn.addEventListener('click', onCancel);
-    settingsBtn.addEventListener('click', openSettingsModal);
+    countBtn.addEventListener("click", onCancel);
+    settingsBtn.addEventListener("click", openSettingsModal);
     if (selectEl) {
       // preselect current seconds bucket (5/30/120)
-      const pre = [5, 30, 120].includes(Number(seconds)) ? String(seconds) : '120';
+      const pre = [5, 30, 120].includes(Number(seconds))
+        ? String(seconds)
+        : "120";
       selectEl.value = pre;
     }
     if (saveBtn) {
-      saveBtn.addEventListener('click', () => {
+      saveBtn.addEventListener("click", () => {
         if (!selectEl) return;
         const val = Number(selectEl.value);
         if (![5, 30, 120].includes(val)) return;
@@ -131,31 +158,33 @@
   }
 
   function openSettingsModal() {
-    const existing = document.querySelector('.acp-modal-backdrop');
-    if (existing) { existing.remove(); }
+    const existing = document.querySelector(".acp-modal-backdrop");
+    if (existing) {
+      existing.remove();
+    }
 
     const d5 = getStoredDomains(STORAGE_KEYS.d5);
     const d30 = getStoredDomains(STORAGE_KEYS.d30);
     const d120 = getStoredDomains(STORAGE_KEYS.d120);
 
-    const backdrop = document.createElement('div');
-    backdrop.className = 'acp-modal-backdrop';
-    const modal = document.createElement('div');
-    modal.className = 'acp-modal';
+    const backdrop = document.createElement("div");
+    backdrop.className = "acp-modal-backdrop";
+    const modal = document.createElement("div");
+    modal.className = "acp-modal";
     modal.innerHTML = `
       <header>Auto Close Settings</header>
       <div class="acp-body">
         <div>
           <label for="acp-ta-5">CloseAfter5Seconds domains (one per line or comma-separated):</label>
-          <textarea id="acp-ta-5" placeholder="fast.example">${d5.join('\n')}</textarea>
+          <textarea id="acp-ta-5" placeholder="fast.example">${d5.join("\n")}</textarea>
         </div>
         <div>
           <label for="acp-ta-30">CloseAfter30Seconds domains (one per line or comma-separated):</label>
-          <textarea id="acp-ta-30" placeholder="example.com\nsub.example.org">${d30.join('\n')}</textarea>
+          <textarea id="acp-ta-30" placeholder="example.com\nsub.example.org">${d30.join("\n")}</textarea>
         </div>
         <div>
           <label for="acp-ta-120">CloseAfter120Seconds domains (one per line or comma-separated):</label>
-          <textarea id="acp-ta-120" placeholder="another.site\nfoo.bar">${d120.join('\n')}</textarea>
+          <textarea id="acp-ta-120" placeholder="another.site\nfoo.bar">${d120.join("\n")}</textarea>
         </div>
       </div>
       <div class="acp-actions">
@@ -167,17 +196,21 @@
     backdrop.appendChild(modal);
     document.documentElement.appendChild(backdrop);
 
-    const ta5 = modal.querySelector('#acp-ta-5');
-    const ta30 = modal.querySelector('#acp-ta-30');
-    const ta120 = modal.querySelector('#acp-ta-120');
-    const saveBtn = modal.querySelector('.acp-save');
-    const closeBtn = modal.querySelector('.acp-dismiss');
+    const ta5 = modal.querySelector("#acp-ta-5");
+    const ta30 = modal.querySelector("#acp-ta-30");
+    const ta120 = modal.querySelector("#acp-ta-120");
+    const saveBtn = modal.querySelector(".acp-save");
+    const closeBtn = modal.querySelector(".acp-dismiss");
 
-    function close() { backdrop.remove(); }
-    closeBtn.addEventListener('click', close);
-    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+    function close() {
+      backdrop.remove();
+    }
+    closeBtn.addEventListener("click", close);
+    backdrop.addEventListener("click", (e) => {
+      if (e.target === backdrop) close();
+    });
 
-    saveBtn.addEventListener('click', () => {
+    saveBtn.addEventListener("click", () => {
       const list5 = parseDomains(ta5.value);
       const list30 = parseDomains(ta30.value);
       const list120 = parseDomains(ta120.value);
@@ -190,50 +223,49 @@
 
   function attemptClose() {
     // Try several strategies to close the tab in user agents that restrict window.close()
-    try { window.close(); } catch { }
-    try { self.close(); } catch { }
     try {
-      const w = window.open('', '_self');
+      window.close();
+    } catch {}
+    try {
+      self.close();
+    } catch {}
+    try {
+      const w = window.open("", "_self");
       if (w) w.close();
-    } catch { }
+    } catch {}
     // As a last resort, navigate away (user can close then)
-    try { location.href = 'about:blank'; } catch { }
+    try {
+      location.href = "about:blank";
+    } catch {}
   }
 
   function startCountdown() {
-    let seconds = computeCountdownSeconds();
+    const matchedSeconds = getMatchedCountdownSeconds();
+    if (matchedSeconds === null) return;
+
+    let seconds = matchedSeconds;
     let cancelled = false;
 
     const { countBtn } = createBanner(
       seconds,
-      () => { cancelled = true; removeBanner(); },
+      () => {
+        cancelled = true;
+        removeBanner();
+      },
       (newSeconds) => {
-        // Persist preference for this hostname and adjust timer
-        const host = (location.hostname || '').toLowerCase();
-        const lists = {
-          5: getStoredDomains(STORAGE_KEYS.d5),
-          30: getStoredDomains(STORAGE_KEYS.d30),
-          120: getStoredDomains(STORAGE_KEYS.d120),
-        };
-        // Remove host from all lists first
-        for (const k of [5, 30, 120]) {
-          const arr = lists[k].filter(d => d !== host);
-          lists[k] = arr;
-        }
-        // Add to selected list
-        lists[newSeconds].push(host);
-        saveDomains(STORAGE_KEYS.d5, lists[5]);
-        saveDomains(STORAGE_KEYS.d30, lists[30]);
-        saveDomains(STORAGE_KEYS.d120, lists[120]);
+        assignHostToDuration(location.hostname || "", newSeconds);
 
         // Reset countdown to the chosen value
         seconds = newSeconds;
         if (countBtn) countBtn.textContent = `${seconds}s`;
-      }
+      },
     );
 
     const interval = setInterval(() => {
-      if (cancelled) { clearInterval(interval); return; }
+      if (cancelled) {
+        clearInterval(interval);
+        return;
+      }
       seconds -= 1;
       if (countBtn) countBtn.textContent = `${seconds}s`;
       if (seconds <= 0) {
@@ -243,17 +275,21 @@
     }, 1000);
 
     function removeBanner() {
-      const b = document.getElementById('auto-close-banner');
+      const b = document.getElementById("auto-close-banner");
       if (b) b.remove();
     }
 
     // Allow ESC to cancel
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        cancelled = true;
-        removeBanner();
-      }
-    }, { once: true });
+    window.addEventListener(
+      "keydown",
+      (e) => {
+        if (e.key === "Escape") {
+          cancelled = true;
+          removeBanner();
+        }
+      },
+      { once: true },
+    );
   }
 
   function onLoadThenStart() {
@@ -262,11 +298,20 @@
   }
 
   // Register menu command to open settings quickly from the userscript manager
-  if (typeof GM_registerMenuCommand === 'function') {
-    GM_registerMenuCommand('Auto Close: Settings', openSettingsModal);
+  if (typeof GM_registerMenuCommand === "function") {
+    GM_registerMenuCommand("Auto Close: Settings", openSettingsModal);
+    GM_registerMenuCommand("Auto Close: Add current site to 5s", () => {
+      assignHostToDuration(location.hostname || "", 5);
+    });
+    GM_registerMenuCommand("Auto Close: Add current site to 30s", () => {
+      assignHostToDuration(location.hostname || "", 30);
+    });
+    GM_registerMenuCommand("Auto Close: Add current site to 120s", () => {
+      assignHostToDuration(location.hostname || "", 120);
+    });
   }
 
   // Ensure we start after the page is fully loaded
-  if (document.readyState === 'complete') onLoadThenStart();
-  else window.addEventListener('load', onLoadThenStart, { once: true });
+  if (document.readyState === "complete") onLoadThenStart();
+  else window.addEventListener("load", onLoadThenStart, { once: true });
 })();
