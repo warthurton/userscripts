@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Minimal Search Switcher: Google <-> Bing <-> DuckDuckGo (DDG uses !bang submit)
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.1.7
+// @version      1.1.9
 // @description  Switch between Google, Bing, and DuckDuckGo search engines
 // @author       warthurton
 // @match        https://www.google.com/search*
@@ -38,25 +38,39 @@
     history.replaceState(null, "", cleanUrl.toString());
   }
 
+  const DEFAULT_REDIRECT_DELAY_MS = 1000;
+
   // Preferences cache (populated asynchronously)
-  const prefs = { openInNewTab: false, autoRedirect: false };
+  const prefs = {
+    openInNewTab: false,
+    autoRedirect: false,
+    redirectDelayMs: DEFAULT_REDIRECT_DELAY_MS,
+  };
   // Auto-redirect variables
   let redirectTimeout = null;
   let countdownInterval = null;
-  let secondsLeft = 5;
+  let secondsLeft = Math.ceil(DEFAULT_REDIRECT_DELAY_MS / 1000);
 
   // Load preferences, then initialize timer and UI
   Promise.all([
     GM.getValue("new-tab", false),
     GM.getValue("bing-to-ddg", false),
-  ]).then(([openInNewTabVal, autoRedirectVal]) => {
+    GM.getValue("bing-to-ddg-delay-ms", DEFAULT_REDIRECT_DELAY_MS),
+  ]).then(([openInNewTabVal, autoRedirectVal, redirectDelayVal]) => {
     prefs.openInNewTab = openInNewTabVal;
     prefs.autoRedirect = autoRedirectVal;
+    const parsedDelay = Number(redirectDelayVal);
+    prefs.redirectDelayMs =
+      Number.isFinite(parsedDelay) && parsedDelay >= 0
+        ? Math.floor(parsedDelay)
+        : DEFAULT_REDIRECT_DELAY_MS;
 
     // Setup auto-redirect from Bing to DDG if enabled (and not from our script)
     if (isBing && !fromScript && !prefs.openInNewTab && prefs.autoRedirect) {
       const q = new URL(location.href).searchParams.get("q");
       if (q) {
+        const countdownDeadline = Date.now() + prefs.redirectDelayMs;
+        secondsLeft = Math.max(0, Math.ceil(prefs.redirectDelayMs / 1000));
         const countdownBtn = document.createElement("button");
         countdownBtn.id = "search-switcher-countdown";
         countdownBtn.textContent = `→DDG (${secondsLeft}s)`;
@@ -73,17 +87,21 @@
         document.body.appendChild(countdownBtn);
 
         countdownInterval = setInterval(() => {
-          secondsLeft--;
-          countdownBtn.textContent = `→DDG (${secondsLeft}s)`;
-          if (secondsLeft <= 0) {
+          const remainingMs = countdownDeadline - Date.now();
+          const nextSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+          if (nextSeconds !== secondsLeft) {
+            secondsLeft = nextSeconds;
+            countdownBtn.textContent = `→DDG (${secondsLeft}s)`;
+          }
+          if (remainingMs <= 0) {
             clearInterval(countdownInterval);
           }
-        }, 1000);
+        }, 100);
 
         redirectTimeout = setTimeout(() => {
           clearInterval(countdownInterval);
           location.href = `https://duckduckgo.com/?q=${encodeURIComponent(q)}`;
-        }, 5000);
+        }, prefs.redirectDelayMs);
       }
     }
 
