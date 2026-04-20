@@ -118,7 +118,9 @@ for (const s of scripts) {
     ? readFileSync(distUserPath, "utf8")
     : null;
   const contentChanged =
-    forceAllScripts || !existingDist || stripMeta(code) !== stripMeta(existingDist);
+    forceAllScripts ||
+    !existingDist ||
+    stripMeta(code) !== stripMeta(existingDist);
 
   if (contentChanged) {
     // Stamp new date-based version

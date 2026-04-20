@@ -1,80 +1,80 @@
 name: PR Checks
 
 on:
-    pull_request:
-        branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 permissions:
-    contents: read
+  contents: read
 
 jobs:
-    validate-build:
-        name: Validate build script
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v5
+  validate-build:
+    name: Validate build script
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
 
-            - name: Setup Node.js
-              uses: actions/setup-node@v5
-              with:
-                  node-version: "22"
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
 
-            - name: Check SOURCE_DIRS covers all script directories
-              run: |
-                  set -euo pipefail
+      - name: Check SOURCE_DIRS covers all script directories
+        run: |
+          set -euo pipefail
 
-                  # Discover every directory at the repo root that contains a .user.js
-                  mapfile -t actual_dirs < <(
-                    find . -maxdepth 2 -name '*.user.js' \
-                      ! -path './templates/*' \
-                      ! -path './_dist/*' \
-                      ! -path './node_modules/*' \
-                      -printf '%h\n' \
-                    | sed 's|^\./||' | sort -u
-                  )
+          # Discover every directory at the repo root that contains a .user.js
+          mapfile -t actual_dirs < <(
+            find . -maxdepth 2 -name '*.user.js' \
+              ! -path './templates/*' \
+              ! -path './_dist/*' \
+              ! -path './node_modules/*' \
+              -printf '%h\n' \
+            | sed 's|^\./||' | sort -u
+          )
 
-                  # Extract SOURCE_DIRS from the build script
-                  mapfile -t declared_dirs < <(
-                    node -e "
-                      import { readFileSync } from 'fs';
-                      const src = readFileSync('tools/build-userscripts.mjs', 'utf8');
-                      const m = src.match(/SOURCE_DIRS\s*=\s*\[([\s\S]*?)\]/);
-                      if (!m) { console.error('Could not find SOURCE_DIRS'); process.exit(1); }
-                      const dirs = m[1].match(/['\"]([^'\"]+)['\"]/g).map(s => s.replace(/['\"/]/g, ''));
-                      dirs.forEach(d => console.log(d));
-                    " | sort
-                  )
+          # Extract SOURCE_DIRS from the build script
+          mapfile -t declared_dirs < <(
+            node -e "
+              import { readFileSync } from 'fs';
+              const src = readFileSync('tools/build-userscripts.mjs', 'utf8');
+              const m = src.match(/SOURCE_DIRS\s*=\s*\[([\s\S]*?)\]/);
+              if (!m) { console.error('Could not find SOURCE_DIRS'); process.exit(1); }
+              const dirs = m[1].match(/['\"]([^'\"]+)['\"]/g).map(s => s.replace(/['\"/]/g, ''));
+              dirs.forEach(d => console.log(d));
+            " | sort
+          )
 
-                  missing=()
-                  for dir in "${actual_dirs[@]}"; do
-                    found=false
-                    for declared in "${declared_dirs[@]}"; do
-                      if [[ "$dir" == "$declared" ]]; then
-                        found=true
-                        break
-                      fi
-                    done
-                    if [[ "$found" == "false" ]]; then
-                      missing+=("$dir")
-                    fi
-                  done
+          missing=()
+          for dir in "${actual_dirs[@]}"; do
+            found=false
+            for declared in "${declared_dirs[@]}"; do
+              if [[ "$dir" == "$declared" ]]; then
+                found=true
+                break
+              fi
+            done
+            if [[ "$found" == "false" ]]; then
+              missing+=("$dir")
+            fi
+          done
 
-                  if [[ ${#missing[@]} -gt 0 ]]; then
-                    echo "::error::The following directories contain .user.js files but are NOT listed in SOURCE_DIRS in tools/build-userscripts.mjs:"
-                    for m in "${missing[@]}"; do
-                      echo "  - $m"
-                    done
-                    echo ""
-                    echo "Add them to SOURCE_DIRS so the build includes these scripts."
-                    exit 1
-                  fi
+          if [[ ${#missing[@]} -gt 0 ]]; then
+            echo "::error::The following directories contain .user.js files but are NOT listed in SOURCE_DIRS in tools/build-userscripts.mjs:"
+            for m in "${missing[@]}"; do
+              echo "  - $m"
+            done
+            echo ""
+            echo "Add them to SOURCE_DIRS so the build includes these scripts."
+            exit 1
+          fi
 
-                  echo "All script directories are covered by SOURCE_DIRS:"
-                  printf '  %s\n' "${actual_dirs[@]}"
+          echo "All script directories are covered by SOURCE_DIRS:"
+          printf '  %s\n' "${actual_dirs[@]}"
 
-            - name: Install dependencies
-              run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-            - name: Verify build succeeds
-              run: node tools/build-userscripts.mjs
+      - name: Verify build succeeds
+        run: node tools/build-userscripts.mjs
