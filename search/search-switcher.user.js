@@ -1,8 +1,7 @@
 // ==UserScript==
 // @name         Minimal Search Switcher: Google <-> Bing <-> DuckDuckGo
 // @namespace    https://github.com/warthurton/userscripts
-// @version      2.3
-// @modified     2026-04-20T20:41:30.831Z
+// @version      2.4.1
 // @description  Switch between Google, Bing, and DuckDuckGo search engines
 // @author       warthurton
 // @match        https://www.google.com/search*
@@ -321,6 +320,14 @@
 
   const resolveDDGSearchBar = () => {
     const input = queryFirst(ENGINES.ddg.overlayInputSelectors);
+    const wrapper = document.querySelector(
+      '[data-testid="search-form-input-wrapper"]',
+    );
+
+    if (input && wrapper && wrapper.contains(input)) {
+      return { bar: wrapper, input, layout: ENGINES.ddg.layout };
+    }
+
     const submitBtn = document.querySelector(
       'form#search_form button[type="submit"], button[aria-label="search"]',
     );
@@ -331,8 +338,14 @@
       }
     }
 
-    const form = document.querySelector("form#search_form");
-    if (form) {
+    const form = document.querySelector(
+      'form#search_form, [data-testid="search-form"]',
+    );
+    if (input && form && form.contains(input)) {
+      return { bar: form, input, layout: ENGINES.ddg.layout };
+    }
+
+    if (form && retryCount >= currentEngine.maxRetries - 1) {
       return {
         bar: null,
         fallbackAnchor: form,
