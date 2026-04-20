@@ -1,7 +1,8 @@
 // ==UserScript==
 // @name         Minimal Search Switcher: Google <-> Bing <-> DuckDuckGo
 // @namespace    https://github.com/warthurton/userscripts
-// @version      2.0.1
+// @version      2.1
+// @modified     2026-04-20T20:06:42.530Z
 // @description  Switch between Google, Bing, and DuckDuckGo search engines
 // @author       warthurton
 // @match        https://www.google.com/search*
@@ -12,7 +13,8 @@
 // @grant        GM.getValue
 // @grant        GM.setValue
 // @grant        GM.openInTab
-// @grant        GM.closeTab
+// @grant        GM.registerMenuCommand
+// @grant        window.close
 // @run-at       document-end
 // @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/search/search-switcher.user.js
 // @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/search/search-switcher.user.js
@@ -144,28 +146,16 @@
   // ---------------------------------------------------------------------------
   // Utility: best-effort close current tab
   // ---------------------------------------------------------------------------
-  const closeCurrentTab = async () => {
-    if (typeof GM.closeTab === "function") {
-      try {
-        await GM.closeTab();
-        return;
-      } catch (_) {
-        /* fall through */
-      }
-    }
+  const closeCurrentTab = () => {
+    // With @grant window.close, userscript managers allow closing any tab
     window.close();
-    try {
-      window.open("", "_self");
-      window.close();
-    } catch (_) {
-      /* best-effort */
-    }
+    // Fallback for restrictive environments
     setTimeout(() => {
       try {
         window.open("", "_self");
         window.close();
       } catch (_) {
-        /* no further fallback */
+        /* best-effort */
       }
     }, 120);
   };
@@ -298,29 +288,6 @@
     "cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" +
     "box-sizing:border-box;white-space:nowrap;flex-shrink:0;";
 
-  const TOGGLE_STYLE =
-    "height:100%;padding:0 6px;border:none;border-left:1px solid #ddd;" +
-    "display:inline-flex;align-items:center;gap:3px;background:transparent;" +
-    "cursor:pointer;box-sizing:border-box;flex-shrink:0;";
-
-  // ---------------------------------------------------------------------------
-  // UI: SVG icons (inline, small)
-  // ---------------------------------------------------------------------------
-  const SVG_NEW_TAB =
-    '<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" ' +
-    'fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" ' +
-    'stroke-linejoin="round" aria-hidden="true">' +
-    '<path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>' +
-    '<polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
-
-  const SVG_AUTO_REDIRECT =
-    '<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" ' +
-    'fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" ' +
-    'stroke-linejoin="round" aria-hidden="true">' +
-    '<path d="M20 7h-9"/><path d="M20 12h-12"/><path d="M20 17H9"/>' +
-    '<circle cx="6" cy="7" r="2"/><circle cx="4" cy="12" r="2"/>' +
-    '<circle cx="6" cy="17" r="2"/></svg>';
-
   // ---------------------------------------------------------------------------
   // UI: create a switch button for a target engine
   // ---------------------------------------------------------------------------
@@ -347,39 +314,7 @@
   };
 
   // ---------------------------------------------------------------------------
-  // UI: create toggle (checkbox + icon)
-  // ---------------------------------------------------------------------------
-  const createToggle = ({ title, checked, svgHtml, onChange, activeColor }) => {
-    const label = document.createElement("label");
-    label.title = title;
-    label.style.cssText = TOGGLE_STYLE;
-
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.checked = checked;
-    cb.style.cssText = "cursor:pointer;width:10px;height:10px;margin:0;";
-
-    const applyState = (on) => {
-      if (activeColor) {
-        label.style.background = on ? activeColor.bg : "transparent";
-        label.style.color = on ? activeColor.fg : "#555";
-        cb.style.accentColor = on ? activeColor.fg : "";
-      }
-    };
-
-    cb.addEventListener("change", (e) => {
-      applyState(e.target.checked);
-      onChange(e.target.checked);
-    });
-
-    label.appendChild(cb);
-    label.insertAdjacentHTML("beforeend", svgHtml);
-    applyState(checked);
-    return label;
-  };
-
-  // ---------------------------------------------------------------------------
-  // UI: build the controls container with all buttons & toggles
+  // UI: build the controls container with switch buttons
   // ---------------------------------------------------------------------------
   const buildControls = (query) => {
     const container = document.createElement("span");
@@ -387,43 +322,10 @@
     container.style.cssText =
       "display:inline-flex;align-items:center;height:100%;flex-shrink:0;";
 
-    // Bing-only: auto-redirect toggle
-    if (currentEngine.hasAutoRedirect) {
-      container.appendChild(
-        createToggle({
-          title: "Auto redirect Bing → DuckDuckGo",
-          checked: prefs.autoRedirect,
-          svgHtml: SVG_AUTO_REDIRECT,
-          activeColor: { bg: "#e9f8ea", fg: "#0f7b0f" },
-          onChange: (on) => {
-            GM.setValue("bing-to-ddg", on);
-            if (!on) {
-              cancelCountdown();
-              document.getElementById(COUNTDOWN_ID)?.remove();
-            }
-          },
-        }),
-      );
-    }
-
     // Switch buttons for each target engine
     for (const targetKey of currentEngine.switchTo) {
       container.appendChild(createSwitchButton(ENGINES[targetKey], query));
     }
-
-    // New-tab toggle
-    const reloadOnChange = currentEngine.key === "bing";
-    container.appendChild(
-      createToggle({
-        title: "Open in new tab",
-        checked: prefs.openInNewTab,
-        svgHtml: SVG_NEW_TAB,
-        onChange: (on) => {
-          GM.setValue("new-tab", on);
-          if (reloadOnChange) location.reload();
-        },
-      }),
-    );
 
     return container;
   };
@@ -544,6 +446,32 @@
       Number.isFinite(parsed) && parsed >= 0
         ? Math.floor(parsed)
         : DEFAULT_REDIRECT_DELAY_MS;
+
+    // Register menu commands for settings
+    GM.registerMenuCommand(
+      prefs.openInNewTab ? "\u2713 Open in New Tab" : "\u2717 Open in New Tab",
+      async () => {
+        prefs.openInNewTab = !prefs.openInNewTab;
+        await GM.setValue("new-tab", prefs.openInNewTab);
+        location.reload();
+      },
+    );
+    if (currentEngine.hasAutoRedirect) {
+      GM.registerMenuCommand(
+        prefs.autoRedirect
+          ? "\u2713 Auto Redirect Bing \u2192 DDG"
+          : "\u2717 Auto Redirect Bing \u2192 DDG",
+        async () => {
+          prefs.autoRedirect = !prefs.autoRedirect;
+          await GM.setValue("bing-to-ddg", prefs.autoRedirect);
+          if (!prefs.autoRedirect) {
+            cancelCountdown();
+            document.getElementById(COUNTDOWN_ID)?.remove();
+          }
+          location.reload();
+        },
+      );
+    }
 
     // Bing auto-redirect: open DDG immediately, close Bing after delay
     if (currentEngine.key === "bing" && !fromScript && prefs.autoRedirect) {
