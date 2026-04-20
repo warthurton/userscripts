@@ -40,7 +40,7 @@
       searchBarSelectors: [".RNNXgb"],
       layout: "overlay-left",
       overlayOffsetPx: 10,
-      overlayGapPx: 2,
+      overlayGapPx: 1,
       overlayPaddingPx: 12,
       // Fallback anchors if the search bar isn't found
       fallbackAnchorSelectors: [
@@ -78,7 +78,7 @@
       searchBarSelectors: null, // resolved dynamically
       layout: "overlay-left",
       overlayOffsetPx: 12,
-      overlayGapPx: 2,
+      overlayGapPx: 1,
       overlayPaddingPx: 12,
       fallbackAnchorSelectors: [
         ".header__content.header__search",
@@ -87,7 +87,7 @@
       ],
       switchTo: ["google", "bing"],
       dynamicContent: true,
-      maxRetries: 10,
+      maxRetries: 25,
     },
   };
 
@@ -289,7 +289,7 @@
     const container = document.createElement("span");
     container.id = CONTAINER_ID;
     container.style.cssText =
-      "display:inline-flex;align-items:center;gap:2px;height:100%;flex-shrink:0;";
+      "display:inline-flex;align-items:center;gap:1px;height:100%;flex-shrink:0;";
 
     // Switch buttons for each target engine
     for (const targetKey of currentEngine.switchTo) {
