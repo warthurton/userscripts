@@ -25,11 +25,13 @@ This produces `_dist/*.user.js` (full scripts) and `_dist/*.meta.js` (metadata-o
 
 ## Versioning (Fully Automatic)
 
-Versions are managed by [semantic-release](https://github.com/semantic-release/semantic-release):
+**Script versions** use a date-based format `YYYY.MMDD.HHMM` (e.g. `2026.0420.2150`):
 
-- Version is determined from **git tags** (the last published release), not from file contents
-- All scripts share a single repo-level version
-- The `version` field in `package.json` is **managed by CI** — do not edit it manually
+- Each script has its own version, only bumped when that script's content changes
+- The build compares source against existing `_dist/` output; unchanged scripts keep their version
+- This ensures userscript managers always see a higher version after real changes
+
+**Repo version** (`package.json`) is managed separately by [semantic-release](https://github.com/semantic-release/semantic-release) for tagging/releases — it is not used in script `@version` headers.
 
 ### Conventional Commits
 

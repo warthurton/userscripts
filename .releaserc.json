@@ -14,7 +14,7 @@
         [
             "@semantic-release/exec",
             {
-                "prepareCmd": "node tools/build-userscripts.mjs"
+                "prepareCmd": "node tools/build-userscripts.mjs && node tools/reset-source-versions.mjs"
             }
         ],
         [
@@ -23,7 +23,13 @@
                 "assets": [
                     "package.json",
                     "package-lock.json",
-                    "_dist/**"
+                    "_dist/**",
+                    "autotask/**/*.user.js",
+                    "chatgpt/**/*.user.js",
+                    "cloudradial/**/*.user.js",
+                    "general/**/*.user.js",
+                    "microsoft/**/*.user.js",
+                    "search/**/*.user.js"
                 ],
                 "message": "chore(release): v${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
             }

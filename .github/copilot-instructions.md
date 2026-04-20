@@ -9,12 +9,14 @@
 | `tools/build-userscripts.mjs`                                                | Build script that produces `_dist/`                   |
 | `templates/`                                                                 | Starter template for new scripts                      |
 
-## Versioning — semantic-release (fully automatic)
+## Versioning — date-based, per-script, fully automatic
 
 - **Do not** manually change `@version` in source scripts.
-  Versions are determined automatically by [semantic-release](https://github.com/semantic-release/semantic-release) from **git tags** (the last published release), not from file contents.
-- All scripts share a single repo-level version.
-- The `version` field in `package.json` is managed by CI — do not edit it.
+  Versions are determined automatically by the build script using date-based
+  format `YYYY.MMDD.HHMM` (e.g. `2026.0420.2150`).
+- Each script has its own version — only bumped when that script's content changes.
+- The `version` field in `package.json` is the **repo** version (managed by
+  semantic-release) and is separate from individual script versions.
 
 ## Conventional Commits
 
@@ -30,7 +32,9 @@ Every commit that should trigger a release **must** use a [Conventional Commits]
 ## Build & dist
 
 - `node tools/build-userscripts.mjs` generates `_dist/*.user.js` (full script) and `_dist/*.meta.js` (metadata-only, for lightweight update checks).
-- The build stamps every script with the version from `package.json`, adds `@modified`, and rewrites `@updateURL` / `@downloadURL` to point at `_dist/` raw URLs.
+- The build compares each source script against its existing `_dist/` output.
+  Only scripts whose content actually changed get a new date-based version.
+  Unchanged scripts keep their existing `_dist/` version and are not re-committed.
 - CI runs the build automatically on every release via GitHub Actions.
 
 ## Adding a new script
