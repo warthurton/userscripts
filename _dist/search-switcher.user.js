@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Minimal Search Switcher: Google <-> Bing <-> DuckDuckGo
 // @namespace    https://github.com/warthurton/userscripts
-// @version      2026.0420.2311
-// @modified     2026-04-20T23:11:38.325Z
+// @version      2026.0420.2317
+// @modified     2026-04-20T23:17:40.189Z
 // @description  Switch between Google, Bing, and DuckDuckGo search engines
 // @author       warthurton
 // @match        https://www.google.com/search*
@@ -395,8 +395,10 @@
   // ---------------------------------------------------------------------------
   const findSearchBar = () => {
     if (currentEngine.key === "ddg") {
-      const result = resolveDDGSearchBar();
-      if (result) return result;
+      // Always return resolveDDGSearchBar's result directly (null = retry).
+      // Do NOT fall through to generic fallback — that would mount in the wrong
+      // spot against SSR HTML before React hydrates, bypassing the retry loop.
+      return resolveDDGSearchBar();
     } else if (currentEngine.searchBarSelectors) {
       const bar = queryFirst(currentEngine.searchBarSelectors);
       if (bar) {
@@ -531,6 +533,9 @@
         currentEngine.dynamicContent &&
         retryCount < currentEngine.maxRetries
       ) {
+        console.log(
+          `[search-switcher] no placement yet, retrying (${retryCount + 1}/${currentEngine.maxRetries})`,
+        );
         retryCount++;
         setTimeout(init, 200);
       }
