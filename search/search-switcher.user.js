@@ -1,7 +1,8 @@
 // ==UserScript==
 // @name         Minimal Search Switcher: Google <-> Bing <-> DuckDuckGo (DDG uses !bang submit)
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.2.1
+// @version      1.3
+// @modified     2026-04-20T17:45:12.851Z
 // @description  Switch between Google, Bing, and DuckDuckGo search engines
 // @author       warthurton
 // @match        https://www.google.com/search*
