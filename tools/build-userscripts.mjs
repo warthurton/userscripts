@@ -37,6 +37,10 @@ const SOURCE_DIRS = [
   "search",
 ];
 
+const forceAllScripts =
+  process.env.FORCE_ALL_SCRIPTS === "1" ||
+  process.env.FORCE_ALL_SCRIPTS === "true";
+
 // ── Helpers ─────────────────────────────────────────────────────────
 
 /** Generate a date-based version: YYYY.MMDD.HHMM */
@@ -114,7 +118,7 @@ for (const s of scripts) {
     ? readFileSync(distUserPath, "utf8")
     : null;
   const contentChanged =
-    !existingDist || stripMeta(code) !== stripMeta(existingDist);
+    forceAllScripts || !existingDist || stripMeta(code) !== stripMeta(existingDist);
 
   if (contentChanged) {
     // Stamp new date-based version
@@ -155,3 +159,7 @@ for (const s of scripts) {
 console.log(
   `\nDone: ${changed} changed, ${unchanged} unchanged (version format: ${dateVersion})`,
 );
+
+if (forceAllScripts) {
+  console.log("Force mode enabled via FORCE_ALL_SCRIPTS");
+}

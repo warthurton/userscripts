@@ -31,4 +31,5 @@ jobs:
             - name: Run semantic-release
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                                    FORCE_ALL_SCRIPTS: ${{ contains(github.event.head_commit.message, '[force-all-scripts]') && '1' || '0' }}
               run: npx semantic-release
