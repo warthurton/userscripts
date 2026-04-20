@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Auto Close Page (Countdown)
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.0
-// @modified     2026-04-20T21:47:24.875Z
+// @version      1.0.1
+// @modified     2026-04-20T21:57:58.210Z
 // @description  Automatically closes pages after a configurable countdown for configured domains. Includes an in-page settings UI and quick add menu commands.
 // @author       warthurton
 // @match        *://*/*

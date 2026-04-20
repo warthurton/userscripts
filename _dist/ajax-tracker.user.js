@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Autotask - Ajax & Form Field Tracker
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0.0
-// @modified     2026-04-20T21:47:24.875Z
+// @version      1.0.1
+// @modified     2026-04-20T21:57:58.210Z
 // @description  Tracks all Ajax calls and form fields in Autotask. Toggle tracking with checkbox, data persists across refreshes and can be downloaded as zip.
 // @author       warthurton
 // @match        https://ww*.autotask.net/*
