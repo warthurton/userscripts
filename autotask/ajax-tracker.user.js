@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Autotask - Ajax & Form Field Tracker
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.1
+// @version      1.2
 // @description  Tracks all Ajax calls and form fields in Autotask. Toggle tracking with checkbox, data persists across refreshes and can be downloaded as zip.
 // @author       warthurton
 // @match        https://ww*.autotask.net/*
@@ -12,22 +12,23 @@
 // @grant        GM_registerMenuCommand
 // @grant        GM_addStyle
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js
-// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/autotask/ajax-tracker.user.js
-// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/autotask/ajax-tracker.user.js
+// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/ajax-tracker.meta.js
+// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/ajax-tracker.user.js
 // @homepageURL  https://github.com/warthurton/userscripts
 // @supportURL   https://github.com/warthurton/userscripts/issues
 // ==/UserScript==
 
 (function () {
-  'use strict';
+  "use strict";
 
   const DEBUG = true;
-  const log = (...args) => DEBUG && console.log('[Autotask Ajax Tracker]', ...args);
+  const log = (...args) =>
+    DEBUG && console.log("[Autotask Ajax Tracker]", ...args);
 
   const STORAGE_KEYS = {
-    enabled: 'autotask_ajax_tracker_enabled',
-    sessionData: 'autotask_ajax_tracker_session_',
-    sessionId: 'autotask_ajax_tracker_current_session',
+    enabled: "autotask_ajax_tracker_enabled",
+    sessionData: "autotask_ajax_tracker_session_",
+    sessionId: "autotask_ajax_tracker_current_session",
   };
 
   let isEnabled = false;
@@ -46,12 +47,15 @@
   function generateSessionId() {
     // Prefer cryptographically secure randomness when available
     let randomPart;
-    if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    if (
+      typeof crypto !== "undefined" &&
+      typeof crypto.getRandomValues === "function"
+    ) {
       const bytes = new Uint8Array(16);
       crypto.getRandomValues(bytes);
       randomPart = Array.from(bytes)
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('')
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("")
         .slice(0, 9);
     } else {
       // Fallback: non-cryptographic, retained only for environments without Web Crypto
@@ -63,9 +67,10 @@
   // Get or create current session ID
   function getSessionId() {
     if (!currentSessionId) {
-      currentSessionId = (typeof GM_getValue === 'function')
-        ? GM_getValue(STORAGE_KEYS.sessionId, null)
-        : localStorage.getItem(STORAGE_KEYS.sessionId);
+      currentSessionId =
+        typeof GM_getValue === "function"
+          ? GM_getValue(STORAGE_KEYS.sessionId, null)
+          : localStorage.getItem(STORAGE_KEYS.sessionId);
 
       if (!currentSessionId) {
         currentSessionId = generateSessionId();
@@ -76,7 +81,7 @@
   }
 
   function saveSessionId(id) {
-    if (typeof GM_setValue === 'function') {
+    if (typeof GM_setValue === "function") {
       GM_setValue(STORAGE_KEYS.sessionId, id);
     } else {
       localStorage.setItem(STORAGE_KEYS.sessionId, id);
@@ -85,22 +90,23 @@
 
   // Check if tracking is enabled
   function getEnabled() {
-    const enabled = (typeof GM_getValue === 'function')
-      ? GM_getValue(STORAGE_KEYS.enabled, false)
-      : localStorage.getItem(STORAGE_KEYS.enabled) === 'true';
-    log('Tracking enabled:', enabled);
+    const enabled =
+      typeof GM_getValue === "function"
+        ? GM_getValue(STORAGE_KEYS.enabled, false)
+        : localStorage.getItem(STORAGE_KEYS.enabled) === "true";
+    log("Tracking enabled:", enabled);
     return enabled;
   }
 
   function setEnabled(enabled) {
     isEnabled = enabled;
-    if (typeof GM_setValue === 'function') {
+    if (typeof GM_setValue === "function") {
       GM_setValue(STORAGE_KEYS.enabled, enabled);
     } else {
       localStorage.setItem(STORAGE_KEYS.enabled, enabled.toString());
     }
     updateUI();
-    log('Tracking set to:', enabled);
+    log("Tracking set to:", enabled);
   }
 
   // Save current page data to session storage
@@ -113,12 +119,13 @@
     // Get existing session data
     let sessionData = [];
     try {
-      const stored = (typeof GM_getValue === 'function')
-        ? GM_getValue(key, '[]')
-        : localStorage.getItem(key) || '[]';
+      const stored =
+        typeof GM_getValue === "function"
+          ? GM_getValue(key, "[]")
+          : localStorage.getItem(key) || "[]";
       sessionData = JSON.parse(stored);
     } catch (e) {
-      log('Error loading session data:', e);
+      log("Error loading session data:", e);
       sessionData = [];
     }
 
@@ -128,14 +135,14 @@
     // Save back
     try {
       const jsonStr = JSON.stringify(sessionData);
-      if (typeof GM_setValue === 'function') {
+      if (typeof GM_setValue === "function") {
         GM_setValue(key, jsonStr);
       } else {
         localStorage.setItem(key, jsonStr);
       }
-      log('Saved page data, total pages:', sessionData.length);
+      log("Saved page data, total pages:", sessionData.length);
     } catch (e) {
-      log('Error saving session data:', e);
+      log("Error saving session data:", e);
     }
   }
 
@@ -152,7 +159,7 @@
           timestamp: new Date().toISOString(),
           requestHeaders: {},
         };
-        log('XHR opened:', method, url);
+        log("XHR opened:", method, url);
       }
       return originalOpen.apply(this, [method, url, ...args]);
     };
@@ -161,19 +168,26 @@
       if (isEnabled && this._trackingData) {
         this._trackingData.requestBody = body;
 
-        this.addEventListener('readystatechange', function () {
+        this.addEventListener("readystatechange", function () {
           if (this.readyState === 4 && isEnabled && this._trackingData) {
             const ajaxCall = {
               ...this._trackingData,
               status: this.status,
               statusText: this.statusText,
               responseHeaders: this.getAllResponseHeaders(),
-              responseText: this.responseText ? this.responseText.substring(0, 50000) : '', // Limit size
+              responseText: this.responseText
+                ? this.responseText.substring(0, 50000)
+                : "", // Limit size
               responseURL: this.responseURL,
               completedAt: new Date().toISOString(),
             };
             currentPageData.ajaxCalls.push(ajaxCall);
-            log('XHR completed:', ajaxCall.method, ajaxCall.url, ajaxCall.status);
+            log(
+              "XHR completed:",
+              ajaxCall.method,
+              ajaxCall.url,
+              ajaxCall.status,
+            );
           }
         });
       }
@@ -187,11 +201,11 @@
 
     window.fetch = function (resource, init = {}) {
       if (isEnabled) {
-        const url = typeof resource === 'string' ? resource : resource.url;
-        const method = init.method || 'GET';
+        const url = typeof resource === "string" ? resource : resource.url;
+        const method = init.method || "GET";
         const timestamp = new Date().toISOString();
 
-        log('Fetch called:', method, url);
+        log("Fetch called:", method, url);
 
         const trackingData = {
           method,
@@ -201,33 +215,46 @@
           requestBody: init.body,
         };
 
-        return originalFetch.apply(this, arguments).then(response => {
-          if (isEnabled) {
-            // Clone response to read it without consuming
-            const clonedResponse = response.clone();
+        return originalFetch
+          .apply(this, arguments)
+          .then((response) => {
+            if (isEnabled) {
+              // Clone response to read it without consuming
+              const clonedResponse = response.clone();
 
-            clonedResponse.text().then(text => {
-              const ajaxCall = {
-                ...trackingData,
-                status: response.status,
-                statusText: response.statusText,
-                responseHeaders: Array.from(response.headers.entries()).map(([k, v]) => `${k}: ${v}`).join('\n'),
-                responseText: text.substring(0, 50000), // Limit size
-                responseURL: response.url,
-                completedAt: new Date().toISOString(),
-              };
-              currentPageData.ajaxCalls.push(ajaxCall);
-              log('Fetch completed:', ajaxCall.method, ajaxCall.url, ajaxCall.status);
-            }).catch(err => {
-              log('Error reading fetch response:', err);
-            });
-          }
+              clonedResponse
+                .text()
+                .then((text) => {
+                  const ajaxCall = {
+                    ...trackingData,
+                    status: response.status,
+                    statusText: response.statusText,
+                    responseHeaders: Array.from(response.headers.entries())
+                      .map(([k, v]) => `${k}: ${v}`)
+                      .join("\n"),
+                    responseText: text.substring(0, 50000), // Limit size
+                    responseURL: response.url,
+                    completedAt: new Date().toISOString(),
+                  };
+                  currentPageData.ajaxCalls.push(ajaxCall);
+                  log(
+                    "Fetch completed:",
+                    ajaxCall.method,
+                    ajaxCall.url,
+                    ajaxCall.status,
+                  );
+                })
+                .catch((err) => {
+                  log("Error reading fetch response:", err);
+                });
+            }
 
-          return response;
-        }).catch(err => {
-          log('Fetch error:', err);
-          throw err;
-        });
+            return response;
+          })
+          .catch((err) => {
+            log("Fetch error:", err);
+            throw err;
+          });
       }
 
       return originalFetch.apply(this, arguments);
@@ -239,33 +266,41 @@
     if (!isEnabled) return;
 
     const viewState = document.querySelector('input[name="__VIEWSTATE"]');
-    const eventValidation = document.querySelector('input[name="__EVENTVALIDATION"]');
-    const viewStateGenerator = document.querySelector('input[name="__VIEWSTATEGENERATOR"]');
+    const eventValidation = document.querySelector(
+      'input[name="__EVENTVALIDATION"]',
+    );
+    const viewStateGenerator = document.querySelector(
+      'input[name="__VIEWSTATEGENERATOR"]',
+    );
 
     currentPageData.viewState = viewState ? viewState.value : null;
-    currentPageData.eventValidation = eventValidation ? eventValidation.value : null;
-    currentPageData.viewStateGenerator = viewStateGenerator ? viewStateGenerator.value : null;
+    currentPageData.eventValidation = eventValidation
+      ? eventValidation.value
+      : null;
+    currentPageData.viewStateGenerator = viewStateGenerator
+      ? viewStateGenerator.value
+      : null;
 
-    log('Captured ViewState:', currentPageData.viewState ? 'Yes' : 'No');
+    log("Captured ViewState:", currentPageData.viewState ? "Yes" : "No");
   }
 
   // Track form fields
   function trackFormFields() {
     if (!isEnabled) return;
 
-    const forms = document.querySelectorAll('form');
+    const forms = document.querySelectorAll("form");
     forms.forEach((form, formIndex) => {
       const formId = form.id || form.name || `form_${formIndex}`;
       currentPageData.formFields[formId] = {};
 
-      const inputs = form.querySelectorAll('input, select, textarea');
+      const inputs = form.querySelectorAll("input, select, textarea");
       inputs.forEach((input) => {
         const fieldName = input.name || input.id || `field_${input.type}`;
         let fieldValue = input.value;
 
         // Don't track sensitive fields
-        if (input.type === 'password') {
-          fieldValue = '[PASSWORD FIELD]';
+        if (input.type === "password") {
+          fieldValue = "[PASSWORD FIELD]";
         }
 
         currentPageData.formFields[formId][fieldName] = {
@@ -276,7 +311,12 @@
         };
       });
 
-      log('Tracked form:', formId, Object.keys(currentPageData.formFields[formId]).length, 'fields');
+      log(
+        "Tracked form:",
+        formId,
+        Object.keys(currentPageData.formFields[formId]).length,
+        "fields",
+      );
     });
   }
 
@@ -293,40 +333,52 @@
       documentReadyState: document.readyState,
     };
 
-    log('Captured page info:', currentPageData.pageInfo.title);
+    log("Captured page info:", currentPageData.pageInfo.title);
   }
 
   // Monitor for form field changes
   function monitorFormChanges() {
     if (!isEnabled) return;
 
-    document.addEventListener('change', (e) => {
-      if (isEnabled && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA')) {
-        const form = e.target.closest('form');
-        const formId = form ? (form.id || form.name || 'unknown_form') : 'no_form';
+    document.addEventListener(
+      "change",
+      (e) => {
+        if (
+          isEnabled &&
+          (e.target.tagName === "INPUT" ||
+            e.target.tagName === "SELECT" ||
+            e.target.tagName === "TEXTAREA")
+        ) {
+          const form = e.target.closest("form");
+          const formId = form
+            ? form.id || form.name || "unknown_form"
+            : "no_form";
 
-        if (!currentPageData.formFields[formId]) {
-          currentPageData.formFields[formId] = {};
+          if (!currentPageData.formFields[formId]) {
+            currentPageData.formFields[formId] = {};
+          }
+
+          const fieldName =
+            e.target.name || e.target.id || `field_${e.target.type}`;
+          let fieldValue = e.target.value;
+
+          if (e.target.type === "password") {
+            fieldValue = "[PASSWORD FIELD]";
+          }
+
+          currentPageData.formFields[formId][fieldName] = {
+            type: e.target.type || e.target.tagName.toLowerCase(),
+            value: fieldValue,
+            id: e.target.id,
+            name: e.target.name,
+            changedAt: new Date().toISOString(),
+          };
+
+          log("Form field changed:", formId, fieldName);
         }
-
-        const fieldName = e.target.name || e.target.id || `field_${e.target.type}`;
-        let fieldValue = e.target.value;
-
-        if (e.target.type === 'password') {
-          fieldValue = '[PASSWORD FIELD]';
-        }
-
-        currentPageData.formFields[formId][fieldName] = {
-          type: e.target.type || e.target.tagName.toLowerCase(),
-          value: fieldValue,
-          id: e.target.id,
-          name: e.target.name,
-          changedAt: new Date().toISOString(),
-        };
-
-        log('Form field changed:', formId, fieldName);
-      }
-    }, true);
+      },
+      true,
+    );
   }
 
   // Wait for JSZip to be available
@@ -334,14 +386,14 @@
     return new Promise((resolve, reject) => {
       const startTime = Date.now();
       const checkJSZip = setInterval(() => {
-        if (typeof JSZip !== 'undefined') {
+        if (typeof JSZip !== "undefined") {
           clearInterval(checkJSZip);
-          log('JSZip is available');
+          log("JSZip is available");
           resolve();
         } else if (Date.now() - startTime > timeout) {
           clearInterval(checkJSZip);
-          log('JSZip failed to load within timeout');
-          reject(new Error('JSZip library failed to load'));
+          log("JSZip failed to load within timeout");
+          reject(new Error("JSZip library failed to load"));
         }
       }, 100);
     });
@@ -350,11 +402,11 @@
   // Export session data as ZIP
   async function exportSessionData() {
     try {
-      log('Starting export...');
-      
+      log("Starting export...");
+
       // Wait for JSZip to be available
-      if (typeof JSZip === 'undefined') {
-        log('JSZip not available, waiting...');
+      if (typeof JSZip === "undefined") {
+        log("JSZip not available, waiting...");
         await waitForJSZip();
       }
 
@@ -363,22 +415,25 @@
 
       let sessionData = [];
       try {
-        const stored = (typeof GM_getValue === 'function')
-          ? GM_getValue(key, '[]')
-          : localStorage.getItem(key) || '[]';
+        const stored =
+          typeof GM_getValue === "function"
+            ? GM_getValue(key, "[]")
+            : localStorage.getItem(key) || "[]";
         sessionData = JSON.parse(stored);
       } catch (e) {
-        log('Error loading session data for export:', e);
-        alert('Error loading session data: ' + e.message);
+        log("Error loading session data for export:", e);
+        alert("Error loading session data: " + e.message);
         return;
       }
 
       if (sessionData.length === 0) {
-        alert('No session data to export. Enable tracking and perform some actions first.');
+        alert(
+          "No session data to export. Enable tracking and perform some actions first.",
+        );
         return;
       }
 
-      log('Exporting session data, pages:', sessionData.length);
+      log("Exporting session data, pages:", sessionData.length);
 
       // Create ZIP
       const zip = new JSZip();
@@ -390,70 +445,88 @@
         exportedAt: new Date().toISOString(),
         userAgent: navigator.userAgent,
       };
-      zip.file('session-summary.json', JSON.stringify(summary, null, 2));
+      zip.file("session-summary.json", JSON.stringify(summary, null, 2));
 
       // Add each page's data
       sessionData.forEach((pageData, index) => {
-        const pageFolder = zip.folder(`page_${index + 1}_${pageData.timestamp.replace(/:/g, '-')}`);
+        const pageFolder = zip.folder(
+          `page_${index + 1}_${pageData.timestamp.replace(/:/g, "-")}`,
+        );
 
         // Page info
-        pageFolder.file('page-info.json', JSON.stringify(pageData.pageInfo || {}, null, 2));
+        pageFolder.file(
+          "page-info.json",
+          JSON.stringify(pageData.pageInfo || {}, null, 2),
+        );
 
         // Form fields
-        pageFolder.file('form-fields.json', JSON.stringify(pageData.formFields || {}, null, 2));
+        pageFolder.file(
+          "form-fields.json",
+          JSON.stringify(pageData.formFields || {}, null, 2),
+        );
 
         // ViewState
         if (pageData.viewState || pageData.eventValidation) {
-          pageFolder.file('viewstate.json', JSON.stringify({
-            viewState: pageData.viewState,
-            eventValidation: pageData.eventValidation,
-            viewStateGenerator: pageData.viewStateGenerator,
-          }, null, 2));
+          pageFolder.file(
+            "viewstate.json",
+            JSON.stringify(
+              {
+                viewState: pageData.viewState,
+                eventValidation: pageData.eventValidation,
+                viewStateGenerator: pageData.viewStateGenerator,
+              },
+              null,
+              2,
+            ),
+          );
         }
 
         // Ajax calls
         if (pageData.ajaxCalls && pageData.ajaxCalls.length > 0) {
-          const ajaxFolder = pageFolder.folder('ajax-calls');
+          const ajaxFolder = pageFolder.folder("ajax-calls");
           pageData.ajaxCalls.forEach((call, callIndex) => {
-            ajaxFolder.file(`call_${callIndex + 1}_${call.method}_${call.timestamp.replace(/:/g, '-')}.json`, JSON.stringify(call, null, 2));
+            ajaxFolder.file(
+              `call_${callIndex + 1}_${call.method}_${call.timestamp.replace(/:/g, "-")}.json`,
+              JSON.stringify(call, null, 2),
+            );
           });
         }
 
         // Full page data
-        pageFolder.file('full-data.json', JSON.stringify(pageData, null, 2));
+        pageFolder.file("full-data.json", JSON.stringify(pageData, null, 2));
       });
 
       // Generate and download ZIP
-      const blob = await zip.generateAsync({ type: 'blob' });
+      const blob = await zip.generateAsync({ type: "blob" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = `autotask-tracking-${sessionId}-${new Date().toISOString().replace(/:/g, '-')}.zip`;
+      a.download = `autotask-tracking-${sessionId}-${new Date().toISOString().replace(/:/g, "-")}.zip`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      log('Export complete');
-      alert('Session data exported successfully!');
+      log("Export complete");
+      alert("Session data exported successfully!");
     } catch (e) {
-      log('Error exporting session data:', e);
-      alert('Error exporting data: ' + e.message);
+      log("Error exporting session data:", e);
+      alert("Error exporting data: " + e.message);
     }
   }
 
   // Clear session data
   function clearSessionData() {
-    if (!confirm('Clear all tracked data for this session?')) {
+    if (!confirm("Clear all tracked data for this session?")) {
       return;
     }
 
     const sessionId = getSessionId();
     const key = STORAGE_KEYS.sessionData + sessionId;
 
-    if (typeof GM_setValue === 'function') {
-      GM_setValue(key, '[]');
+    if (typeof GM_setValue === "function") {
+      GM_setValue(key, "[]");
     } else {
-      localStorage.setItem(key, '[]');
+      localStorage.setItem(key, "[]");
     }
 
     // Reset current page data
@@ -467,13 +540,15 @@
       pageInfo: {},
     };
 
-    log('Session data cleared');
-    alert('Session data cleared');
+    log("Session data cleared");
+    alert("Session data cleared");
   }
 
   // Start new session
   function startNewSession() {
-    if (!confirm('Start a new tracking session? Current session will be saved.')) {
+    if (
+      !confirm("Start a new tracking session? Current session will be saved.")
+    ) {
       return;
     }
 
@@ -495,14 +570,14 @@
       pageInfo: {},
     };
 
-    log('New session started:', currentSessionId);
+    log("New session started:", currentSessionId);
     alert(`New session started: ${currentSessionId}`);
   }
 
   // Create UI
   function createUI() {
-    const container = document.createElement('div');
-    container.id = 'ajax-tracker-ui';
+    const container = document.createElement("div");
+    container.id = "ajax-tracker-ui";
     container.innerHTML = `
       <div class="ajax-tracker-panel">
         <div class="ajax-tracker-header">
@@ -511,7 +586,7 @@
         </div>
         <div class="ajax-tracker-body">
           <label class="ajax-tracker-checkbox">
-            <input type="checkbox" id="ajax-tracker-enabled" ${isEnabled ? 'checked' : ''}>
+            <input type="checkbox" id="ajax-tracker-enabled" ${isEnabled ? "checked" : ""}>
             <span>Enable Tracking</span>
           </label>
           <div class="ajax-tracker-stats">
@@ -531,41 +606,53 @@
     document.body.appendChild(container);
 
     // Event listeners
-    document.getElementById('ajax-tracker-enabled').addEventListener('change', (e) => {
-      setEnabled(e.target.checked);
-    });
+    document
+      .getElementById("ajax-tracker-enabled")
+      .addEventListener("change", (e) => {
+        setEnabled(e.target.checked);
+      });
 
-    document.getElementById('ajax-tracker-export').addEventListener('click', (e) => {
-      e.preventDefault();
-      exportSessionData().catch(err => log('Export error:', err));
-    });
-    document.getElementById('ajax-tracker-clear').addEventListener('click', clearSessionData);
-    document.getElementById('ajax-tracker-new-session').addEventListener('click', startNewSession);
+    document
+      .getElementById("ajax-tracker-export")
+      .addEventListener("click", (e) => {
+        e.preventDefault();
+        exportSessionData().catch((err) => log("Export error:", err));
+      });
+    document
+      .getElementById("ajax-tracker-clear")
+      .addEventListener("click", clearSessionData);
+    document
+      .getElementById("ajax-tracker-new-session")
+      .addEventListener("click", startNewSession);
 
-    document.querySelector('.ajax-tracker-toggle').addEventListener('click', () => {
-      const body = document.querySelector('.ajax-tracker-body');
-      const toggle = document.querySelector('.ajax-tracker-toggle');
-      if (body.style.display === 'none') {
-        body.style.display = 'block';
-        toggle.textContent = '−';
-      } else {
-        body.style.display = 'none';
-        toggle.textContent = '+';
-      }
-    });
+    document
+      .querySelector(".ajax-tracker-toggle")
+      .addEventListener("click", () => {
+        const body = document.querySelector(".ajax-tracker-body");
+        const toggle = document.querySelector(".ajax-tracker-toggle");
+        if (body.style.display === "none") {
+          body.style.display = "block";
+          toggle.textContent = "−";
+        } else {
+          body.style.display = "none";
+          toggle.textContent = "+";
+        }
+      });
 
-    log('UI created');
+    log("UI created");
   }
 
   // Update UI stats
   function updateUI() {
-    const sessionIdEl = document.getElementById('ajax-tracker-session-id');
-    const ajaxCountEl = document.getElementById('ajax-tracker-ajax-count');
-    const formCountEl = document.getElementById('ajax-tracker-form-count');
+    const sessionIdEl = document.getElementById("ajax-tracker-session-id");
+    const ajaxCountEl = document.getElementById("ajax-tracker-ajax-count");
+    const formCountEl = document.getElementById("ajax-tracker-form-count");
 
-    if (sessionIdEl) sessionIdEl.textContent = getSessionId().substr(0, 20) + '...';
+    if (sessionIdEl)
+      sessionIdEl.textContent = getSessionId().substr(0, 20) + "...";
     if (ajaxCountEl) ajaxCountEl.textContent = currentPageData.ajaxCalls.length;
-    if (formCountEl) formCountEl.textContent = Object.keys(currentPageData.formFields).length;
+    if (formCountEl)
+      formCountEl.textContent = Object.keys(currentPageData.formFields).length;
   }
 
   // Periodically update UI
@@ -682,10 +769,10 @@
       }
     `;
 
-    if (typeof GM_addStyle === 'function') {
+    if (typeof GM_addStyle === "function") {
       GM_addStyle(style);
     } else {
-      const s = document.createElement('style');
+      const s = document.createElement("style");
       s.textContent = style;
       document.head.appendChild(s);
     }
@@ -693,11 +780,14 @@
 
   // Initialize
   function init() {
-    log('Initializing...');
-    log('JSZip available:', typeof JSZip !== 'undefined');
-    log('GM_getValue available:', typeof GM_getValue === 'function');
-    log('GM_setValue available:', typeof GM_setValue === 'function');
-    log('GM_registerMenuCommand available:', typeof GM_registerMenuCommand === 'function');
+    log("Initializing...");
+    log("JSZip available:", typeof JSZip !== "undefined");
+    log("GM_getValue available:", typeof GM_getValue === "function");
+    log("GM_setValue available:", typeof GM_setValue === "function");
+    log(
+      "GM_registerMenuCommand available:",
+      typeof GM_registerMenuCommand === "function",
+    );
 
     // Check enabled state
     isEnabled = getEnabled();
@@ -707,8 +797,8 @@
     interceptFetch();
 
     // Wait for DOM to be ready
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', setupPage);
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", setupPage);
     } else {
       setupPage();
     }
@@ -723,13 +813,13 @@
       monitorFormChanges();
       startUIUpdater();
 
-      log('Page setup complete');
+      log("Page setup complete");
     }
 
     // Save data before navigation
-    window.addEventListener('beforeunload', () => {
+    window.addEventListener("beforeunload", () => {
       if (isEnabled) {
-        log('Saving page data before navigation...');
+        log("Saving page data before navigation...");
         savePageData();
       }
     });
@@ -747,20 +837,20 @@
   init();
 
   // Register menu commands
-  if (typeof GM_registerMenuCommand === 'function') {
-    GM_registerMenuCommand('Export Session Data', () => {
-      log('Menu: Export Session Data clicked');
-      exportSessionData().catch(err => {
-        log('Menu export error:', err);
-        alert('Export failed: ' + err.message);
+  if (typeof GM_registerMenuCommand === "function") {
+    GM_registerMenuCommand("Export Session Data", () => {
+      log("Menu: Export Session Data clicked");
+      exportSessionData().catch((err) => {
+        log("Menu export error:", err);
+        alert("Export failed: " + err.message);
       });
     });
-    GM_registerMenuCommand('Clear Session Data', () => {
-      log('Menu: Clear Session Data clicked');
+    GM_registerMenuCommand("Clear Session Data", () => {
+      log("Menu: Clear Session Data clicked");
       clearSessionData();
     });
-    GM_registerMenuCommand('Start New Session', () => {
-      log('Menu: Start New Session clicked');
+    GM_registerMenuCommand("Start New Session", () => {
+      log("Menu: Start New Session clicked");
       startNewSession();
     });
   }

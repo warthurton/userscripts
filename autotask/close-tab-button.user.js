@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Autotask - Close Tab Button
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.3
+// @version      1.4
 // @description  Adds a subtle Close Tab button to Autotask detail pages. Matches *Detail.mvc by default with configurable exclusions.
 // @author       warthurton
 // @match        https://ww*.autotask.net/Mvc/*Detail.mvc*
@@ -11,65 +11,69 @@
 // @grant        GM_setValue
 // @grant        GM_registerMenuCommand
 // @grant        GM_addStyle
-// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/autotask/close-tab-button.user.js
-// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/autotask/close-tab-button.user.js
+// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/close-tab-button.meta.js
+// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/close-tab-button.user.js
 // @homepageURL  https://github.com/warthurton/userscripts
 // @supportURL   https://github.com/warthurton/userscripts/issues
 // ==/UserScript==
 
 (function () {
-  'use strict';
+  "use strict";
 
   const DEBUG = true;
-  const log = (...args) => DEBUG && console.log('[Autotask CloseTab]', ...args);
+  const log = (...args) => DEBUG && console.log("[Autotask CloseTab]", ...args);
 
   const STORAGE_KEYS = {
-    excluded: 'autotask_close_button_excluded_patterns',
+    excluded: "autotask_close_button_excluded_patterns",
   };
 
   let buttonPlaced = false;
   let titleBarObserver = null;
 
   function getExcluded() {
-    log('Reading excluded patterns');
-    const raw = (typeof GM_getValue === 'function') ? GM_getValue(STORAGE_KEYS.excluded, '') : '';
-    log('Excluded raw:', raw);
+    log("Reading excluded patterns");
+    const raw =
+      typeof GM_getValue === "function"
+        ? GM_getValue(STORAGE_KEYS.excluded, "")
+        : "";
+    log("Excluded raw:", raw);
     return String(raw)
       .split(/\n|,|\s+/)
-      .map(s => s.trim())
+      .map((s) => s.trim())
       .filter(Boolean);
   }
 
   function saveExcluded(list) {
-    log('Saving excluded patterns:', list);
-    const raw = list.join('\n');
-    if (typeof GM_setValue === 'function') GM_setValue(STORAGE_KEYS.excluded, raw);
+    log("Saving excluded patterns:", list);
+    const raw = list.join("\n");
+    if (typeof GM_setValue === "function")
+      GM_setValue(STORAGE_KEYS.excluded, raw);
   }
 
   function isExcluded(url) {
-    log('Checking exclusions for URL:', url);
+    log("Checking exclusions for URL:", url);
     const patterns = getExcluded();
-    log('Patterns:', patterns);
+    log("Patterns:", patterns);
     if (patterns.length === 0) {
-      log('No exclusion patterns defined');
+      log("No exclusion patterns defined");
       return false;
     }
-    return patterns.some(p => {
+    return patterns.some((p) => {
       // Escape special regex chars except *, then convert * to .*
-      const escaped = p.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
-      const pattern = escaped.replace(/\*/g, '.*');
-      const re = new RegExp('^' + pattern + '$');
+      const escaped = p.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+      const pattern = escaped.replace(/\*/g, ".*");
+      const re = new RegExp("^" + pattern + "$");
       const matches = re.test(url);
-      log('Testing pattern:', p, 'matches:', matches);
+      log("Testing pattern:", p, "matches:", matches);
       return matches;
     });
   }
 
   function openSettings() {
-    const current = getExcluded().join('\n');
+    const current = getExcluded().join("\n");
     const debugEnabled = isDebugEnabled();
-    const overlay = document.createElement('div');
-    overlay.className = 'at-close-settings-overlay';
+    const overlay = document.createElement("div");
+    overlay.className = "at-close-settings-overlay";
     overlay.innerHTML = `
       <div class="at-close-modal">
         <header>Close Tab Button – Settings</header>
@@ -82,7 +86,7 @@
           </ul>
           <textarea>${current}</textarea>
           <h3 style="margin-top: 16px;">Debug Options</h3>
-          <label style="display: block; margin: 8px 0;"><input type="checkbox" id="cb-debug" ${debugEnabled ? 'checked' : ''}> Enable debug logging</label>
+          <label style="display: block; margin: 8px 0;"><input type="checkbox" id="cb-debug" ${debugEnabled ? "checked" : ""}> Enable debug logging</label>
         </div>
         <footer>
           <button class="save">Save</button>
@@ -92,17 +96,21 @@
     `;
     document.documentElement.appendChild(overlay);
 
-    const ta = overlay.querySelector('textarea');
-    overlay.querySelector('.close').addEventListener('click', () => overlay.remove());
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
-    overlay.querySelector('.save').addEventListener('click', () => {
+    const ta = overlay.querySelector("textarea");
+    overlay
+      .querySelector(".close")
+      .addEventListener("click", () => overlay.remove());
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) overlay.remove();
+    });
+    overlay.querySelector(".save").addEventListener("click", () => {
       const list = String(ta.value)
         .split(/\n|,|\s+/)
-        .map(s => s.trim())
+        .map((s) => s.trim())
         .filter(Boolean);
       saveExcluded(list);
-      const debugChecked = overlay.querySelector('#cb-debug').checked;
-      if (typeof GM_setValue === 'function') {
+      const debugChecked = overlay.querySelector("#cb-debug").checked;
+      if (typeof GM_setValue === "function") {
         GM_setValue(STORAGE_KEYS.debug, debugChecked);
       }
       overlay.remove();
@@ -119,8 +127,11 @@
       .at-close-modal button { background: #1565c0; color: #fff; border: none; border-radius: 6px; padding: 8px 12px; cursor: pointer; }
       .at-close-modal .close { background: #666; }
     `;
-    if (typeof GM_addStyle === 'function') GM_addStyle(style); else {
-      const s = document.createElement('style'); s.textContent = style; document.head.appendChild(s);
+    if (typeof GM_addStyle === "function") GM_addStyle(style);
+    else {
+      const s = document.createElement("style");
+      s.textContent = style;
+      document.head.appendChild(s);
     }
   }
 
@@ -148,68 +159,79 @@
       .at-close-tab-inline .at-close-tab-x:hover { background: #c62828; box-shadow: 0 3px 6px rgba(0,0,0,0.15); }
       .at-close-tab-inline .at-close-tab-x:active { background: #b71c1c; }
     `;
-    if (typeof GM_addStyle === 'function') {
+    if (typeof GM_addStyle === "function") {
       GM_addStyle(style);
     } else {
-      const s = document.createElement('style');
+      const s = document.createElement("style");
       s.textContent = style;
       document.head.appendChild(s);
     }
-    log('Styles injected');
+    log("Styles injected");
   }
 
   // Find and place button in TitleBar
   function placeButton() {
     if (buttonPlaced) return;
 
-    log('Searching for TitleBar elements');
-    const titleSelector = 'div.PageHeadingContainer div.TitleBarItem.Title';
-    const toolbarSelector = 'div.PageHeadingContainer div.TitleBarItem.TitleBarToolbar';
+    log("Searching for TitleBar elements");
+    const titleSelector = "div.PageHeadingContainer div.TitleBarItem.Title";
+    const toolbarSelector =
+      "div.PageHeadingContainer div.TitleBarItem.TitleBarToolbar";
     const titleEl = document.querySelector(titleSelector);
     const toolbarEl = document.querySelector(toolbarSelector);
 
     if (!titleEl && !toolbarEl) {
-      log('TitleBar elements not found yet');
+      log("TitleBar elements not found yet");
       return;
     }
 
     const target = titleEl || toolbarEl;
-    const placement = titleEl ? 'Title' : 'Toolbar';
-    log('Found TitleBar element:', placement, target);
+    const placement = titleEl ? "Title" : "Toolbar";
+    log("Found TitleBar element:", placement, target);
 
     // Check if button already exists
-    if (target.querySelector('.at-close-tab-inline')) {
-      log('Button already exists, skipping');
+    if (target.querySelector(".at-close-tab-inline")) {
+      log("Button already exists, skipping");
       buttonPlaced = true;
       return;
     }
 
     // Create container
-    const container = document.createElement('span');
-    container.className = 'at-close-tab-inline';
+    const container = document.createElement("span");
+    container.className = "at-close-tab-inline";
 
     // Create button with SVG icon
-    const btn = document.createElement('button');
-    btn.className = 'at-close-tab-x';
-    btn.type = 'button';
-    btn.title = 'Close Tab';
+    const btn = document.createElement("button");
+    btn.className = "at-close-tab-x";
+    btn.type = "button";
+    btn.title = "Close Tab";
     btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <line x1="18" y1="6" x2="6" y2="18"></line>
       <line x1="6" y1="6" x2="18" y2="18"></line>
     </svg>`;
 
-    btn.addEventListener('click', () => {
-      log('Close button clicked');
-      try { window.close(); } catch { }
-      try { self.close(); } catch { }
-      try { const w = window.open('', '_self'); if (w) w.close(); } catch { }
-      try { location.href = 'about:blank'; } catch { }
+    btn.addEventListener("click", () => {
+      log("Close button clicked");
+      try {
+        window.close();
+      } catch {}
+      try {
+        self.close();
+      } catch {}
+      try {
+        const w = window.open("", "_self");
+        if (w) w.close();
+      } catch {}
+      try {
+        location.href = "about:blank";
+      } catch {}
     });
 
     container.appendChild(btn);
 
     // Place container at the leftmost position in the TitleBar
-    const titleBar = target.closest('div.TitleBar.TitleBarNavigation') || target.parentElement;
+    const titleBar =
+      target.closest("div.TitleBar.TitleBarNavigation") || target.parentElement;
     if (titleBar) {
       titleBar.insertBefore(container, titleBar.firstChild);
     } else {
@@ -218,21 +240,23 @@
     }
 
     buttonPlaced = true;
-    log('Button placed in TitleBar at', placement);
+    log("Button placed in TitleBar at", placement);
 
     // Disconnect observer once placed
     if (titleBarObserver) {
       titleBarObserver.disconnect();
       titleBarObserver = null;
-      log('Observer disconnected');
+      log("Observer disconnected");
     }
   }
 
   // Helper to check if element exists in node tree
   function findElementInNode(node, selector) {
     if (node.nodeType === Node.ELEMENT_NODE) {
-      if (typeof node.matches === 'function' && node.matches(selector)) return node;
-      if (typeof node.querySelector === 'function') return node.querySelector(selector);
+      if (typeof node.matches === "function" && node.matches(selector))
+        return node;
+      if (typeof node.querySelector === "function")
+        return node.querySelector(selector);
     }
     return null;
   }
@@ -240,12 +264,18 @@
   // Observer callback
   function handleTitleBarMutations(mutationsList, obs) {
     for (const mutation of mutationsList) {
-      if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+      if (mutation.type === "childList" && mutation.addedNodes.length > 0) {
         for (const node of mutation.addedNodes) {
-          const foundTitle = findElementInNode(node, 'div.PageHeadingContainer div.TitleBarItem.Title');
-          const foundToolbar = findElementInNode(node, 'div.PageHeadingContainer div.TitleBarItem.TitleBarToolbar');
+          const foundTitle = findElementInNode(
+            node,
+            "div.PageHeadingContainer div.TitleBarItem.Title",
+          );
+          const foundToolbar = findElementInNode(
+            node,
+            "div.PageHeadingContainer div.TitleBarItem.TitleBarToolbar",
+          );
           if (foundTitle || foundToolbar) {
-            log('TitleBar element detected in mutation');
+            log("TitleBar element detected in mutation");
             placeButton();
             return;
           }
@@ -256,7 +286,7 @@
 
   // Start watching for TitleBar
   function startTitleBarObserver() {
-    log('Starting TitleBar observer');
+    log("Starting TitleBar observer");
     if (titleBarObserver) titleBarObserver.disconnect();
     titleBarObserver = new MutationObserver(handleTitleBarMutations);
     titleBarObserver.observe(document.body, { childList: true, subtree: true });
@@ -264,26 +294,26 @@
 
   function shouldRunOnThisPage() {
     const url = location.href;
-    log('shouldRunOnThisPage URL:', url);
+    log("shouldRunOnThisPage URL:", url);
     if (isExcluded(url)) {
-      log('URL is excluded');
+      log("URL is excluded");
       return false;
     }
     // Default match already handled by @match, but add safety for other contexts
     const matches = /\/Mvc\/.*Detail\.mvc/i.test(url);
-    log('URL matches Detail.mvc pattern:', matches);
+    log("URL matches Detail.mvc pattern:", matches);
     return matches;
   }
 
   function init() {
-    log('Init called');
+    log("Init called");
     const shouldRun = shouldRunOnThisPage();
-    log('shouldRunOnThisPage result:', shouldRun);
+    log("shouldRunOnThisPage result:", shouldRun);
     if (!shouldRun) {
-      log('Page not eligible - skipping');
+      log("Page not eligible - skipping");
       return;
     }
-    log('Page eligible, setting up button placement');
+    log("Page eligible, setting up button placement");
 
     // Inject styles
     injectStyles();
@@ -293,27 +323,27 @@
 
     // If not placed, start observer
     if (!buttonPlaced) {
-      log('Button not placed immediately, starting observer');
+      log("Button not placed immediately, starting observer");
       startTitleBarObserver();
     }
   }
 
   // Register menu command
-  if (typeof GM_registerMenuCommand === 'function') {
-    GM_registerMenuCommand('Close Tab Button: Settings', openSettings);
+  if (typeof GM_registerMenuCommand === "function") {
+    GM_registerMenuCommand("Close Tab Button: Settings", openSettings);
   }
 
   // Initialize on load
-  log('Script loaded, readyState:', document.readyState);
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+  log("Script loaded, readyState:", document.readyState);
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
   } else {
     setTimeout(init, 50);
   }
 
   // Cleanup on unload
-  window.addEventListener('unload', () => {
+  window.addEventListener("unload", () => {
     if (titleBarObserver) titleBarObserver.disconnect();
-    log('Cleaned up on unload');
+    log("Cleaned up on unload");
   });
 })();
