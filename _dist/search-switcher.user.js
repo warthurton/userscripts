@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Minimal Search Switcher: Google <-> Bing <-> DuckDuckGo
 // @namespace    https://github.com/warthurton/userscripts
-// @version      2026.0420.2304
-// @modified     2026-04-20T23:04:40.468Z
+// @version      2026.0420.2311
+// @modified     2026-04-20T23:11:38.325Z
 // @description  Switch between Google, Bing, and DuckDuckGo search engines
 // @author       warthurton
 // @match        https://www.google.com/search*
@@ -325,7 +325,7 @@
       '[data-testid="search-form-input-wrapper"]',
     );
 
-    console.debug(
+    console.log(
       `[search-switcher] DDG retry=${retryCount}`,
       `input=${input ? input.tagName + "#" + input.id : "null"}`,
       `wrapper=${wrapper ? wrapper.tagName + "[data-testid]" : "null"}`,
@@ -335,7 +335,7 @@
     );
 
     if (input && wrapper && wrapper.contains(input)) {
-      console.debug("[search-switcher] DDG resolved via data-testid wrapper");
+      console.log("[search-switcher] DDG resolved via data-testid wrapper");
       return { bar: wrapper, input, layout: ENGINES.ddg.layout };
     }
 
@@ -351,24 +351,24 @@
           'button[type="submit"][aria-label], button[aria-label="search"]',
         );
 
-    console.debug(
+    console.log(
       `[search-switcher] DDG form=${form ? form.id || form.getAttribute("data-testid") || form.tagName : "null"}`,
       `submitBtn=${submitBtn ? submitBtn.tagName + " type=" + submitBtn.type : "null"}`,
     );
 
     if (input && submitBtn) {
       const commonAncestor = findCommonAncestor(input, submitBtn);
-      console.debug(
+      console.log(
         `[search-switcher] DDG commonAncestor=${commonAncestor ? commonAncestor.tagName + ' class="' + commonAncestor.className + '"' : "null"}`,
       );
       if (commonAncestor && commonAncestor !== document.body) {
-        console.debug("[search-switcher] DDG resolved via commonAncestor");
+        console.log("[search-switcher] DDG resolved via commonAncestor");
         return { bar: commonAncestor, input, layout: ENGINES.ddg.layout };
       }
     }
 
     if (input && form && form.contains(input)) {
-      console.debug("[search-switcher] DDG resolved via form fallback");
+      console.log("[search-switcher] DDG resolved via form fallback");
       return { bar: form, input, layout: ENGINES.ddg.layout };
     }
 
@@ -384,7 +384,7 @@
       };
     }
 
-    console.debug(
+    console.log(
       "[search-switcher] DDG resolve failed this attempt, will retry",
     );
     return null;
@@ -538,7 +538,7 @@
     }
 
     const controls = buildControls();
-    console.debug(
+    console.log(
       "[search-switcher] mounting controls, placement:",
       JSON.stringify({
         layout: placement.layout,
