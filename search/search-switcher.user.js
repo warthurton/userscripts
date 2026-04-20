@@ -1,7 +1,8 @@
 // ==UserScript==
 // @name         Minimal Search Switcher: Google <-> Bing <-> DuckDuckGo
 // @namespace    https://github.com/warthurton/userscripts
-// @version      2.0.2
+// @version      2.1
+// @modified     2026-04-20T20:06:42.530Z
 // @description  Switch between Google, Bing, and DuckDuckGo search engines
 // @author       warthurton
 // @match        https://www.google.com/search*
