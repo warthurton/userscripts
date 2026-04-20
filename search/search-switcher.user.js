@@ -461,6 +461,26 @@
   // ---------------------------------------------------------------------------
   // Main initialization
   // ---------------------------------------------------------------------------
+
+  // Watch for React hydration removing our mounted container, and re-mount.
+  // On first page load, the script may mount into the SSR DOM before React
+  // hydrates; hydration replaces form elements, destroying our buttons.
+  // This observer detects removal and re-mounts into the hydrated DOM.
+  const watchForRemoval = () => {
+    if (!currentEngine.dynamicContent) return;
+    const obs = new MutationObserver(() => {
+      if (!document.getElementById(CONTAINER_ID)) {
+        obs.disconnect();
+        retryCount = 0;
+        setTimeout(init, 100);
+      }
+    });
+    obs.observe(document.body || document.documentElement, {
+      childList: true,
+      subtree: true,
+    });
+  };
+
   const init = () => {
     const query = getQuery();
     if (!query) {
@@ -489,6 +509,7 @@
 
     const controls = buildControls();
     mountControls(controls, placement);
+    watchForRemoval();
   };
 
   // ---------------------------------------------------------------------------
