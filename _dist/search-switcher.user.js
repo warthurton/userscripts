@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Minimal Search Switcher: Google <-> Bing <-> DuckDuckGo
 // @namespace    https://github.com/warthurton/userscripts
-// @version      2026.0420.2249
-// @modified     2026-04-20T22:49:03.071Z
+// @version      2026.0420.2255
+// @modified     2026-04-20T22:55:30.037Z
 // @description  Switch between Google, Bing, and DuckDuckGo search engines
 // @author       warthurton
 // @match        https://www.google.com/search*
@@ -462,6 +462,26 @@
   // ---------------------------------------------------------------------------
   // Main initialization
   // ---------------------------------------------------------------------------
+
+  // Watch for React hydration removing our mounted container, and re-mount.
+  // On first page load, the script may mount into the SSR DOM before React
+  // hydrates; hydration replaces form elements, destroying our buttons.
+  // This observer detects removal and re-mounts into the hydrated DOM.
+  const watchForRemoval = () => {
+    if (!currentEngine.dynamicContent) return;
+    const obs = new MutationObserver(() => {
+      if (!document.getElementById(CONTAINER_ID)) {
+        obs.disconnect();
+        retryCount = 0;
+        setTimeout(init, 100);
+      }
+    });
+    obs.observe(document.body || document.documentElement, {
+      childList: true,
+      subtree: true,
+    });
+  };
+
   const init = () => {
     const query = getQuery();
     if (!query) {
@@ -490,6 +510,7 @@
 
     const controls = buildControls();
     mountControls(controls, placement);
+    watchForRemoval();
   };
 
   // ---------------------------------------------------------------------------
