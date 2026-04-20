@@ -324,17 +324,7 @@
       '[data-testid="search-form-input-wrapper"]',
     );
 
-    console.log(
-      `[search-switcher] DDG retry=${retryCount}`,
-      `input=${input ? input.tagName + "#" + input.id : "null"}`,
-      `wrapper=${wrapper ? wrapper.tagName + "[data-testid]" : "null"}`,
-      `wrapperContainsInput=${!!(wrapper && input && wrapper.contains(input))}`,
-      `readyState=${document.readyState}`,
-      `url=${location.href}`,
-    );
-
     if (input && wrapper && wrapper.contains(input)) {
-      console.log("[search-switcher] DDG resolved via data-testid wrapper");
       return { bar: wrapper, input, layout: ENGINES.ddg.layout };
     }
 
@@ -350,31 +340,18 @@
           'button[type="submit"][aria-label], button[aria-label="search"]',
         );
 
-    console.log(
-      `[search-switcher] DDG form=${form ? form.id || form.getAttribute("data-testid") || form.tagName : "null"}`,
-      `submitBtn=${submitBtn ? submitBtn.tagName + " type=" + submitBtn.type : "null"}`,
-    );
-
     if (input && submitBtn) {
       const commonAncestor = findCommonAncestor(input, submitBtn);
-      console.log(
-        `[search-switcher] DDG commonAncestor=${commonAncestor ? commonAncestor.tagName + ' class="' + commonAncestor.className + '"' : "null"}`,
-      );
       if (commonAncestor && commonAncestor !== document.body) {
-        console.log("[search-switcher] DDG resolved via commonAncestor");
         return { bar: commonAncestor, input, layout: ENGINES.ddg.layout };
       }
     }
 
     if (input && form && form.contains(input)) {
-      console.log("[search-switcher] DDG resolved via form fallback");
       return { bar: form, input, layout: ENGINES.ddg.layout };
     }
 
     if (form && retryCount >= currentEngine.maxRetries - 1) {
-      console.warn(
-        "[search-switcher] DDG hit max retries — using compact fallback below form",
-      );
       return {
         bar: null,
         fallbackAnchor: form,
@@ -383,9 +360,6 @@
       };
     }
 
-    console.log(
-      "[search-switcher] DDG resolve failed this attempt, will retry",
-    );
     return null;
   };
 
@@ -498,9 +472,6 @@
     if (!currentEngine.dynamicContent) return;
     const obs = new MutationObserver(() => {
       if (!document.getElementById(CONTAINER_ID)) {
-        console.warn(
-          "[search-switcher] container removed from DOM (React hydration?) — re-mounting",
-        );
         obs.disconnect();
         retryCount = 0;
         setTimeout(init, 100);
@@ -532,9 +503,6 @@
         currentEngine.dynamicContent &&
         retryCount < currentEngine.maxRetries
       ) {
-        console.log(
-          `[search-switcher] no placement yet, retrying (${retryCount + 1}/${currentEngine.maxRetries})`,
-        );
         retryCount++;
         setTimeout(init, 200);
       }
@@ -542,15 +510,6 @@
     }
 
     const controls = buildControls();
-    console.log(
-      "[search-switcher] mounting controls, placement:",
-      JSON.stringify({
-        layout: placement.layout,
-        hasBar: !!placement.bar,
-        hasFallback: !!placement.fallbackAnchor,
-        compact: !!placement.compact,
-      }),
-    );
     mountControls(controls, placement);
     watchForRemoval();
   };
