@@ -1,19 +1,18 @@
 // ==UserScript==
 // @name         ChatGPT Admin - Auto-confirm Disable Connector
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.3
+// @version      1.4
 // @description  Auto-clicks the "Disable" confirmation after a configurable delay, with countdown.
 // @author       warthurton
 // @match        https://chatgpt.com/admin/*
 // @icon         https://favicons-blue.vercel.app/?domain=chatgpt.com
 // @run-at       document-start
 // @grant        none
-// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/chatgpt/auto-disable-connector.user.js
-// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/chatgpt/auto-disable-connector.user.js
+// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/auto-disable-connector.meta.js
+// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/auto-disable-connector.user.js
 // @homepageURL  https://github.com/warthurton/userscripts
 // @supportURL   https://github.com/warthurton/userscripts/issues
 // ==/UserScript==
-
 
 (() => {
   "use strict";
@@ -26,7 +25,8 @@
 
   /* ======================= */
 
-  const log = (...args) => DEBUG && console.log("[AutoDisableConfirm]", ...args);
+  const log = (...args) =>
+    DEBUG && console.log("[AutoDisableConfirm]", ...args);
 
   let activeDialog = null;
   let timer = null;
@@ -58,14 +58,17 @@
   }
 
   function findButton(dialog, label) {
-    return [...dialog.querySelectorAll("button")]
-      .find(b => (b.textContent || "").trim() === label) || null;
+    return (
+      [...dialog.querySelectorAll("button")].find(
+        (b) => (b.textContent || "").trim() === label,
+      ) || null
+    );
   }
 
   function mountBadge(dialog) {
     const container =
       dialog.querySelector(".flex.flex-col.gap-4.p-6.pt-0") ||
-      dialog.querySelector('[aria-describedby]')?.parentElement ||
+      dialog.querySelector("[aria-describedby]")?.parentElement ||
       dialog;
 
     badge = document.createElement("div");
@@ -108,12 +111,19 @@
     setBadgeText(remaining);
 
     if (cancelBtn) {
-      cancelBtn.addEventListener("click", () => cleanup("user clicked Cancel"), { once: true });
+      cancelBtn.addEventListener(
+        "click",
+        () => cleanup("user clicked Cancel"),
+        { once: true },
+      );
     }
 
     if (AUTO_DISABLE_DELAY_SECONDS > 0) {
       interval = setInterval(() => {
-        if (!dialog.isConnected || dialog.getAttribute("data-state") !== "open") {
+        if (
+          !dialog.isConnected ||
+          dialog.getAttribute("data-state") !== "open"
+        ) {
           cleanup("dialog closed");
           return;
         }
@@ -151,15 +161,25 @@
   function hookHistory() {
     const p = history.pushState;
     const r = history.replaceState;
-    history.pushState = function (...a) { const x = p.apply(this, a); queueMicrotask(scan); return x; };
-    history.replaceState = function (...a) { const x = r.apply(this, a); queueMicrotask(scan); return x; };
+    history.pushState = function (...a) {
+      const x = p.apply(this, a);
+      queueMicrotask(scan);
+      return x;
+    };
+    history.replaceState = function (...a) {
+      const x = r.apply(this, a);
+      queueMicrotask(scan);
+      return x;
+    };
     addEventListener("popstate", () => queueMicrotask(scan));
   }
 
   function start() {
     hookHistory();
-    new MutationObserver(() => queueMicrotask(scan))
-      .observe(document.documentElement, { childList: true, subtree: true, attributes: true });
+    new MutationObserver(() => queueMicrotask(scan)).observe(
+      document.documentElement,
+      { childList: true, subtree: true, attributes: true },
+    );
     periodic = setInterval(scan, 750);
     scan();
     log("Loaded.");

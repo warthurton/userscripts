@@ -19,17 +19,17 @@ Choose one of the following userscript managers for your browser:
 - **Userscripts** - [Safari (macOS, iOS, iPadOS)](https://github.com/quoid/userscripts) - Open source userscript manager for Safari
 - **Tampermonkey** - [Chrome](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojnmkdajkgjejbfnm) | [Firefox](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/) | [Edge](https://microsoftedge.microsoft.com/addons/detail/tampermonkey/iikmkjmpaadaobahmlepeloendndfphd) | [Safari](https://apps.apple.com/us/app/tampermonkey/id1482490089) - Popular cross-platform option
 
-*Note: Greasemonkey is also available for [Firefox](https://addons.mozilla.org/en-US/firefox/addon/greasemonkey/) but is less actively maintained.*
+_Note: Greasemonkey is also available for [Firefox](https://addons.mozilla.org/en-US/firefox/addon/greasemonkey/) but is less actively maintained._
 
 #### Browser-Specific Recommendations
 
-| Browser                           | Best Pick                  | Why                                                                                                    |
-| --------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------ |
-| **Firefox (desktop + Android)**   | **FireMonkey**             | Open source (MPL-2.0), Firefox-native API approach, manages scripts + styles together ([GitHub][1])   |
-| **Chrome / Chromium**             | **Violentmonkey**          | Open source (MIT), very active release cadence, broad WebExtensions support ([GitHub][2])             |
-| **Edge**                          | **Violentmonkey**          | Same reasons as Chrome; built for WebExtensions browsers ([Get it][3])                                |
-| **Opera / Vivaldi / Brave, etc.** | **Violentmonkey**          | Explicitly supported in their "Get it" list (WebExtension-compatible browsers) ([Get it][3])          |
-| **Safari (macOS + iOS/iPadOS)**   | **Userscripts**            | Open-source userscript manager for Safari, actively maintained, available on iOS + macOS ([GitHub][4]) |
+| Browser                           | Best Pick         | Why                                                                                                    |
+| --------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------ |
+| **Firefox (desktop + Android)**   | **FireMonkey**    | Open source (MPL-2.0), Firefox-native API approach, manages scripts + styles together ([GitHub][1])    |
+| **Chrome / Chromium**             | **Violentmonkey** | Open source (MIT), very active release cadence, broad WebExtensions support ([GitHub][2])              |
+| **Edge**                          | **Violentmonkey** | Same reasons as Chrome; built for WebExtensions browsers ([Get it][3])                                 |
+| **Opera / Vivaldi / Brave, etc.** | **Violentmonkey** | Explicitly supported in their "Get it" list (WebExtension-compatible browsers) ([Get it][3])           |
+| **Safari (macOS + iOS/iPadOS)**   | **Userscripts**   | Open-source userscript manager for Safari, actively maintained, available on iOS + macOS ([GitHub][4]) |
 
 [1]: https://github.com/erosman/firemonkey "FireMonkey - combined user-script and user-style manager"
 [2]: https://github.com/Violentmonkey/Violentmonkey "Violentmonkey - userscript support for browsers"
@@ -38,11 +38,13 @@ Choose one of the following userscript managers for your browser:
 
 ### Step 2: Install Userscripts
 
-1. Browse the category directories (`autotask/`, `chatgpt/`, `general/`)
+1. Browse the `_dist/` directory — it contains the latest built versions of every script
 2. Click on a `.user.js` file
 3. Click the "Raw" button on GitHub
 4. Your userscript manager should prompt you to install it
 5. Confirm the installation
+
+Scripts auto-update: `@updateURL` points to a lightweight `.meta.js` file for version checks, and `@downloadURL` points to the full `.user.js` in `_dist/`.
 
 **Note for Safari users:** Userscripts for Safari has a different installation process. See the [Userscripts usage documentation](https://github.com/quoid/userscripts?tab=readme-ov-file#usage) for detailed instructions.
 
@@ -52,21 +54,36 @@ Alternatively, you can copy the script content and create a new script in your u
 
 ```
 userscripts/
-├── autotask/         # Autotask-related userscripts
-├── chatgpt/          # ChatGPT-related userscripts
-├── general/          # General-purpose userscripts
+├── autotask/         # Autotask-related userscripts (source)
+├── chatgpt/          # ChatGPT-related userscripts (source)
+├── cloudradial/      # CloudRadial-related userscripts (source)
+├── general/          # General-purpose userscripts (source)
+├── microsoft/        # Microsoft-related userscripts (source)
+├── search/           # Search engine userscripts (source)
+├── _dist/            # Built artifacts — do not edit (generated by CI)
+├── tools/            # Build script
+├── templates/        # Template for creating new userscripts
 ├── .github/
-│   └── scripts/
-│       └── hooks/    # Git hooks for automation
-├── templates/        # Templates for creating new userscripts
+│   └── workflows/    # GitHub Actions (semantic-release)
 └── README.md         # This file
 ```
 
+## Versioning
+
+Versions are managed **automatically** by [semantic-release](https://github.com/semantic-release/semantic-release):
+
+- Version is determined from **git tags** (last release), not from file contents
+- All scripts share a single repo-level version
+- [Conventional Commits](https://www.conventionalcommits.org/) drive version bumps:
+  - `fix:` → patch bump (e.g. 3.0.0 → 3.0.1)
+  - `feat:` → minor bump (e.g. 3.0.1 → 3.1.0)
+  - `feat!:` or `BREAKING CHANGE:` → major bump
+
 ## Development & Contributing
 
-For information about git hooks, automation, and development workflow, see [DEVELOPMENT.md](DEVELOPMENT.md).
-
 For contribution guidelines and script requirements, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+For the development workflow and build system, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Creating Your Own Userscript
 
@@ -75,28 +92,25 @@ For contribution guidelines and script requirements, see [CONTRIBUTING.md](CONTR
    - `@name` - The name of your script
    - `@description` - What your script does
    - `@match` - URLs where the script should run
-   - `@version` - Version number
-3. Write your JavaScript code
-4. Save with `.user.js` extension
-5. Install in your userscript manager for testing
+3. Set `@updateURL` to `https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/<name>.meta.js`
+4. Set `@downloadURL` to `https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/<name>.user.js`
+5. Write your JavaScript code
+6. Save with `.user.js` extension
+7. Install in your userscript manager for testing
 
 ## Adding Scripts to This Repository
 
-See [DEVELOPMENT.md](DEVELOPMENT.md) for git hooks setup and [CONTRIBUTING.md](CONTRIBUTING.md) for detailed contribution guidelines.
-
-Quick steps:
-
-1. Place your userscript in the appropriate category directory (`autotask/`, `chatgpt/`, or `general/`)
+1. Place your userscript in the appropriate category directory
 2. Ensure the filename ends with `.user.js`
-3. Include proper metadata in the script header
-4. Commit and push your changes
+3. Include proper metadata in the script header (see template)
+4. Commit with a conventional commit message (e.g. `feat: add new-script`)
+5. CI will build the `_dist/` artifacts and publish a release
 
 ## Usage Tips
 
-- Keep scripts updated by pulling the latest changes from this repository
-- Test scripts in a safe environment before deploying
-- Back up your scripts by committing them to this repository
-- Use meaningful names for your scripts
+- Scripts auto-update via `@updateURL` / `@downloadURL` in your userscript manager
+- All updates ship from the `_dist/` directory on the `main` branch
+- Version bumps happen automatically when changes merge to `main`
 
 ## Syncing Across Browsers
 

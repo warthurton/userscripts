@@ -5,63 +5,54 @@ Thank you for your interest in contributing! This guide will help you add new us
 ## Adding a New Userscript
 
 1. **Create Your Script**
-
    - Start with the template in `templates/userscript-template.user.js`
    - Write your script following JavaScript best practices
    - Test thoroughly on target websites
 
 2. **Script Requirements**
-
    - Must include complete metadata header
-   - Must include autoupdate URLs (`@updateURL` and `@downloadURL`)
-   - Must use semantic versioning (see below)
+   - Must include autoupdate URLs (`@updateURL` and `@downloadURL`) pointing to `_dist/`
    - Must use `.user.js` extension
    - Must be well-commented
    - Should handle errors gracefully
 
-3. **Semantic Versioning**
+3. **Versioning**
 
-   All scripts must follow [semantic versioning](https://semver.org/) (MAJOR.MINOR.PATCH):
-
-   - **MAJOR** (first number): Breaking changes or major rewrites
-   - **MINOR** (second number): New features added (backward compatible)
-   - **PATCH** (third number): Bug fixes and minor improvements
-
-   **When updating scripts:**
-
-   - The PATCH version is automatically incremented by a pre-commit hook
-   - Increment MINOR version manually (e.g., 1.0.1 → 1.1.0) when adding new features
-   - Increment MAJOR version manually (e.g., 1.1.0 → 2.0.0) for breaking changes
-   - Reset lower numbers to zero when incrementing higher ones (e.g., 1.2.3 → 2.0.0)
+   Versions are managed **automatically** by [semantic-release](https://github.com/semantic-release/semantic-release).
+   - **Do not** manually change `@version` in source scripts for release purposes
+   - Version is determined from git tags (the last published release), not file contents
+   - All scripts share a single repo-level version
+   - Use [Conventional Commits](https://www.conventionalcommits.org/) to drive version bumps:
+     - `fix:` → patch bump (e.g. 3.0.0 → 3.0.1)
+     - `feat:` → minor bump (e.g. 3.0.1 → 3.1.0)
+     - `feat!:` or `BREAKING CHANGE:` → major bump
+     - `chore:`, `docs:`, `refactor:`, `style:`, `test:`, `ci:` → no release
 
 4. **Metadata Requirements**
    ```javascript
    // ==UserScript==
    // @name         Descriptive Name
-   // @namespace    http://tampermonkey.net/
-   // @version      1.0.0
+   // @namespace    https://github.com/warthurton/userscripts
+   // @version      1.0
    // @description  Clear description of what the script does
-   // @author       Your Name
+   // @author       warthurton
    // @match        https://example.com/*
    // @icon         https://favicons-blue.vercel.app/?domain=example.com
-   // @updateURL    https://raw.githubusercontent.com/<github-username>/userscripts/main/<path-to-script>.user.js
-   // @downloadURL  https://raw.githubusercontent.com/<github-username>/userscripts/main/<path-to-script>.user.js
+   // @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/<name>.meta.js
+   // @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/<name>.user.js
    // @grant        none
    // ==/UserScript==
    ```
 
 ### Autoupdate URLs
 
-- Purpose: Ensure users’ script managers (Tampermonkey/Greasemonkey/Violentmonkey) can automatically detect and install updates.
-- Required fields: `@updateURL` and `@downloadURL` must always be present in every new script.
+- Purpose: Ensure script managers (Violentmonkey/FireMonkey/Tampermonkey) can automatically detect and install updates.
+- Required fields: `@updateURL` and `@downloadURL` must always be present.
 - URL format:
-  - Base: `https://raw.githubusercontent.com/warthurton/userscripts/main/`
-  - Path: match the script’s location in this repo.
-  - Example for a script stored at `chatgpt/auto-disable-connector.user.js`:
-    - `@updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/chatgpt/auto-disable-connector.user.js`
-    - `@downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/chatgpt/auto-disable-connector.user.js`
-- Scripts are organized in category directories (autotask/, chatgpt/, general/) at the repository root.
-- Keep the full path in the URL, e.g. `chatgpt/auto-disable-connector.user.js`.
+  - `@updateURL` → `https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/<name>.meta.js`
+  - `@downloadURL` → `https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/<name>.user.js`
+  - `<name>` is the script filename without `.user.js` (e.g. `auto-close` for `auto-close.user.js`)
+- The build script rewrites these URLs in `_dist/`, so they just need to be present in source files.
 - Do not omit or comment out these lines; they must be included upon script creation.
 
 ### Favicons / Icons
@@ -76,29 +67,7 @@ Thank you for your interest in contributing! This guide will help you add new us
 - Extract the domain from the `@match` URL pattern to determine the appropriate domain for the favicon.
 - The `@icon` field should always be included in new userscripts.
 
-### Version Automation with Git Hooks
-
-This repository includes git hooks that automatically manage versioning and build output:
-
-- **Pre-commit hook** (`.github/scripts/hooks/pre-commit`): Automatically increments the PATCH version in all modified `.user.js` files
-- **Post-commit hook** (`.github/scripts/hooks/post-commit`): Copies all modified `.user.js` files to `build/` directory
-
-**Setup:** Run the setup script from the repository root:
-
-```bash
-bash .github/scripts/hooks/setup.sh
-```
-
-On Windows:
-
-```cmd
-.github\scripts\hooks\setup.bat
-```
-
-After setup, hooks will run automatically before and after each commit.
-
 4. **File Naming**
-
    - Use lowercase with hyphens
    - Be descriptive but concise
    - Example: `github-notification-enhancer.user.js`
