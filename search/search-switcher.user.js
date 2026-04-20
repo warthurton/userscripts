@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Minimal Search Switcher: Google <-> Bing <-> DuckDuckGo (DDG uses !bang submit)
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.2
-// @modified     2026-04-14T16:05:16.683Z
+// @version      1.3
+// @modified     2026-04-20T17:45:12.851Z
 // @description  Switch between Google, Bing, and DuckDuckGo search engines
 // @author       warthurton
 // @match        https://www.google.com/search*
@@ -67,14 +67,21 @@
         : DEFAULT_REDIRECT_DELAY_MS;
 
     // Setup auto-redirect from Bing to DDG if enabled (and not from our script)
-    if (isBing && !fromScript && !prefs.openInNewTab && prefs.autoRedirect) {
+    if (isBing && !fromScript && prefs.autoRedirect) {
       const q = new URL(location.href).searchParams.get("q");
       if (q) {
+        GM.openInTab(`https://duckduckgo.com/?q=${encodeURIComponent(q)}`, {
+          // Force auto-redirect tab to open in foreground.
+          active: true,
+          insert: true,
+          setParent: false,
+        });
+
         const countdownDeadline = Date.now() + prefs.redirectDelayMs;
         secondsLeft = Math.max(0, Math.ceil(prefs.redirectDelayMs / 1000));
         const countdownBtn = document.createElement("button");
         countdownBtn.id = "search-switcher-countdown";
-        countdownBtn.textContent = `→DDG (${secondsLeft}s)`;
+        countdownBtn.textContent = `Close Bing (${secondsLeft}s)`;
         countdownBtn.style.cssText =
           "position:fixed;top:12px;right:12px;z-index:999999;" +
           "padding:10px 16px;border:2px solid #d93025;border-radius:20px;" +
@@ -92,7 +99,7 @@
           const nextSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
           if (nextSeconds !== secondsLeft) {
             secondsLeft = nextSeconds;
-            countdownBtn.textContent = `→DDG (${secondsLeft}s)`;
+            countdownBtn.textContent = `Close Bing (${secondsLeft}s)`;
           }
           if (remainingMs <= 0) {
             clearInterval(countdownInterval);
@@ -101,7 +108,7 @@
 
         redirectTimeout = setTimeout(() => {
           clearInterval(countdownInterval);
-          location.href = `https://duckduckgo.com/?q=${encodeURIComponent(q)}`;
+          window.close();
         }, prefs.redirectDelayMs);
       }
     }
@@ -384,10 +391,8 @@
       );
       container.appendChild(makeNewTabToggle(false));
     } else if (isBing) {
-      // Add auto-redirect checkbox (only if not in new tab mode)
-      if (!prefs.openInNewTab) {
-        container.appendChild(makeAutoRedirectToggle());
-      }
+      // Add auto-redirect checkbox
+      container.appendChild(makeAutoRedirectToggle());
 
       container.appendChild(
         makeLink(
