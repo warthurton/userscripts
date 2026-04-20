@@ -1,8 +1,7 @@
 // ==UserScript==
 // @name         Minimal Search Switcher: Google <-> Bing <-> DuckDuckGo
 // @namespace    https://github.com/warthurton/userscripts
-// @version      2.1
-// @modified     2026-04-20T20:06:42.530Z
+// @version      2.1.1
 // @description  Switch between Google, Bing, and DuckDuckGo search engines
 // @author       warthurton
 // @match        https://www.google.com/search*
@@ -36,14 +35,13 @@
       buildUrl: (q) =>
         `https://www.google.com/search?q=${encodeURIComponent(q)}`,
       querySelectors: ['textarea[name="q"]', 'input[name="q"]'],
+      overlayInputSelectors: ['textarea[name="q"]', 'input[name="q"]'],
       // The rounded search-box wrapper that holds input + buttons
       searchBarSelectors: [".RNNXgb"],
-      // Insert our controls before the search submit button inside the bar
-      insertBeforeSelectors: [
-        'button[jsname="Tg7LZd"]',
-        'button[aria-label="Search"][type="submit"]',
-        'button[type="submit"]',
-      ],
+      layout: "overlay-left",
+      overlayOffsetPx: 12,
+      overlayGapPx: 4,
+      overlayPaddingPx: 16,
       // Fallback anchors if the search bar isn't found
       fallbackAnchorSelectors: [
         "form.tsf .A8SBwf",
@@ -62,17 +60,10 @@
       buildUrl: (q) => `https://www.bing.com/search?q=${encodeURIComponent(q)}`,
       querySelectors: ["#sb_form_q", 'input[name="q"]'],
       searchBarSelectors: [".b_searchboxForm"],
+      layout: "inline-left",
       insertBeforeSelectors: ["#sb_search"],
       fallbackAnchorSelectors: ["form#sb_form", "form"],
       switchTo: ["google", "ddg"],
-      usesFormSearch: true,
-      formInputSelectors: ["#sb_form_q", 'input[name="q"]'],
-      formSelectors: ["#sb_form"],
-      formSubmitSelectors: [
-        "#search_icon",
-        'label[for="sb_form_go"]',
-        'button[type="submit"]',
-      ],
       hasAutoRedirect: true,
     },
     ddg: {
@@ -81,10 +72,14 @@
       label: "!d",
       buildUrl: (q) => `https://duckduckgo.com/?q=${encodeURIComponent(q)}`,
       querySelectors: ["#search_form_input", 'input[name="q"]'],
+      overlayInputSelectors: ["#search_form_input", 'input[name="q"]'],
       // DDG uses hashed CSS-module classes, so we locate the visual bar
       // structurally: the submit button's grandparent is the flex row.
       searchBarSelectors: null, // resolved dynamically
-      insertBeforeSelectors: null, // resolved dynamically
+      layout: "overlay-left",
+      overlayOffsetPx: 14,
+      overlayGapPx: 4,
+      overlayPaddingPx: 14,
       fallbackAnchorSelectors: [
         ".header__content.header__search",
         "#react-search-form",
@@ -108,9 +103,11 @@
   // ---------------------------------------------------------------------------
   const urlParams = new URL(location.href).searchParams;
   const fromScript = urlParams.get("ss_nav") === "1";
-  if (fromScript) {
+  const suppressRedirect = urlParams.get("ss_skip_redirect") === "1";
+  if (fromScript || suppressRedirect) {
     const cleanUrl = new URL(location.href);
     cleanUrl.searchParams.delete("ss_nav");
+    cleanUrl.searchParams.delete("ss_skip_redirect");
     history.replaceState(null, "", cleanUrl.toString());
   }
 
@@ -177,6 +174,14 @@
     }
   };
 
+  const withUrlMarkers = (url, markers = {}) => {
+    const dest = new URL(url);
+    for (const [key, value] of Object.entries(markers)) {
+      dest.searchParams.set(key, value);
+    }
+    return dest.toString();
+  };
+
   // ---------------------------------------------------------------------------
   // Utility: cancel any running countdown / redirect
   // ---------------------------------------------------------------------------
@@ -199,41 +204,6 @@
     if (q) return q.trim();
     const input = queryFirst(currentEngine.querySelectors);
     return (input?.value || "").trim();
-  };
-
-  // ---------------------------------------------------------------------------
-  // Bing-specific: search-by-form when arriving via script navigation
-  // ---------------------------------------------------------------------------
-  const handleBingPendingSearch = async () => {
-    const pending = await GM.getValue("pending-bing-search", null);
-    if (!pending) return;
-    await GM.setValue("pending-bing-search", null);
-
-    const cfg = ENGINES.bing;
-    let attempts = 0;
-    const maxAttempts = 15;
-
-    const trySearch = () => {
-      const input = queryFirst(cfg.formInputSelectors);
-      const form = queryFirst(cfg.formSelectors) || input?.closest("form");
-      if (!input || !form) return false;
-
-      input.focus();
-      input.value = pending;
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-      input.dispatchEvent(new Event("change", { bubbles: true }));
-
-      const submitBtn = queryFirst(cfg.formSubmitSelectors, form);
-      if (submitBtn) submitBtn.click();
-      else form.submit();
-      return true;
-    };
-
-    const tick = () => {
-      if (++attempts > maxAttempts || trySearch()) return;
-      setTimeout(tick, 200);
-    };
-    tick();
   };
 
   // ---------------------------------------------------------------------------
@@ -275,7 +245,7 @@
 
     redirectTimeout = setTimeout(async () => {
       clearInterval(countdownInterval);
-      await closeCurrentTab();
+      closeCurrentTab();
     }, prefs.redirectDelayMs);
   };
 
@@ -283,15 +253,15 @@
   // UI: shared chip style for buttons inside the search bar
   // ---------------------------------------------------------------------------
   const CHIP_STYLE =
-    "height:100%;padding:0 8px;border:none;border-left:1px solid #ddd;" +
-    "text-decoration:none;font:bold 12px/1 sans-serif;color:#555;background:transparent;" +
+    "height:100%;padding:0 6px;border:none;background:transparent;" +
+    "text-decoration:none;font:600 13px/1 sans-serif;color:#555;" +
     "cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" +
     "box-sizing:border-box;white-space:nowrap;flex-shrink:0;";
 
   // ---------------------------------------------------------------------------
   // UI: create a switch button for a target engine
   // ---------------------------------------------------------------------------
-  const createSwitchButton = (targetEngine, query) => {
+  const createSwitchButton = (targetEngine) => {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.textContent = targetEngine.label;
@@ -300,14 +270,13 @@
 
     btn.addEventListener("click", async (e) => {
       e.preventDefault();
-      if (targetEngine.usesFormSearch && !prefs.openInNewTab) {
-        await GM.setValue("pending-bing-search", query);
-        const url = new URL("https://www.bing.com/");
-        url.searchParams.set("ss_nav", "1");
-        navigateTo(url.toString());
-      } else {
-        navigateTo(targetEngine.buildUrl(query));
+      const activeQuery = getQuery();
+      if (!activeQuery) return;
+      const markers = {};
+      if (targetEngine.key === "bing") {
+        markers.ss_skip_redirect = "1";
       }
+      navigateTo(withUrlMarkers(targetEngine.buildUrl(activeQuery), markers));
     });
 
     return btn;
@@ -316,15 +285,15 @@
   // ---------------------------------------------------------------------------
   // UI: build the controls container with switch buttons
   // ---------------------------------------------------------------------------
-  const buildControls = (query) => {
+  const buildControls = () => {
     const container = document.createElement("span");
     container.id = CONTAINER_ID;
     container.style.cssText =
-      "display:inline-flex;align-items:center;height:100%;flex-shrink:0;";
+      "display:inline-flex;align-items:center;gap:4px;height:100%;flex-shrink:0;";
 
     // Switch buttons for each target engine
     for (const targetKey of currentEngine.switchTo) {
-      container.appendChild(createSwitchButton(ENGINES[targetKey], query));
+      container.appendChild(createSwitchButton(ENGINES[targetKey]));
     }
 
     return container;
@@ -343,7 +312,8 @@
     const buttonsWrapper = submitBtn.parentElement;
     const flexRow = buttonsWrapper?.parentElement;
     if (!flexRow) return null;
-    return { bar: flexRow, insertBefore: buttonsWrapper };
+    const input = queryFirst(ENGINES.ddg.overlayInputSelectors);
+    return { bar: flexRow, input, layout: ENGINES.ddg.layout };
   };
 
   // ---------------------------------------------------------------------------
@@ -356,11 +326,19 @@
     } else if (currentEngine.searchBarSelectors) {
       const bar = queryFirst(currentEngine.searchBarSelectors);
       if (bar) {
+        const input = queryFirst(currentEngine.overlayInputSelectors, bar);
+        if (currentEngine.layout === "overlay-left" && input) {
+          return { bar, input, layout: currentEngine.layout };
+        }
         const insertBefore = queryFirst(
           currentEngine.insertBeforeSelectors,
           bar,
         );
-        return { bar, insertBefore };
+        return {
+          bar,
+          insertBefore,
+          layout: currentEngine.layout || "inline-left",
+        };
       }
     }
 
@@ -372,12 +350,42 @@
   // ---------------------------------------------------------------------------
   // DOM: mount controls into the page
   // ---------------------------------------------------------------------------
+  const reserveInputSpace = (input, container) => {
+    if (!input || !container) return;
+    const computedPadding = Number.parseFloat(
+      getComputedStyle(input).paddingInlineStart,
+    );
+    const basePadding = Number.isFinite(computedPadding) ? computedPadding : 0;
+    const gap = currentEngine.overlayPaddingPx || 12;
+    input.style.paddingInlineStart = `${Math.ceil(basePadding + container.offsetWidth + gap)}px`;
+  };
+
   const mountControls = (container, placement) => {
-    if (placement.bar) {
+    if (
+      placement.bar &&
+      placement.layout === "overlay-left" &&
+      placement.input
+    ) {
+      if (getComputedStyle(placement.bar).position === "static") {
+        placement.bar.style.position = "relative";
+      }
+      const offset = currentEngine.overlayOffsetPx || 12;
+      container.style.cssText =
+        "position:absolute;top:50%;left:" +
+        `${offset}px;transform:translateY(-50%);z-index:2;` +
+        "display:inline-flex;align-items:center;gap:4px;height:24px;" +
+        "pointer-events:auto;background:transparent;";
+      placement.bar.appendChild(container);
+      reserveInputSpace(placement.input, container);
+    } else if (placement.bar) {
       if (placement.insertBefore) {
         placement.bar.insertBefore(container, placement.insertBefore);
       } else {
         placement.bar.appendChild(container);
+      }
+      const firstButton = container.firstElementChild;
+      if (firstButton) {
+        firstButton.style.borderLeft = "none";
       }
     } else if (placement.fallbackAnchor) {
       const anchor = placement.fallbackAnchor;
@@ -427,7 +435,7 @@
       return;
     }
 
-    const controls = buildControls(query);
+    const controls = buildControls();
     mountControls(controls, placement);
   };
 
@@ -447,41 +455,39 @@
         ? Math.floor(parsed)
         : DEFAULT_REDIRECT_DELAY_MS;
 
-    // Register menu commands for settings
     GM.registerMenuCommand(
-      prefs.openInNewTab ? "\u2713 Open in New Tab" : "\u2717 Open in New Tab",
+      prefs.openInNewTab ? "[on] Open in New Tab" : "[off] Open in New Tab",
       async () => {
         prefs.openInNewTab = !prefs.openInNewTab;
         await GM.setValue("new-tab", prefs.openInNewTab);
         location.reload();
       },
     );
-    if (currentEngine.hasAutoRedirect) {
-      GM.registerMenuCommand(
-        prefs.autoRedirect
-          ? "\u2713 Auto Redirect Bing \u2192 DDG"
-          : "\u2717 Auto Redirect Bing \u2192 DDG",
-        async () => {
-          prefs.autoRedirect = !prefs.autoRedirect;
-          await GM.setValue("bing-to-ddg", prefs.autoRedirect);
-          if (!prefs.autoRedirect) {
-            cancelCountdown();
-            document.getElementById(COUNTDOWN_ID)?.remove();
-          }
-          location.reload();
-        },
-      );
-    }
+
+    GM.registerMenuCommand(
+      prefs.autoRedirect
+        ? "[on] Auto Redirect Bing -> DDG"
+        : "[off] Auto Redirect Bing -> DDG",
+      async () => {
+        prefs.autoRedirect = !prefs.autoRedirect;
+        await GM.setValue("bing-to-ddg", prefs.autoRedirect);
+        if (!prefs.autoRedirect) {
+          cancelCountdown();
+          document.getElementById(COUNTDOWN_ID)?.remove();
+        }
+        location.reload();
+      },
+    );
 
     // Bing auto-redirect: open DDG immediately, close Bing after delay
-    if (currentEngine.key === "bing" && !fromScript && prefs.autoRedirect) {
+    if (
+      currentEngine.key === "bing" &&
+      !fromScript &&
+      !suppressRedirect &&
+      prefs.autoRedirect
+    ) {
       const q = new URL(location.href).searchParams.get("q");
       if (q) startBingAutoRedirect(q);
-    }
-
-    // Bing pending search from script navigation
-    if (currentEngine.key === "bing" && fromScript) {
-      handleBingPendingSearch();
     }
 
     init();
