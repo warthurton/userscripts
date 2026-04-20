@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChatGPT Admin Usage Downloader
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.7
+// @version      0.0.0
 // @description  Auto-download analytics data and statistics from ChatGPT admin usage page
 // @author       warthurton
 // @match        https://chatgpt.com/admin/usage

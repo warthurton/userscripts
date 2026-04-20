@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Microsoft Defender - App Catalog Downloader
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.1
+// @version      0.0.0
 // @description  Captures app catalog API responses on the Microsoft Defender for Cloud Apps page and downloads them as individual JSON files in a ZIP
 // @author       warthurton
 // @match        https://security.microsoft.com/cloudapps/app-catalog*

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         New Userscript Template
 // @namespace    https://github.com/warthurton/userscripts
-// @version      1.0
+// @version      0.0.0
 // @description  Template for creating new userscripts
 // @author       warthurton
 // @match        https://www.example.com/*
