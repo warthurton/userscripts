@@ -328,9 +328,18 @@
       return { bar: wrapper, input, layout: ENGINES.ddg.layout };
     }
 
-    const submitBtn = document.querySelector(
-      'form#search_form button[type="submit"], button[aria-label="search"]',
-    );
+    // Find the form containing the input — more robust than relying on id/testid
+    const form =
+      (input && input.closest("form")) ||
+      document.querySelector('form#search_form, [data-testid="search-form"]');
+
+    // Find the submit button within that form (avoids matching unrelated buttons)
+    const submitBtn = form
+      ? form.querySelector('button[type="submit"], input[type="submit"]')
+      : document.querySelector(
+          'button[type="submit"][aria-label], button[aria-label="search"]',
+        );
+
     if (input && submitBtn) {
       const commonAncestor = findCommonAncestor(input, submitBtn);
       if (commonAncestor && commonAncestor !== document.body) {
@@ -338,9 +347,6 @@
       }
     }
 
-    const form = document.querySelector(
-      'form#search_form, [data-testid="search-form"]',
-    );
     if (input && form && form.contains(input)) {
       return { bar: form, input, layout: ENGINES.ddg.layout };
     }
