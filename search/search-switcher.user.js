@@ -1,8 +1,7 @@
 // ==UserScript==
 // @name         Minimal Search Switcher: Google <-> Bing <-> DuckDuckGo
 // @namespace    https://github.com/warthurton/userscripts
-// @version      2.2
-// @modified     2026-04-20T20:30:17.024Z
+// @version      2.2.1
 // @description  Switch between Google, Bing, and DuckDuckGo search engines
 // @author       warthurton
 // @match        https://www.google.com/search*
@@ -40,9 +39,9 @@
       // The rounded search-box wrapper that holds input + buttons
       searchBarSelectors: [".RNNXgb"],
       layout: "overlay-left",
-      overlayOffsetPx: 12,
-      overlayGapPx: 4,
-      overlayPaddingPx: 16,
+      overlayOffsetPx: 10,
+      overlayGapPx: 2,
+      overlayPaddingPx: 12,
       // Fallback anchors if the search bar isn't found
       fallbackAnchorSelectors: [
         "form.tsf .A8SBwf",
@@ -78,9 +77,9 @@
       // structurally: the submit button's grandparent is the flex row.
       searchBarSelectors: null, // resolved dynamically
       layout: "overlay-left",
-      overlayOffsetPx: 14,
-      overlayGapPx: 4,
-      overlayPaddingPx: 14,
+      overlayOffsetPx: 12,
+      overlayGapPx: 2,
+      overlayPaddingPx: 12,
       fallbackAnchorSelectors: [
         ".header__content.header__search",
         "#react-search-form",
@@ -254,8 +253,8 @@
   // UI: shared chip style for buttons inside the search bar
   // ---------------------------------------------------------------------------
   const CHIP_STYLE =
-    "height:100%;padding:0 6px;border:none;background:transparent;" +
-    "text-decoration:none;font:600 13px/1 sans-serif;color:#555;" +
+    "height:100%;padding:0 4px;border:none;background:transparent;" +
+    "text-decoration:none;font:600 12px/1 sans-serif;color:#555;" +
     "cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" +
     "box-sizing:border-box;white-space:nowrap;flex-shrink:0;";
 
@@ -290,7 +289,7 @@
     const container = document.createElement("span");
     container.id = CONTAINER_ID;
     container.style.cssText =
-      "display:inline-flex;align-items:center;gap:4px;height:100%;flex-shrink:0;";
+      "display:inline-flex;align-items:center;gap:2px;height:100%;flex-shrink:0;";
 
     // Switch buttons for each target engine
     for (const targetKey of currentEngine.switchTo) {
@@ -303,18 +302,45 @@
   // ---------------------------------------------------------------------------
   // DOM: resolve DDG's search bar dynamically (hashed class names)
   // ---------------------------------------------------------------------------
+  const findCommonAncestor = (a, b) => {
+    if (!a || !b) return null;
+    const seen = new Set();
+    let node = a;
+    while (node) {
+      seen.add(node);
+      node = node.parentElement;
+    }
+    node = b;
+    while (node) {
+      if (seen.has(node)) return node;
+      node = node.parentElement;
+    }
+    return null;
+  };
+
   const resolveDDGSearchBar = () => {
-    const submitBtn = document.querySelector(
-      'form#search_form button[type="submit"]',
-    );
-    if (!submitBtn) return null;
-    // The submit button lives in a buttons-wrapper div; its parent is the
-    // flex row that IS the visual search bar.
-    const buttonsWrapper = submitBtn.parentElement;
-    const flexRow = buttonsWrapper?.parentElement;
-    if (!flexRow) return null;
     const input = queryFirst(ENGINES.ddg.overlayInputSelectors);
-    return { bar: flexRow, input, layout: ENGINES.ddg.layout };
+    const submitBtn = document.querySelector(
+      'form#search_form button[type="submit"], button[aria-label="search"]',
+    );
+    if (input && submitBtn) {
+      const commonAncestor = findCommonAncestor(input, submitBtn);
+      if (commonAncestor && commonAncestor !== document.body) {
+        return { bar: commonAncestor, input, layout: ENGINES.ddg.layout };
+      }
+    }
+
+    const form = document.querySelector("form#search_form");
+    if (form) {
+      return {
+        bar: null,
+        fallbackAnchor: form,
+        fallbackPosition: "after",
+        compact: true,
+      };
+    }
+
+    return null;
   };
 
   // ---------------------------------------------------------------------------
@@ -371,10 +397,11 @@
         placement.bar.style.position = "relative";
       }
       const offset = currentEngine.overlayOffsetPx || 12;
+      const gap = currentEngine.overlayGapPx || 2;
       container.style.cssText =
         "position:absolute;top:50%;left:" +
         `${offset}px;transform:translateY(-50%);z-index:2;` +
-        "display:inline-flex;align-items:center;gap:4px;height:24px;" +
+        `display:inline-flex;align-items:center;gap:${gap}px;height:22px;` +
         "pointer-events:auto;background:transparent;";
       placement.bar.appendChild(container);
       reserveInputSpace(placement.input, container);
@@ -390,14 +417,18 @@
       }
     } else if (placement.fallbackAnchor) {
       const anchor = placement.fallbackAnchor;
-      if (anchor.nextSibling) {
+      if (placement.fallbackPosition === "before") {
+        anchor.parentNode.insertBefore(container, anchor);
+      } else if (anchor.nextSibling) {
         anchor.parentNode.insertBefore(container, anchor.nextSibling);
       } else {
         anchor.parentNode.appendChild(container);
       }
       container.style.cssText =
-        "display:inline-flex;align-items:center;gap:4px;margin-left:8px;" +
-        "vertical-align:middle;height:28px;";
+        "display:inline-flex;align-items:center;gap:2px;" +
+        (placement.compact
+          ? "margin:6px 0 0 14px;height:22px;"
+          : "margin-left:8px;vertical-align:middle;height:28px;");
     } else {
       // Last resort: fixed top-right
       container.style.cssText =
