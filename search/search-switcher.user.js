@@ -259,6 +259,35 @@
     "box-sizing:border-box;white-space:nowrap;flex-shrink:0;";
 
   // ---------------------------------------------------------------------------
+  // UI: create a vertical separator that matches the host search bar's styling
+  // ---------------------------------------------------------------------------
+  const buildSeparator = () => {
+    const sep = document.createElement("span");
+    sep.setAttribute("aria-hidden", "true");
+
+    // Colors sourced from each site's actual search-box border/divider token:
+    //   Google  – #dadce0 (search bar border in resting state)
+    //   Bing    – #d2d2d2 (form border / hairline between sections)
+    //   DDG     – respects prefers-color-scheme; dark: rgba(255,255,255,0.18)
+    let color;
+    if (currentEngine.key === "google") {
+      color = "#dadce0";
+    } else if (currentEngine.key === "bing") {
+      color = "#d2d2d2";
+    } else {
+      // DDG supports both light and dark themes
+      color = window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "rgba(255,255,255,0.18)"
+        : "rgba(0,0,0,0.15)";
+    }
+
+    sep.style.cssText =
+      `display:inline-block;width:1px;height:60%;background:${color};` +
+      "margin:0 4px;flex-shrink:0;align-self:center;";
+    return sep;
+  };
+
+  // ---------------------------------------------------------------------------
   // UI: create a switch button for a target engine
   // ---------------------------------------------------------------------------
   const createSwitchButton = (targetEngine) => {
@@ -295,6 +324,9 @@
     for (const targetKey of currentEngine.switchTo) {
       container.appendChild(createSwitchButton(ENGINES[targetKey]));
     }
+
+    // Vertical separator between the engine buttons and the search input
+    container.appendChild(buildSeparator());
 
     return container;
   };
