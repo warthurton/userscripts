@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Minimal Search Switcher: Google <-> Bing <-> DuckDuckGo
 // @namespace    https://github.com/warthurton/userscripts
-// @version      2026.0420.2317
-// @modified     2026-04-20T23:17:40.189Z
+// @version      2026.0421.1536
+// @modified     2026-04-21T15:36:23.495Z
 // @description  Switch between Google, Bing, and DuckDuckGo search engines
 // @author       warthurton
 // @match        https://www.google.com/search*
@@ -260,6 +260,35 @@
     "box-sizing:border-box;white-space:nowrap;flex-shrink:0;";
 
   // ---------------------------------------------------------------------------
+  // UI: create a vertical separator that matches the host search bar's styling
+  // ---------------------------------------------------------------------------
+  const buildSeparator = () => {
+    const sep = document.createElement("span");
+    sep.setAttribute("aria-hidden", "true");
+
+    // Colors sourced from each site's actual search-box border/divider token:
+    //   Google  – #dadce0 (search bar border in resting state)
+    //   Bing    – #d2d2d2 (form border / hairline between sections)
+    //   DDG     – respects prefers-color-scheme; dark: rgba(255,255,255,0.18)
+    let color;
+    if (currentEngine.key === "google") {
+      color = "#dadce0";
+    } else if (currentEngine.key === "bing") {
+      color = "#d2d2d2";
+    } else {
+      // DDG supports both light and dark themes
+      color = window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "rgba(255,255,255,0.18)"
+        : "rgba(0,0,0,0.15)";
+    }
+
+    sep.style.cssText =
+      `display:inline-block;width:1px;height:60%;background:${color};` +
+      "margin:0 4px;flex-shrink:0;align-self:center;";
+    return sep;
+  };
+
+  // ---------------------------------------------------------------------------
   // UI: create a switch button for a target engine
   // ---------------------------------------------------------------------------
   const createSwitchButton = (targetEngine) => {
@@ -297,6 +326,9 @@
       container.appendChild(createSwitchButton(ENGINES[targetKey]));
     }
 
+    // Vertical separator between the engine buttons and the search input
+    container.appendChild(buildSeparator());
+
     return container;
   };
 
@@ -325,17 +357,7 @@
       '[data-testid="search-form-input-wrapper"]',
     );
 
-    console.log(
-      `[search-switcher] DDG retry=${retryCount}`,
-      `input=${input ? input.tagName + "#" + input.id : "null"}`,
-      `wrapper=${wrapper ? wrapper.tagName + "[data-testid]" : "null"}`,
-      `wrapperContainsInput=${!!(wrapper && input && wrapper.contains(input))}`,
-      `readyState=${document.readyState}`,
-      `url=${location.href}`,
-    );
-
     if (input && wrapper && wrapper.contains(input)) {
-      console.log("[search-switcher] DDG resolved via data-testid wrapper");
       return { bar: wrapper, input, layout: ENGINES.ddg.layout };
     }
 
@@ -351,31 +373,18 @@
           'button[type="submit"][aria-label], button[aria-label="search"]',
         );
 
-    console.log(
-      `[search-switcher] DDG form=${form ? form.id || form.getAttribute("data-testid") || form.tagName : "null"}`,
-      `submitBtn=${submitBtn ? submitBtn.tagName + " type=" + submitBtn.type : "null"}`,
-    );
-
     if (input && submitBtn) {
       const commonAncestor = findCommonAncestor(input, submitBtn);
-      console.log(
-        `[search-switcher] DDG commonAncestor=${commonAncestor ? commonAncestor.tagName + ' class="' + commonAncestor.className + '"' : "null"}`,
-      );
       if (commonAncestor && commonAncestor !== document.body) {
-        console.log("[search-switcher] DDG resolved via commonAncestor");
         return { bar: commonAncestor, input, layout: ENGINES.ddg.layout };
       }
     }
 
     if (input && form && form.contains(input)) {
-      console.log("[search-switcher] DDG resolved via form fallback");
       return { bar: form, input, layout: ENGINES.ddg.layout };
     }
 
     if (form && retryCount >= currentEngine.maxRetries - 1) {
-      console.warn(
-        "[search-switcher] DDG hit max retries — using compact fallback below form",
-      );
       return {
         bar: null,
         fallbackAnchor: form,
@@ -384,9 +393,6 @@
       };
     }
 
-    console.log(
-      "[search-switcher] DDG resolve failed this attempt, will retry",
-    );
     return null;
   };
 
@@ -499,9 +505,6 @@
     if (!currentEngine.dynamicContent) return;
     const obs = new MutationObserver(() => {
       if (!document.getElementById(CONTAINER_ID)) {
-        console.warn(
-          "[search-switcher] container removed from DOM (React hydration?) — re-mounting",
-        );
         obs.disconnect();
         retryCount = 0;
         setTimeout(init, 100);
@@ -533,9 +536,6 @@
         currentEngine.dynamicContent &&
         retryCount < currentEngine.maxRetries
       ) {
-        console.log(
-          `[search-switcher] no placement yet, retrying (${retryCount + 1}/${currentEngine.maxRetries})`,
-        );
         retryCount++;
         setTimeout(init, 200);
       }
@@ -543,15 +543,6 @@
     }
 
     const controls = buildControls();
-    console.log(
-      "[search-switcher] mounting controls, placement:",
-      JSON.stringify({
-        layout: placement.layout,
-        hasBar: !!placement.bar,
-        hasFallback: !!placement.fallbackAnchor,
-        compact: !!placement.compact,
-      }),
-    );
     mountControls(controls, placement);
     watchForRemoval();
   };
