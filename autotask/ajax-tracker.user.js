@@ -18,6 +18,8 @@
 // @supportURL   https://github.com/warthurton/userscripts/issues
 // ==/UserScript==
 
+/* global JSZip */
+
 (function () {
   "use strict";
 
@@ -111,7 +113,7 @@
 
   // Save current page data to session storage
   function savePageData() {
-    if (!isEnabled) return;
+    if (!isEnabled) {return;}
 
     const sessionId = getSessionId();
     const key = STORAGE_KEYS.sessionData + sessionId;
@@ -263,7 +265,7 @@
 
   // Capture ASP.NET ViewState and EventValidation
   function captureViewState() {
-    if (!isEnabled) return;
+    if (!isEnabled) {return;}
 
     const viewState = document.querySelector('input[name="__VIEWSTATE"]');
     const eventValidation = document.querySelector(
@@ -286,7 +288,7 @@
 
   // Track form fields
   function trackFormFields() {
-    if (!isEnabled) return;
+    if (!isEnabled) {return;}
 
     const forms = document.querySelectorAll("form");
     forms.forEach((form, formIndex) => {
@@ -322,7 +324,7 @@
 
   // Capture page information
   function capturePageInfo() {
-    if (!isEnabled) return;
+    if (!isEnabled) {return;}
 
     currentPageData.pageInfo = {
       title: document.title,
@@ -338,7 +340,7 @@
 
   // Monitor for form field changes
   function monitorFormChanges() {
-    if (!isEnabled) return;
+    if (!isEnabled) {return;}
 
     document.addEventListener(
       "change",
@@ -649,10 +651,10 @@
     const formCountEl = document.getElementById("ajax-tracker-form-count");
 
     if (sessionIdEl)
-      sessionIdEl.textContent = getSessionId().substr(0, 20) + "...";
-    if (ajaxCountEl) ajaxCountEl.textContent = currentPageData.ajaxCalls.length;
+      {sessionIdEl.textContent = getSessionId().substr(0, 20) + "...";}
+    if (ajaxCountEl) {ajaxCountEl.textContent = currentPageData.ajaxCalls.length;}
     if (formCountEl)
-      formCountEl.textContent = Object.keys(currentPageData.formFields).length;
+      {formCountEl.textContent = Object.keys(currentPageData.formFields).length;}
   }
 
   // Periodically update UI

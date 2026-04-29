@@ -1,30 +1,27 @@
 import js from "@eslint/js";
+import globals from "globals";
 
 export default [
   {
     ignores: ["node_modules/", "_dist/", "_tools/lib/", "**/*.min.js", "**/*.meta.js"],
   },
+  // Build/lint tools — Node.js environment
   {
-    files: ["**/*.js"],
+    files: ["_tools/**/*.mjs"],
     languageOptions: {
       ecmaVersion: 2020,
       sourceType: "module",
+      globals: { ...globals.node },
+    },
+  },
+  // Userscripts — browser environment
+  {
+    files: ["**/*.user.js"],
+    languageOptions: {
+      ecmaVersion: 2020,
+      sourceType: "script",
       globals: {
-        // Browser globals
-        console: "readonly",
-        window: "readonly",
-        document: "readonly",
-        location: "readonly",
-        history: "readonly",
-        navigator: "readonly",
-        setTimeout: "readonly",
-        setInterval: "readonly",
-        clearTimeout: "readonly",
-        clearInterval: "readonly",
-        fetch: "readonly",
-        XMLHttpRequest: "readonly",
-        localStorage: "readonly",
-        sessionStorage: "readonly",
+        ...globals.browser,
         // Greasemonkey/Userscript globals
         GM: "readonly",
         GM_getValue: "readonly",
@@ -68,6 +65,8 @@ export default [
         {
           args: "after-used",
           argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrors: "none",
         },
       ],
       "no-var": "error",

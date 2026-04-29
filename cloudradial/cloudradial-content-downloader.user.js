@@ -17,6 +17,8 @@
 // @supportURL   https://github.com/warthurton/userscripts/issues
 // ==/UserScript==
 
+/* global JSZip */
+
 (function () {
   "use strict";
 
@@ -122,7 +124,7 @@
   /**
    * Check if on specific question detail page
    */
-  function isQuestionDetailPage() {
+  function _isQuestionDetailPage() {
     return /^\/app\/admin\/questions\/\d+/.test(window.location.pathname);
   }
 
@@ -264,7 +266,7 @@
    * Update status display
    */
   function updateStatusDisplay() {
-    if (!statusDisplay) return;
+    if (!statusDisplay) {return;}
 
     const currentPage = getCurrentPageType();
     const expectedCount = currentPage === "content" ? 3 : 1;
@@ -292,12 +294,12 @@
     const contentMatch = window.location.pathname.match(
       /\/app\/admin\/content\/(\d+)/,
     );
-    if (contentMatch) return contentMatch[1];
+    if (contentMatch) {return contentMatch[1];}
 
     const questionMatch = window.location.pathname.match(
       /\/app\/admin\/questions\/(\d+)/,
     );
-    if (questionMatch) return questionMatch[1];
+    if (questionMatch) {return questionMatch[1];}
 
     return null;
   }
@@ -582,16 +584,6 @@
   };
 
   /**
-   * Check if on root content page
-   */
-  function isRootContentPage() {
-    return (
-      window.location.pathname === "/app/admin/content" ||
-      window.location.pathname === "/app/admin/content/"
-    );
-  }
-
-  /**
    * Get all content IDs from intercepted templates data
    */
   async function getAllContentIds() {
@@ -829,15 +821,15 @@
    */
   function updateButtonVisibility() {
     const batchState = localStorage.getItem("cloudradial-batch-download");
-    const currentPage = getCurrentPageType();
+    const _currentPage = getCurrentPageType();
     let hasContentBatch = false;
     let hasQuestionsBatch = false;
 
     if (batchState) {
       try {
         const state = JSON.parse(batchState);
-        if (state.type === "content") hasContentBatch = true;
-        if (state.type === "questions") hasQuestionsBatch = true;
+        if (state.type === "content") {hasContentBatch = true;}
+        if (state.type === "questions") {hasQuestionsBatch = true;}
       } catch (e) {
         // Invalid state, ignore
       }
@@ -859,18 +851,18 @@
 
     const isContentPage = isRootContentPage();
     if (downloadTemplatesBtn)
-      downloadTemplatesBtn.style.display = isContentPage
+      {downloadTemplatesBtn.style.display = isContentPage
         ? "inline-block"
-        : "none";
+        : "none";}
     if (downloadAllBtn)
-      downloadAllBtn.style.display =
-        isContentPage && !hasContentBatch ? "inline-block" : "none";
+      {downloadAllBtn.style.display =
+        isContentPage && !hasContentBatch ? "inline-block" : "none";}
     if (resetContentBtn)
-      resetContentBtn.style.display =
-        isContentPage && hasContentBatch ? "inline-block" : "none";
+      {resetContentBtn.style.display =
+        isContentPage && hasContentBatch ? "inline-block" : "none";}
     if (resumeContentBtn)
-      resumeContentBtn.style.display =
-        isContentPage && hasContentBatch ? "inline-block" : "none";
+      {resumeContentBtn.style.display =
+        isContentPage && hasContentBatch ? "inline-block" : "none";}
 
     // Questions page buttons
     const downloadAllQuestionsBtn = document.getElementById(
@@ -881,14 +873,14 @@
 
     const isQuestionsPage = isQuestionsListPage();
     if (downloadAllQuestionsBtn)
-      downloadAllQuestionsBtn.style.display =
-        isQuestionsPage && !hasQuestionsBatch ? "inline-block" : "none";
+      {downloadAllQuestionsBtn.style.display =
+        isQuestionsPage && !hasQuestionsBatch ? "inline-block" : "none";}
     if (resetBtn)
-      resetBtn.style.display =
-        isQuestionsPage && hasQuestionsBatch ? "inline-block" : "none";
+      {resetBtn.style.display =
+        isQuestionsPage && hasQuestionsBatch ? "inline-block" : "none";}
     if (resumeBtn)
-      resumeBtn.style.display =
-        isQuestionsPage && hasQuestionsBatch ? "inline-block" : "none";
+      {resumeBtn.style.display =
+        isQuestionsPage && hasQuestionsBatch ? "inline-block" : "none";}
 
     // Tokens page button
     const downloadPSABtn = document.getElementById(
@@ -896,7 +888,7 @@
     );
     const isTokensPageNow = isTokensPage();
     if (downloadPSABtn)
-      downloadPSABtn.style.display = isTokensPageNow ? "inline-block" : "none";
+      {downloadPSABtn.style.display = isTokensPageNow ? "inline-block" : "none";}
   }
 
   /**
@@ -904,7 +896,7 @@
    */
   let statusContainer = null;
   function tryInsertIntoNavbar() {
-    if (!statusContainer) return;
+    if (!statusContainer) {return;}
 
     // Get the navbar right container element
     const navbarRight = document.evaluate(

@@ -15,6 +15,8 @@
 // @supportURL   https://github.com/warthurton/userscripts/issues
 // ==/UserScript==
 
+/* global JSZip */
+
 (function () {
   "use strict";
 
@@ -48,7 +50,7 @@
    * Update download button state based on captured files
    */
   function updateDownloadButtonState() {
-    if (!downloadButton) return;
+    if (!downloadButton) {return;}
 
     const capturedCount = Object.keys(interceptedData).length;
     const allCaptured = capturedCount >= 5;
@@ -118,7 +120,7 @@
    */
   function extractPageStatistics() {
     if (debugMode)
-      console.log("[Analytics Downloader] Extracting page statistics...");
+      {console.log("[Analytics Downloader] Extracting page statistics...");}
     const now = new Date();
     const localTimestamp = new Date(
       now.getTime() - now.getTimezoneOffset() * 60000,
@@ -135,15 +137,15 @@
       // Strategy 1: Look for text-xl elements (the values) and traverse up to find the container
       const valueElements = document.querySelectorAll(".text-xl");
       if (debugMode)
-        console.log(
+        {console.log(
           `[Analytics Downloader] Found ${valueElements.length} .text-xl elements`,
-        );
+        );}
 
       if (valueElements.length === 0) {
         if (debugMode)
-          console.warn(
+          {console.warn(
             "[Analytics Downloader] No .text-xl elements found - the page may not be fully loaded",
-          );
+          );}
         return stats;
       }
 
@@ -160,10 +162,10 @@
 
           if (!parent) {
             if (debugMode)
-              console.log(
+              {console.log(
                 "[Analytics Downloader] No parent found for .text-xl element:",
                 valueEl.textContent.trim(),
-              );
+              );}
             continue;
           }
 
@@ -173,9 +175,9 @@
           );
           if (!labelElement) {
             if (debugMode)
-              console.log(
+              {console.log(
                 "[Analytics Downloader] No label element found in parent",
-              );
+              );}
             continue;
           }
 
@@ -184,18 +186,18 @@
           // Skip if label doesn't look like a metric we want
           if (!label || label.length > 50) {
             if (debugMode)
-              console.log(
+              {console.log(
                 "[Analytics Downloader] Skipping label (too long or empty):",
                 label,
-              );
+              );}
             continue;
           }
 
           const value = valueEl.textContent.trim();
           if (debugMode)
-            console.log(
+            {console.log(
               `[Analytics Downloader] Processing: label="${label}", value="${value}"`,
-            );
+            );}
 
           // Get comparison percentage if exists
           let comparison = null;
@@ -215,9 +217,9 @@
                     : "negative",
                 };
                 if (debugMode)
-                  console.log(
+                  {console.log(
                     `[Analytics Downloader] Found comparison: ${text} (${comparison.trend})`,
-                  );
+                  );}
                 break;
               }
             }
@@ -241,10 +243,10 @@
 
             processedCount++;
             if (debugMode)
-              console.log(
+              {console.log(
                 `[Analytics Downloader] ✓ Captured metric #${processedCount}: ${label} = ${value}`,
                 comparison || "",
-              );
+              );}
           }
         } catch (innerError) {
           console.error(
@@ -256,9 +258,9 @@
 
       const metricCount = Object.keys(stats.metrics).length;
       if (debugMode)
-        console.log(
+        {console.log(
           `[Analytics Downloader] Extracted ${metricCount} metrics total`,
-        );
+        );}
 
       if (metricCount === 0 && debugMode) {
         console.warn(
@@ -326,15 +328,15 @@
         zip.file(statsFilename, JSON.stringify(pageStats, null, 2));
         count++;
         if (debugMode)
-          console.log(
+          {console.log(
             "[Analytics Downloader] ✓ Successfully added page statistics to zip:",
             statsFilename,
-          );
+          );}
       } else {
         if (debugMode)
-          console.warn(
+          {console.warn(
             "[Analytics Downloader] ⚠ No page statistics to add - metrics object is empty",
-          );
+          );}
       }
     } catch (statsError) {
       console.error(
@@ -342,7 +344,7 @@
         statsError,
       );
       if (debugMode)
-        console.error("[Analytics Downloader] Stack trace:", statsError.stack);
+        {console.error("[Analytics Downloader] Stack trace:", statsError.stack);}
     }
 
     // Reset debug timer
@@ -372,9 +374,9 @@
           try {
             const reportUrl = `https://chatgpt.com/backend-api/accounts/${ACCOUNT_ID}/reporting?period=monthly&period_start=${fetchStartDate}&report_type=${reportType}`;
             if (debugMode)
-              console.log(
+              {console.log(
                 `[Analytics Downloader] Fetching reporting data: ${reportType}`,
-              );
+              );}
 
             const headers = {};
             if (authToken) {
@@ -405,12 +407,12 @@
               }
               count++;
               if (debugMode)
-                console.log(`[Analytics Downloader] Added to zip: ${filename}`);
+                {console.log(`[Analytics Downloader] Added to zip: ${filename}`);}
             } else {
               if (debugMode)
-                console.warn(
+                {console.warn(
                   `[Analytics Downloader] Failed to fetch ${reportType}: ${response.status}`,
-                );
+                );}
             }
           } catch (error) {
             console.error(
@@ -471,7 +473,7 @@
   }
 
   // Function to download JSON data
-  function downloadJSON(data, filename) {
+  function _downloadJSON(data, filename) {
     const blob = new Blob([JSON.stringify(data, null, 2)], {
       type: "application/json",
     });
@@ -486,7 +488,7 @@
   }
 
   // Function to download CSV data
-  function downloadCSV(data, filename) {
+  function _downloadCSV(data, filename) {
     const blob = new Blob([data], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -516,7 +518,7 @@
         .map((key) => {
           const value = obj[key];
           // Handle null/undefined
-          if (value === null || value === undefined) return "";
+          if (value === null || value === undefined) {return "";}
           // Escape and quote strings that contain commas, quotes, or newlines
           const stringValue = String(value);
           if (
@@ -580,10 +582,10 @@
         if (accountId) {
           ACCOUNT_ID = accountId;
           if (debugMode)
-            console.log(
+            {console.log(
               "[Analytics Downloader] Account ID captured:",
               ACCOUNT_ID,
-            );
+            );}
         }
       }
 
@@ -595,14 +597,14 @@
           if (auth && !authToken) {
             authToken = auth;
             if (debugMode)
-              console.log("[Analytics Downloader] Auth token captured");
+              {console.log("[Analytics Downloader] Auth token captured");}
           }
         } else if (typeof headers === "object") {
           const auth = headers["Authorization"] || headers["authorization"];
           if (auth && !authToken) {
             authToken = auth;
             if (debugMode)
-              console.log("[Analytics Downloader] Auth token captured");
+              {console.log("[Analytics Downloader] Auth token captured");}
           }
         }
       }
@@ -625,20 +627,20 @@
 
       if (reportType && periodStart) {
         if (debugMode)
-          console.log(
+          {console.log(
             `[Analytics Downloader] Intercepted reporting ${reportType}:`,
             url,
-          );
+          );}
 
         try {
           const clonedResponse = response.clone();
           const data = await clonedResponse.json();
 
           if (debugMode)
-            console.log(
+            {console.log(
               `[Analytics Downloader] Reporting data received for ${reportType}:`,
               data,
-            );
+            );}
 
           const orgPrefix = getOrgPrefix();
           let csvContent = null;
@@ -694,19 +696,19 @@
     for (const endpoint of ENDPOINTS) {
       if (url && url.includes(`/analytics/${endpoint.key}`)) {
         if (debugMode)
-          console.log(
+          {console.log(
             `[Analytics Downloader] Intercepted ${endpoint.key}:`,
             url,
-          );
+          );}
 
         const startDate = getStartDateFromUrl(url);
         if (startDate) {
           // Check if date changed - clear old data if so
           if (currentDate && currentDate !== startDate) {
             if (debugMode)
-              console.log(
+              {console.log(
                 `[Analytics Downloader] Date changed from ${currentDate} to ${startDate}, clearing old data`,
-              );
+              );}
             // Clear old intercepted data
             Object.keys(interceptedData).forEach(
               (key) => delete interceptedData[key],
@@ -743,10 +745,10 @@
             const data = await clonedResponse.json();
 
             if (debugMode)
-              console.log(
+              {console.log(
                 `[Analytics Downloader] Data received for ${endpoint.key}:`,
                 data,
-              );
+              );}
 
             const orgPrefix = getOrgPrefix();
 
@@ -797,19 +799,19 @@
       for (const endpoint of ENDPOINTS) {
         if (url && url.includes(`/analytics/${endpoint.key}`)) {
           if (debugMode)
-            console.log(
+            {console.log(
               `[Analytics Downloader] XHR Intercepted ${endpoint.key}:`,
               url,
-            );
+            );}
 
           const startDate = getStartDateFromUrl(url);
           if (startDate && this.status === 200) {
             // Check if date changed - clear old data if so
             if (currentDate && currentDate !== startDate) {
               if (debugMode)
-                console.log(
+                {console.log(
                   `[Analytics Downloader] Date changed from ${currentDate} to ${startDate}, clearing old data`,
-                );
+                );}
               // Clear old intercepted data
               Object.keys(interceptedData).forEach(
                 (key) => delete interceptedData[key],
@@ -843,10 +845,10 @@
               const data = JSON.parse(this.responseText);
 
               if (debugMode)
-                console.log(
+                {console.log(
                   `[Analytics Downloader] XHR Data received for ${endpoint.key}:`,
                   data,
-                );
+                );}
 
               const orgPrefix = getOrgPrefix();
 
@@ -1035,9 +1037,9 @@
             parentContainer.nextSibling,
           );
           if (debugMode)
-            console.log(
+            {console.log(
               "[Analytics Downloader] Info display inserted under date picker",
-            );
+            );}
         }
       }
 
@@ -1050,9 +1052,9 @@
         downloadButton.id = "analytics-download-btn";
         exportButton.parentElement.appendChild(downloadButton);
         if (debugMode)
-          console.log(
+          {console.log(
             "[Analytics Downloader] Download button inserted after Export button",
-          );
+          );}
       }
     }
 

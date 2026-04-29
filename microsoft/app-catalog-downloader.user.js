@@ -15,6 +15,8 @@
 // @supportURL   https://github.com/warthurton/userscripts/issues
 // ==/UserScript==
 
+/* global JSZip */
+
 (function () {
   "use strict";
 
@@ -120,7 +122,7 @@
    * Updates the captured page count shown in the panel.
    */
   function updateStatus() {
-    if (!statusEl) return;
+    if (!statusEl) {return;}
     const count = Object.keys(capturedData).length;
     statusEl.textContent = `${count} page${count !== 1 ? "s" : ""} captured`;
   }
@@ -197,8 +199,8 @@
    * Injects the floating download panel into the page.
    */
   function injectPanel() {
-    if (document.getElementById("ac-downloader-panel")) return;
-    if (!document.body) return;
+    if (document.getElementById("ac-downloader-panel")) {return;}
+    if (!document.body) {return;}
 
     const panel = document.createElement("div");
     panel.id = "ac-downloader-panel";

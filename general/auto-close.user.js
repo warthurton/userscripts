@@ -39,7 +39,7 @@
 
   function saveDomains(key, domains) {
     const raw = domains.join("\n");
-    if (typeof GM_setValue === "function") GM_setValue(key, raw);
+    if (typeof GM_setValue === "function") {GM_setValue(key, raw);}
   }
 
   function hostnameMatchesList(hostname, list) {
@@ -56,16 +56,16 @@
     const d30 = getStoredDomains(STORAGE_KEYS.d30);
     const d120 = getStoredDomains(STORAGE_KEYS.d120);
 
-    if (hostnameMatchesList(h, d5)) return 5;
-    if (hostnameMatchesList(h, d30)) return 30;
-    if (hostnameMatchesList(h, d120)) return 120;
+    if (hostnameMatchesList(h, d5)) {return 5;}
+    if (hostnameMatchesList(h, d30)) {return 30;}
+    if (hostnameMatchesList(h, d120)) {return 120;}
     return null;
   }
 
   function assignHostToDuration(hostname, newSeconds) {
-    if (![5, 30, 120].includes(newSeconds)) return;
+    if (![5, 30, 120].includes(newSeconds)) {return;}
     const host = (hostname || "").toLowerCase();
-    if (!host) return;
+    if (!host) {return;}
 
     const lists = {
       5: getStoredDomains(STORAGE_KEYS.d5),
@@ -124,7 +124,7 @@
       .acp-actions button { background: #1565c0; color: #fff; border: none; border-radius: 6px; padding: 8px 12px; cursor: pointer; }
       .acp-actions .acp-dismiss { background: #666; }
     `;
-    if (typeof GM_addStyle === "function") GM_addStyle(style);
+    if (typeof GM_addStyle === "function") {GM_addStyle(style);}
     else {
       const s = document.createElement("style");
       s.textContent = style;
@@ -147,9 +147,9 @@
     }
     if (saveBtn) {
       saveBtn.addEventListener("click", () => {
-        if (!selectEl) return;
+        if (!selectEl) {return;}
         const val = Number(selectEl.value);
-        if (![5, 30, 120].includes(val)) return;
+        if (![5, 30, 120].includes(val)) {return;}
         onSaveDuration && onSaveDuration(val);
       });
     }
@@ -207,7 +207,7 @@
     }
     closeBtn.addEventListener("click", close);
     backdrop.addEventListener("click", (e) => {
-      if (e.target === backdrop) close();
+      if (e.target === backdrop) {close();}
     });
 
     saveBtn.addEventListener("click", () => {
@@ -225,23 +225,23 @@
     // Try several strategies to close the tab in user agents that restrict window.close()
     try {
       window.close();
-    } catch {}
+    } catch {} // eslint-disable-line no-empty
     try {
       self.close();
-    } catch {}
+    } catch {} // eslint-disable-line no-empty
     try {
       const w = window.open("", "_self");
-      if (w) w.close();
-    } catch {}
+      if (w) {w.close();}
+    } catch {} // eslint-disable-line no-empty
     // As a last resort, navigate away (user can close then)
     try {
       location.href = "about:blank";
-    } catch {}
+    } catch {} // eslint-disable-line no-empty
   }
 
   function startCountdown() {
     const matchedSeconds = getMatchedCountdownSeconds();
-    if (matchedSeconds === null) return;
+    if (matchedSeconds === null) {return;}
 
     let seconds = matchedSeconds;
     let cancelled = false;
@@ -257,7 +257,7 @@
 
         // Reset countdown to the chosen value
         seconds = newSeconds;
-        if (countBtn) countBtn.textContent = `${seconds}s`;
+        if (countBtn) {countBtn.textContent = `${seconds}s`;}
       },
     );
 
@@ -267,7 +267,7 @@
         return;
       }
       seconds -= 1;
-      if (countBtn) countBtn.textContent = `${seconds}s`;
+      if (countBtn) {countBtn.textContent = `${seconds}s`;}
       if (seconds <= 0) {
         clearInterval(interval);
         attemptClose();
@@ -276,7 +276,7 @@
 
     function removeBanner() {
       const b = document.getElementById("auto-close-banner");
-      if (b) b.remove();
+      if (b) {b.remove();}
     }
 
     // Allow ESC to cancel
@@ -312,6 +312,6 @@
   }
 
   // Ensure we start after the page is fully loaded
-  if (document.readyState === "complete") onLoadThenStart();
-  else window.addEventListener("load", onLoadThenStart, { once: true });
+  if (document.readyState === "complete") {onLoadThenStart();}
+  else {window.addEventListener("load", onLoadThenStart, { once: true });}
 })();

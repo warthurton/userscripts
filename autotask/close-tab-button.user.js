@@ -17,6 +17,8 @@
 // @supportURL   https://github.com/warthurton/userscripts/issues
 // ==/UserScript==
 
+/* global isDebugEnabled */
+
 (function () {
   "use strict";
 
@@ -47,7 +49,7 @@
     log("Saving excluded patterns:", list);
     const raw = list.join("\n");
     if (typeof GM_setValue === "function")
-      GM_setValue(STORAGE_KEYS.excluded, raw);
+      {GM_setValue(STORAGE_KEYS.excluded, raw);}
   }
 
   function isExcluded(url) {
@@ -101,7 +103,7 @@
       .querySelector(".close")
       .addEventListener("click", () => overlay.remove());
     overlay.addEventListener("click", (e) => {
-      if (e.target === overlay) overlay.remove();
+      if (e.target === overlay) {overlay.remove();}
     });
     overlay.querySelector(".save").addEventListener("click", () => {
       const list = String(ta.value)
@@ -127,7 +129,7 @@
       .at-close-modal button { background: #1565c0; color: #fff; border: none; border-radius: 6px; padding: 8px 12px; cursor: pointer; }
       .at-close-modal .close { background: #666; }
     `;
-    if (typeof GM_addStyle === "function") GM_addStyle(style);
+    if (typeof GM_addStyle === "function") {GM_addStyle(style);}
     else {
       const s = document.createElement("style");
       s.textContent = style;
@@ -171,7 +173,7 @@
 
   // Find and place button in TitleBar
   function placeButton() {
-    if (buttonPlaced) return;
+    if (buttonPlaced) {return;}
 
     log("Searching for TitleBar elements");
     const titleSelector = "div.PageHeadingContainer div.TitleBarItem.Title";
@@ -214,17 +216,17 @@
       log("Close button clicked");
       try {
         window.close();
-      } catch {}
+      } catch {} // eslint-disable-line no-empty
       try {
         self.close();
-      } catch {}
+      } catch {} // eslint-disable-line no-empty
       try {
         const w = window.open("", "_self");
-        if (w) w.close();
-      } catch {}
+        if (w) {w.close();}
+      } catch {} // eslint-disable-line no-empty
       try {
         location.href = "about:blank";
-      } catch {}
+      } catch {} // eslint-disable-line no-empty
     });
 
     container.appendChild(btn);
@@ -254,15 +256,15 @@
   function findElementInNode(node, selector) {
     if (node.nodeType === Node.ELEMENT_NODE) {
       if (typeof node.matches === "function" && node.matches(selector))
-        return node;
+        {return node;}
       if (typeof node.querySelector === "function")
-        return node.querySelector(selector);
+        {return node.querySelector(selector);}
     }
     return null;
   }
 
   // Observer callback
-  function handleTitleBarMutations(mutationsList, obs) {
+  function handleTitleBarMutations(mutationsList, _obs) {
     for (const mutation of mutationsList) {
       if (mutation.type === "childList" && mutation.addedNodes.length > 0) {
         for (const node of mutation.addedNodes) {
@@ -287,7 +289,7 @@
   // Start watching for TitleBar
   function startTitleBarObserver() {
     log("Starting TitleBar observer");
-    if (titleBarObserver) titleBarObserver.disconnect();
+    if (titleBarObserver) {titleBarObserver.disconnect();}
     titleBarObserver = new MutationObserver(handleTitleBarMutations);
     titleBarObserver.observe(document.body, { childList: true, subtree: true });
   }
@@ -343,7 +345,7 @@
 
   // Cleanup on unload
   window.addEventListener("unload", () => {
-    if (titleBarObserver) titleBarObserver.disconnect();
+    if (titleBarObserver) {titleBarObserver.disconnect();}
     log("Cleaned up on unload");
   });
 })();

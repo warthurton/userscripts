@@ -32,17 +32,17 @@
   let timer = null;
   let interval = null;
   let badge = null;
-  let periodic = null;
+  let _periodic = null;
 
   function cleanup(reason) {
-    if (timer) clearTimeout(timer);
-    if (interval) clearInterval(interval);
-    if (badge && badge.isConnected) badge.remove();
+    if (timer) {clearTimeout(timer);}
+    if (interval) {clearInterval(interval);}
+    if (badge && badge.isConnected) {badge.remove();}
     timer = null;
     interval = null;
     badge = null;
     activeDialog = null;
-    if (reason) log("Cleanup:", reason);
+    if (reason) {log("Cleanup:", reason);}
   }
 
   function getOpenAlertDialog() {
@@ -88,7 +88,7 @@
   }
 
   function setBadgeText(n) {
-    if (!badge) return;
+    if (!badge) {return;}
     badge.textContent =
       AUTO_DISABLE_DELAY_SECONDS === 0
         ? "Auto-disabling now…"
@@ -96,14 +96,14 @@
   }
 
   function arm(dialog) {
-    if (activeDialog === dialog && timer) return;
+    if (activeDialog === dialog && timer) {return;}
 
     cleanup("arming new dialog");
     activeDialog = dialog;
 
     const cancelBtn = findButton(dialog, "Cancel");
     const disableBtn = findButton(dialog, "Disable");
-    if (!disableBtn) return;
+    if (!disableBtn) {return;}
 
     mountBadge(dialog);
 
@@ -128,7 +128,7 @@
           return;
         }
         remaining -= 1;
-        if (remaining >= 0) setBadgeText(remaining);
+        if (remaining >= 0) {setBadgeText(remaining);}
       }, 1000);
     }
 
@@ -148,14 +148,14 @@
   }
 
   function scan() {
-    if (!location.pathname.startsWith("/admin/ca")) return;
+    if (!location.pathname.startsWith("/admin/ca")) {return;}
 
     const dlg = getOpenAlertDialog();
     if (!dlg) {
-      if (timer) cleanup("no open alertdialog");
+      if (timer) {cleanup("no open alertdialog");}
       return;
     }
-    if (isDisableConfirm(dlg)) arm(dlg);
+    if (isDisableConfirm(dlg)) {arm(dlg);}
   }
 
   function hookHistory() {
@@ -180,7 +180,7 @@
       document.documentElement,
       { childList: true, subtree: true, attributes: true },
     );
-    periodic = setInterval(scan, 750);
+    _periodic = setInterval(scan, 750);
     scan();
     log("Loaded.");
   }

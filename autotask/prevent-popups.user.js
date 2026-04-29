@@ -96,7 +96,7 @@
       .querySelector(".close")
       .addEventListener("click", () => overlay.remove());
     overlay.addEventListener("click", (e) => {
-      if (e.target === overlay) overlay.remove();
+      if (e.target === overlay) {overlay.remove();}
     });
     overlay.querySelector(".save").addEventListener("click", () => {
       const newSettings = {
@@ -161,7 +161,7 @@
     log("ExecuteCommand detected, attempting redirect");
     const settings = getSettings();
     const baseUrlMatch = currentUrl.match(/^(https:\/\/[^/]+)/);
-    if (!baseUrlMatch) return false;
+    if (!baseUrlMatch) {return false;}
     const baseUrl = baseUrlMatch[1];
 
     for (const rule of redirectRules) {
@@ -205,11 +205,11 @@
     const settings = getSettings();
     let enabled = false;
     if (detailMatch[1].toLowerCase() === "ticketdetail")
-      enabled = settings.tickets;
+      {enabled = settings.tickets;}
     else if (detailMatch[1].toLowerCase() === "taskdetail")
-      enabled = settings.tasks;
+      {enabled = settings.tasks;}
     else if (detailMatch[1].toLowerCase() === "articledetail")
-      enabled = settings.kb;
+      {enabled = settings.kb;}
 
     if (!enabled) {
       log("Popup handling disabled for this type");
