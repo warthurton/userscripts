@@ -25,8 +25,7 @@
 
   /* ======================= */
 
-  const log = (...args) =>
-    DEBUG && console.log("[AutoDisableConfirm]", ...args);
+  const log = (...args) => DEBUG && console.log("[AutoDisableConfirm]", ...args);
 
   let activeDialog = null;
   let timer = null;
@@ -35,14 +34,22 @@
   let _periodic = null;
 
   function cleanup(reason) {
-    if (timer) {clearTimeout(timer);}
-    if (interval) {clearInterval(interval);}
-    if (badge && badge.isConnected) {badge.remove();}
+    if (timer) {
+      clearTimeout(timer);
+    }
+    if (interval) {
+      clearInterval(interval);
+    }
+    if (badge && badge.isConnected) {
+      badge.remove();
+    }
     timer = null;
     interval = null;
     badge = null;
     activeDialog = null;
-    if (reason) {log("Cleanup:", reason);}
+    if (reason) {
+      log("Cleanup:", reason);
+    }
   }
 
   function getOpenAlertDialog() {
@@ -59,9 +66,8 @@
 
   function findButton(dialog, label) {
     return (
-      [...dialog.querySelectorAll("button")].find(
-        (b) => (b.textContent || "").trim() === label,
-      ) || null
+      [...dialog.querySelectorAll("button")].find(b => (b.textContent || "").trim() === label) ||
+      null
     );
   }
 
@@ -88,7 +94,9 @@
   }
 
   function setBadgeText(n) {
-    if (!badge) {return;}
+    if (!badge) {
+      return;
+    }
     badge.textContent =
       AUTO_DISABLE_DELAY_SECONDS === 0
         ? "Auto-disabling now…"
@@ -96,14 +104,18 @@
   }
 
   function arm(dialog) {
-    if (activeDialog === dialog && timer) {return;}
+    if (activeDialog === dialog && timer) {
+      return;
+    }
 
     cleanup("arming new dialog");
     activeDialog = dialog;
 
     const cancelBtn = findButton(dialog, "Cancel");
     const disableBtn = findButton(dialog, "Disable");
-    if (!disableBtn) {return;}
+    if (!disableBtn) {
+      return;
+    }
 
     mountBadge(dialog);
 
@@ -111,24 +123,19 @@
     setBadgeText(remaining);
 
     if (cancelBtn) {
-      cancelBtn.addEventListener(
-        "click",
-        () => cleanup("user clicked Cancel"),
-        { once: true },
-      );
+      cancelBtn.addEventListener("click", () => cleanup("user clicked Cancel"), { once: true });
     }
 
     if (AUTO_DISABLE_DELAY_SECONDS > 0) {
       interval = setInterval(() => {
-        if (
-          !dialog.isConnected ||
-          dialog.getAttribute("data-state") !== "open"
-        ) {
+        if (!dialog.isConnected || dialog.getAttribute("data-state") !== "open") {
           cleanup("dialog closed");
           return;
         }
         remaining -= 1;
-        if (remaining >= 0) {setBadgeText(remaining);}
+        if (remaining >= 0) {
+          setBadgeText(remaining);
+        }
       }, 1000);
     }
 
@@ -148,14 +155,20 @@
   }
 
   function scan() {
-    if (!location.pathname.startsWith("/admin/ca")) {return;}
+    if (!location.pathname.startsWith("/admin/ca")) {
+      return;
+    }
 
     const dlg = getOpenAlertDialog();
     if (!dlg) {
-      if (timer) {cleanup("no open alertdialog");}
+      if (timer) {
+        cleanup("no open alertdialog");
+      }
       return;
     }
-    if (isDisableConfirm(dlg)) {arm(dlg);}
+    if (isDisableConfirm(dlg)) {
+      arm(dlg);
+    }
   }
 
   function hookHistory() {
@@ -176,10 +189,11 @@
 
   function start() {
     hookHistory();
-    new MutationObserver(() => queueMicrotask(scan)).observe(
-      document.documentElement,
-      { childList: true, subtree: true, attributes: true },
-    );
+    new MutationObserver(() => queueMicrotask(scan)).observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+    });
     _periodic = setInterval(scan, 750);
     scan();
     log("Loaded.");

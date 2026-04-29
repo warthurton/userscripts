@@ -25,8 +25,6 @@
 // @supportURL   https://github.com/warthurton/userscripts/issues
 // ==/UserScript==
 
- 
-
 (function () {
   "use strict";
 
@@ -101,7 +99,9 @@
   // ---------------------------------------------------------------------------
   const host = location.hostname;
   const currentEngine = Object.values(ENGINES).find(e => e.hostname === host);
-  if (!currentEngine) {return;}
+  if (!currentEngine) {
+    return;
+  }
 
   // ---------------------------------------------------------------------------
   // Detect script hosting extension (for engine-specific optimizations)
@@ -163,10 +163,14 @@
   // Utility: query the first matching selector from a list
   // ---------------------------------------------------------------------------
   const queryFirst = (selectors, root = document) => {
-    if (!selectors) {return null;}
+    if (!selectors) {
+      return null;
+    }
     for (const sel of selectors) {
       const el = root.querySelector(sel);
-      if (el) {return el;}
+      if (el) {
+        return el;
+      }
     }
     return null;
   };
@@ -238,7 +242,9 @@
   // ---------------------------------------------------------------------------
   const getQuery = () => {
     const q = new URL(location.href).searchParams.get("q");
-    if (q) {return q.trim();}
+    if (q) {
+      return q.trim();
+    }
     const input = queryFirst(currentEngine.querySelectors);
     return (input?.value || "").trim();
   };
@@ -277,7 +283,9 @@
         secondsLeft = next;
         btn.textContent = `Close Bing (${secondsLeft}s)`;
       }
-      if (remaining <= 0) {clearInterval(countdownInterval);}
+      if (remaining <= 0) {
+        clearInterval(countdownInterval);
+      }
     }, 100);
 
     redirectTimeout = setTimeout(async () => {
@@ -337,7 +345,9 @@
     btn.addEventListener("click", async e => {
       e.preventDefault();
       const activeQuery = getQuery();
-      if (!activeQuery) {return;}
+      if (!activeQuery) {
+        return;
+      }
       const markers = {};
       if (targetEngine.key === "bing") {
         markers.ss_skip_redirect = "1";
@@ -372,7 +382,9 @@
   // DOM: resolve DDG's search bar dynamically (hashed class names)
   // ---------------------------------------------------------------------------
   const findCommonAncestor = (a, b) => {
-    if (!a || !b) {return null;}
+    if (!a || !b) {
+      return null;
+    }
     const seen = new Set();
     let node = a;
     while (node) {
@@ -381,7 +393,9 @@
     }
     node = b;
     while (node) {
-      if (seen.has(node)) {return node;}
+      if (seen.has(node)) {
+        return node;
+      }
       node = node.parentElement;
     }
     return null;
@@ -462,7 +476,9 @@
   // DOM: mount controls into the page
   // ---------------------------------------------------------------------------
   const reserveInputSpace = (input, container) => {
-    if (!input || !container) {return;}
+    if (!input || !container) {
+      return;
+    }
     const computedPadding = Number.parseFloat(getComputedStyle(input).paddingInlineStart);
     const basePadding = Number.isFinite(computedPadding) ? computedPadding : 0;
     const gap = currentEngine.overlayPaddingPx || 12;
@@ -525,7 +541,9 @@
   // hydrates; hydration replaces form elements, destroying our buttons.
   // This observer detects removal and re-mounts into the hydrated DOM.
   const watchForRemoval = () => {
-    if (!currentEngine.dynamicContent) {return;}
+    if (!currentEngine.dynamicContent) {
+      return;
+    }
     const obs = new MutationObserver(() => {
       if (!document.getElementById(CONTAINER_ID)) {
         obs.disconnect();
@@ -548,7 +566,9 @@
       }
       return;
     }
-    if (document.getElementById(CONTAINER_ID)) {return;}
+    if (document.getElementById(CONTAINER_ID)) {
+      return;
+    }
 
     const placement = findSearchBar();
     if (!placement) {
@@ -603,7 +623,9 @@
     // Bing auto-redirect: open DDG immediately, close Bing after delay
     if (currentEngine.key === "bing" && !fromScript && !suppressRedirect && prefs.autoRedirect) {
       const q = new URL(location.href).searchParams.get("q");
-      if (q) {startBingAutoRedirect(q);}
+      if (q) {
+        startBingAutoRedirect(q);
+      }
     }
 
     init();
