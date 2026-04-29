@@ -27,7 +27,7 @@ jobs:
           # Discover every directory at the repo root that contains a .user.js
           mapfile -t actual_dirs < <(
             find . -maxdepth 2 -name '*.user.js' \
-              ! -path './templates/*' \
+              ! -path './_templates/*' \
               ! -path './_dist/*' \
               ! -path './node_modules/*' \
               -printf '%h\n' \
@@ -38,7 +38,7 @@ jobs:
           mapfile -t declared_dirs < <(
             node -e "
               import { readFileSync } from 'fs';
-              const src = readFileSync('tools/build-userscripts.mjs', 'utf8');
+              const src = readFileSync('_tools/build-userscripts.mjs', 'utf8');
               const m = src.match(/SOURCE_DIRS\s*=\s*\[([\s\S]*?)\]/);
               if (!m) { console.error('Could not find SOURCE_DIRS'); process.exit(1); }
               const dirs = m[1].match(/['\"]([^'\"]+)['\"]/g).map(s => s.replace(/['\"/]/g, ''));
@@ -61,7 +61,7 @@ jobs:
           done
 
           if [[ ${#missing[@]} -gt 0 ]]; then
-            echo "::error::The following directories contain .user.js files but are NOT listed in SOURCE_DIRS in tools/build-userscripts.mjs:"
+            echo "::error::The following directories contain .user.js files but are NOT listed in SOURCE_DIRS in _tools/build-userscripts.mjs:"
             for m in "${missing[@]}"; do
               echo "  - $m"
             done
@@ -77,4 +77,4 @@ jobs:
         run: npm ci
 
       - name: Verify build succeeds
-        run: node tools/build-userscripts.mjs
+        run: node _tools/build-userscripts.mjs

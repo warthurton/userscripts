@@ -1,0 +1,5 @@
+node_modules/
+_dist/
+_tools/lib/
+*.min.js
+*.meta.js

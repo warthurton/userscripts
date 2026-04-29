@@ -2,17 +2,23 @@
     "name": "userscripts",
     "version": "1.2.0",
     "private": true,
+    "type": "module",
     "description": "Browser userscripts for enhancing web browsing experience",
     "repository": {
         "type": "git",
         "url": "https://github.com/warthurton/userscripts.git"
     },
     "scripts": {
-        "build": "node tools/build-userscripts.mjs"
+        "build": "node _tools/build-userscripts.mjs",
+        "lint": "node _tools/lint.mjs",
+        "lint-fix": "node _tools/lint.mjs --fix"
     },
     "devDependencies": {
+        "@eslint/js": "^8.57.0",
         "@semantic-release/exec": "^7.0.0",
         "@semantic-release/git": "^10.0.1",
+        "eslint": "^9.0.0",
+        "prettier": "^3.2.5",
         "semantic-release": "^24.2.0"
     }
 }

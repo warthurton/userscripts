@@ -1,0 +1,18 @@
+{
+  "files.exclude": {
+    "_dist": true,
+    "_tools/lib": true
+  },
+  "search.exclude": {
+    "_dist": true,
+    "_tools/lib": true,
+    "node_modules": true
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": true
+    }
+  }
+}

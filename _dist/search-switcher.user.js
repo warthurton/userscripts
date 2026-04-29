@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Minimal Search Switcher: Google <-> Bing <-> DuckDuckGo
 // @namespace    https://github.com/warthurton/userscripts
-// @version      2026.0421.1536
-// @modified     2026-04-21T15:36:23.495Z
+// @version      2026.0429.1725
+// @modified     2026-04-29T17:25:26.203Z
 // @description  Switch between Google, Bing, and DuckDuckGo search engines
 // @author       warthurton
 // @match        https://www.google.com/search*
@@ -16,11 +16,19 @@
 // @grant        GM.registerMenuCommand
 // @grant        window.close
 // @run-at       document-end
+// @compatible   firefox            FireMonkey 2.7+ (full compatibility)
+// @compatible   firefox            Violentmonkey 3.0+ (full compatibility)
+// @compatible   safari             Userscripts for Safari 1.0+ (full compatibility; use Safari 15+)
+// @compatible   chrome             Chromium 90+ via Violentmonkey/TamperMonkey (full support)
 // @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/search-switcher.meta.js
 // @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/search-switcher.user.js
 // @homepageURL  https://github.com/warthurton/userscripts
 // @supportURL   https://github.com/warthurton/userscripts/issues
 // ==/UserScript==
+
+/* eslint-env browser, es2020 */
+/* eslint-disable no-console */
+/* global GM */
 
 (function () {
   "use strict";
@@ -100,6 +108,41 @@
   if (!currentEngine) return;
 
   // ---------------------------------------------------------------------------
+  // Detect script hosting extension (for engine-specific optimizations)
+  // ---------------------------------------------------------------------------
+  const detectScriptEngine = () => {
+    // FireMonkey: Check for FireMonkey-specific API
+    if (typeof GM !== "undefined" && GM.info?.scriptEngine === "FireMonkey") {
+      return "firemonkey";
+    }
+    // Violentmonkey: Check for Violentmonkey-specific properties
+    if (
+      typeof GM !== "undefined" &&
+      GM.info?.scriptEngine === "Violentmonkey"
+    ) {
+      return "violentmonkey";
+    }
+    // Userscripts for Safari: Check for Safari detection
+    if (
+      typeof safari !== "undefined" ||
+      navigator.userAgent.includes("Safari")
+    ) {
+      return "safari-userscripts";
+    }
+    // TamperMonkey: Check TamperMonkey-specific API
+    if (
+      typeof GM_info !== "undefined" &&
+      GM_info.scriptEngine === "Tampermonkey"
+    ) {
+      return "tampermonkey";
+    }
+    // Default: assume generic GM API
+    return "generic";
+  };
+
+  const scriptEngine = detectScriptEngine();
+
+  // ---------------------------------------------------------------------------
   // Navigation marker — detect & clean up ss_nav parameter
   // ---------------------------------------------------------------------------
   const urlParams = new URL(location.href).searchParams;
@@ -117,7 +160,7 @@
   // ---------------------------------------------------------------------------
   const CONTAINER_ID = "minimal-search-switcher";
   const COUNTDOWN_ID = "search-switcher-countdown";
-  const DEFAULT_REDIRECT_DELAY_MS = 1000;
+  const DEFAULT_REDIRECT_DELAY_MS = 10000; // 10 seconds for Bing autoclose
 
   const prefs = {
     openInNewTab: false,
@@ -142,20 +185,29 @@
   };
 
   // ---------------------------------------------------------------------------
-  // Utility: best-effort close current tab
+  // Utility: best-effort close current tab, preferring to go back in history
   // ---------------------------------------------------------------------------
   const closeCurrentTab = () => {
-    // With @grant window.close, userscript managers allow closing any tab
-    window.close();
-    // Fallback for restrictive environments
-    setTimeout(() => {
-      try {
-        window.open("", "_self");
+    // Try to go back in history first (cleaner UX than closing)
+    if (window.history.length > 1) {
+      window.history.back();
+      // If back fails, fallback after a delay
+      setTimeout(() => {
         window.close();
-      } catch (_) {
-        /* best-effort */
-      }
-    }, 120);
+      }, 500);
+    } else {
+      // No history available, close the tab directly
+      window.close();
+      // Fallback for restrictive environments
+      setTimeout(() => {
+        try {
+          window.open("", "_self");
+          window.close();
+        } catch (_) {
+          /* best-effort */
+        }
+      }, 120);
+    }
   };
 
   // ---------------------------------------------------------------------------

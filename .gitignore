@@ -1,5 +1,7 @@
 # Editor and IDE files
-.vscode/
+.vscode/settings.local.json
+.vscode/launch.json
+.vscode/.history/
 .idea/
 *.swp
 *.swo
