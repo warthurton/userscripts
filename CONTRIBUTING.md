@@ -5,7 +5,7 @@ Thank you for your interest in contributing! This guide will help you add new us
 ## Adding a New Userscript
 
 1. **Create Your Script**
-   - Start with the template in `templates/userscript-template.user.js`
+   - Start with the template in `_templates/userscript-template.user.js`
    - Write your script following JavaScript best practices
    - Test thoroughly on target websites
 
@@ -102,7 +102,7 @@ Thank you for your interest in contributing! This guide will help you add new us
 
 ## Script Template
 
-Use the template in [templates/userscript-template.user.js](templates/userscript-template.user.js) as a starting point for new scripts. It includes:
+Use the template in [\_templates/userscript-template.user.js](_templates/userscript-template.user.js) as a starting point for new scripts. It includes:
 
 - Proper metadata header with all required fields
 - IIFE wrapper to avoid global namespace pollution

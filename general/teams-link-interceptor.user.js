@@ -23,7 +23,7 @@
   // Function to log and optionally modify link behavior
   function interceptLink(event) {
     const target = event.target.closest("a");
-    if (!target) return;
+    if (!target) {return;}
 
     const url = target.href;
 

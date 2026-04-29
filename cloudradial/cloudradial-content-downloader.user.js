@@ -17,6 +17,8 @@
 // @supportURL   https://github.com/warthurton/userscripts/issues
 // ==/UserScript==
 
+/* global JSZip */
+
 (function () {
   "use strict";
 
@@ -122,7 +124,7 @@
   /**
    * Check if on specific question detail page
    */
-  function isQuestionDetailPage() {
+  function _isQuestionDetailPage() {
     return /^\/app\/admin\/questions\/\d+/.test(window.location.pathname);
   }
 
@@ -138,17 +140,14 @@
         document,
         null,
         XPathResult.FIRST_ORDERED_NODE_TYPE,
-        null,
+        null
       ).singleNodeValue;
 
       if (element && element.textContent) {
         return element.textContent.trim();
       }
     } catch (e) {
-      console.warn(
-        "[CloudRadial Content Downloader] Could not extract content title:",
-        e,
-      );
+      console.warn("[CloudRadial Content Downloader] Could not extract content title:", e);
     }
     return null;
   }
@@ -164,12 +163,10 @@
 
     if (lastDownload && now - lastDownload < 60000) {
       const secondsLeft = Math.ceil((60000 - (now - lastDownload)) / 1000);
-      log(
-        `⚠ Download rate limit: ${contentId} was downloaded ${secondsLeft}s ago, waiting...`,
-      );
+      log(`⚠ Download rate limit: ${contentId} was downloaded ${secondsLeft}s ago, waiting...`);
       showToast(
         `Content ${contentId} downloaded recently. Wait ${secondsLeft}s before downloading again.`,
-        4000,
+        4000
       );
 
       // If in batch mode, still continue to next item
@@ -201,11 +198,7 @@
       // Generate and download the zip file
       const currentPage = getCurrentPageType();
       const pagePrefix =
-        currentPage === "questions"
-          ? "questions"
-          : currentPage === "tokens"
-            ? "tokens"
-            : "content";
+        currentPage === "questions" ? "questions" : currentPage === "tokens" ? "tokens" : "content";
       const blob = await zip.generateAsync({ type: "blob" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -219,9 +212,7 @@
       // Update last download time for this content ID
       lastDownloadTimes[contentId] = Date.now();
 
-      log(
-        `✓ Downloaded ${count} files as: cloudradial-${pagePrefix}-${contentId}.zip`,
-      );
+      log(`✓ Downloaded ${count} files as: cloudradial-${pagePrefix}-${contentId}.zip`);
       showToast(`Downloaded ${count} file(s) as zip`);
 
       // If in batch download mode, continue to next item
@@ -234,10 +225,7 @@
       return count;
     } else {
       log(`✗ No data available to download`);
-      showToast(
-        "No data available yet. Please wait for API calls to complete.",
-        4000,
-      );
+      showToast("No data available yet. Please wait for API calls to complete.", 4000);
       return 0;
     }
   }
@@ -264,13 +252,14 @@
    * Update status display
    */
   function updateStatusDisplay() {
-    if (!statusDisplay) return;
+    if (!statusDisplay) {
+      return;
+    }
 
     const currentPage = getCurrentPageType();
     const expectedCount = currentPage === "content" ? 3 : 1;
     const isRootPage =
-      !currentContentId &&
-      (isRootContentPage() || isQuestionsListPage() || isTokensPage());
+      !currentContentId && (isRootContentPage() || isQuestionsListPage() || isTokensPage());
     const contentId = currentContentId
       ? `<span style="color: #10a37f; font-weight: 600;">${currentContentId}</span>`
       : isRootPage
@@ -289,15 +278,15 @@
    * Get content ID from URL
    */
   function getContentIdFromURL() {
-    const contentMatch = window.location.pathname.match(
-      /\/app\/admin\/content\/(\d+)/,
-    );
-    if (contentMatch) return contentMatch[1];
+    const contentMatch = window.location.pathname.match(/\/app\/admin\/content\/(\d+)/);
+    if (contentMatch) {
+      return contentMatch[1];
+    }
 
-    const questionMatch = window.location.pathname.match(
-      /\/app\/admin\/questions\/(\d+)/,
-    );
-    if (questionMatch) return questionMatch[1];
+    const questionMatch = window.location.pathname.match(/\/app\/admin\/questions\/(\d+)/);
+    if (questionMatch) {
+      return questionMatch[1];
+    }
 
     return null;
   }
@@ -310,7 +299,7 @@
     const currentPage = getCurrentPageType();
 
     log(
-      `URL: ${window.location.pathname} | Page Type: ${currentPage} | New ID: ${newContentId} | Current ID: ${currentContentId}`,
+      `URL: ${window.location.pathname} | Page Type: ${currentPage} | New ID: ${newContentId} | Current ID: ${currentContentId}`
     );
 
     // Only process if we have a content ID (detail pages, not root pages)
@@ -322,15 +311,9 @@
 
       // Clear previous data and processed endpoints
       const clearedKeys = Object.keys(interceptedData);
-      Object.keys(interceptedData).forEach(
-        (key) => delete interceptedData[key],
-      );
-      Object.keys(processedEndpoints).forEach(
-        (key) => delete processedEndpoints[key],
-      );
-      log(
-        `✓ Cleared intercepted data (was: ${clearedKeys.join(", ") || "none"})`,
-      );
+      Object.keys(interceptedData).forEach(key => delete interceptedData[key]);
+      Object.keys(processedEndpoints).forEach(key => delete processedEndpoints[key]);
+      log(`✓ Cleared intercepted data (was: ${clearedKeys.join(", ") || "none"})`);
 
       // Only start auto-download timer if in batch download mode
       const batchState = localStorage.getItem("cloudradial-batch-download");
@@ -345,9 +328,7 @@
       updateButtonVisibility();
     } else if (!newContentId) {
       // On root pages - no auto-download
-      log(
-        `✓ On root page (${window.location.pathname}) - disabling auto-download`,
-      );
+      log(`✓ On root page (${window.location.pathname}) - disabling auto-download`);
       currentContentId = null;
 
       // Clear any pending timers
@@ -359,12 +340,8 @@
 
       // Clear intercepted data and processed endpoints
       const clearedKeys = Object.keys(interceptedData);
-      Object.keys(interceptedData).forEach(
-        (key) => delete interceptedData[key],
-      );
-      Object.keys(processedEndpoints).forEach(
-        (key) => delete processedEndpoints[key],
-      );
+      Object.keys(interceptedData).forEach(key => delete interceptedData[key]);
+      Object.keys(processedEndpoints).forEach(key => delete processedEndpoints[key]);
       if (clearedKeys.length > 0) {
         log(`✓ Cleared root page data (was: ${clearedKeys.join(", ")})`);
       }
@@ -392,20 +369,14 @@
       const dataCount = Object.keys(interceptedData).length;
 
       log(`⏱ Timer fired: ${dataCount}/${expectedCount} files ready`);
-      log(
-        `  Intercepted keys: ${Object.keys(interceptedData).join(", ") || "none"}`,
-      );
+      log(`  Intercepted keys: ${Object.keys(interceptedData).join(", ") || "none"}`);
 
       if (dataCount > 0 && dataCount < expectedCount) {
-        log(
-          `⚠ Auto-download triggered with incomplete data (${dataCount}/${expectedCount})`,
-        );
+        log(`⚠ Auto-download triggered with incomplete data (${dataCount}/${expectedCount})`);
         showToast(`Auto-downloading ${dataCount} available file(s)...`);
         createAndDownloadZip();
       } else if (dataCount >= expectedCount) {
-        log(
-          `✓ Auto-download triggered with complete data (${dataCount}/${expectedCount})`,
-        );
+        log(`✓ Auto-download triggered with complete data (${dataCount}/${expectedCount})`);
         showToast("All data received, downloading...");
         createAndDownloadZip();
       } else {
@@ -423,7 +394,7 @@
     const dataCount = Object.keys(interceptedData).length;
 
     log(
-      `📊 API check: ${dataCount}/${expectedCount} | Keys: ${Object.keys(interceptedData).join(", ") || "none"}`,
+      `📊 API check: ${dataCount}/${expectedCount} | Keys: ${Object.keys(interceptedData).join(", ") || "none"}`
     );
 
     // Only auto-download on detail pages (when we have a currentContentId)
@@ -455,20 +426,14 @@
     // Check if this is one of our target API endpoints
     let matchedEndpoint = null;
     for (const endpoint of API_ENDPOINTS) {
-      if (
-        url &&
-        url.includes(endpoint.pattern) &&
-        endpoint.page === currentPage
-      ) {
+      if (url && url.includes(endpoint.pattern) && endpoint.page === currentPage) {
         matchedEndpoint = endpoint;
         break;
       }
     }
 
     if (matchedEndpoint) {
-      log(
-        `→ [FETCH] Intercepting ${matchedEndpoint.key} from ${currentPage} page`,
-      );
+      log(`→ [FETCH] Intercepting ${matchedEndpoint.key} from ${currentPage} page`);
     }
 
     const response = await originalFetch.apply(this, args);
@@ -476,9 +441,7 @@
     if (matchedEndpoint && response.ok) {
       // Skip if we've already processed this endpoint in the current load
       if (processedEndpoints[matchedEndpoint.key]) {
-        log(
-          `⊛ [FETCH] ${matchedEndpoint.key} already processed in this load, skipping duplicate`,
-        );
+        log(`⊛ [FETCH] ${matchedEndpoint.key} already processed in this load, skipping duplicate`);
         return response;
       }
 
@@ -501,10 +464,7 @@
         updateStatusDisplay();
         checkAndDownloadIfComplete();
       } catch (error) {
-        log(
-          `✗ [FETCH] Error processing ${matchedEndpoint.key}:`,
-          error.message,
-        );
+        log(`✗ [FETCH] Error processing ${matchedEndpoint.key}:`, error.message);
       }
     }
 
@@ -529,11 +489,7 @@
       let matchedEndpoint = null;
       for (const endpoint of API_ENDPOINTS) {
         // Must match both the URL pattern AND the current page type
-        if (
-          url &&
-          url.includes(endpoint.pattern) &&
-          endpoint.page === currentPage
-        ) {
+        if (url && url.includes(endpoint.pattern) && endpoint.page === currentPage) {
           matchedEndpoint = endpoint;
           break;
         }
@@ -542,15 +498,11 @@
       if (matchedEndpoint && this.status === 200) {
         // Skip if we've already processed this endpoint in the current load
         if (processedEndpoints[matchedEndpoint.key]) {
-          log(
-            `⊛ [XHR] ${matchedEndpoint.key} already processed in this load, skipping duplicate`,
-          );
+          log(`⊛ [XHR] ${matchedEndpoint.key} already processed in this load, skipping duplicate`);
           return;
         }
 
-        log(
-          `→ [XHR] Intercepting ${matchedEndpoint.key} from ${currentPage} page`,
-        );
+        log(`→ [XHR] Intercepting ${matchedEndpoint.key} from ${currentPage} page`);
 
         try {
           const data = JSON.parse(this.responseText);
@@ -570,10 +522,7 @@
           updateStatusDisplay();
           checkAndDownloadIfComplete();
         } catch (error) {
-          log(
-            `✗ [XHR] Error processing ${matchedEndpoint.key}:`,
-            error.message,
-          );
+          log(`✗ [XHR] Error processing ${matchedEndpoint.key}:`, error.message);
         }
       }
     });
@@ -582,27 +531,14 @@
   };
 
   /**
-   * Check if on root content page
-   */
-  function isRootContentPage() {
-    return (
-      window.location.pathname === "/app/admin/content" ||
-      window.location.pathname === "/app/admin/content/"
-    );
-  }
-
-  /**
    * Get all content IDs from intercepted templates data
    */
   async function getAllContentIds() {
     if (!interceptedData["templates"]) {
       console.error(
-        "[CloudRadial Content Downloader] No templates data available. Please wait for page to load.",
+        "[CloudRadial Content Downloader] No templates data available. Please wait for page to load."
       );
-      showToast(
-        "No templates data available yet. Please wait for the page to load.",
-        4000,
-      );
+      showToast("No templates data available yet. Please wait for the page to load.", 4000);
       return [];
     }
 
@@ -612,20 +548,17 @@
       // Extract IDs from the response
       let ids = [];
       if (Array.isArray(data)) {
-        ids = data.map((item) => item.id).filter((id) => id);
+        ids = data.map(item => item.id).filter(id => id);
       } else if (data.data && Array.isArray(data.data)) {
-        ids = data.data.map((item) => item.id).filter((id) => id);
+        ids = data.data.map(item => item.id).filter(id => id);
       }
 
       console.log(
-        `[CloudRadial Content Downloader] Found ${ids.length} content IDs from intercepted templates`,
+        `[CloudRadial Content Downloader] Found ${ids.length} content IDs from intercepted templates`
       );
       return ids;
     } catch (error) {
-      console.error(
-        "[CloudRadial Content Downloader] Error extracting content IDs:",
-        error,
-      );
+      console.error("[CloudRadial Content Downloader] Error extracting content IDs:", error);
       return [];
     }
   }
@@ -636,11 +569,11 @@
   async function getAllQuestionIds() {
     if (!interceptedData["questionTemplates"]) {
       console.error(
-        "[CloudRadial Content Downloader] No question templates data available. Please wait for page to load.",
+        "[CloudRadial Content Downloader] No question templates data available. Please wait for page to load."
       );
       showToast(
         "No question templates data available yet. Please wait for the page to load.",
-        4000,
+        4000
       );
       return [];
     }
@@ -651,20 +584,17 @@
       // Extract IDs from the response
       let ids = [];
       if (Array.isArray(data)) {
-        ids = data.map((item) => item.id).filter((id) => id);
+        ids = data.map(item => item.id).filter(id => id);
       } else if (data.data && Array.isArray(data.data)) {
-        ids = data.data.map((item) => item.id).filter((id) => id);
+        ids = data.data.map(item => item.id).filter(id => id);
       }
 
       console.log(
-        `[CloudRadial Content Downloader] Found ${ids.length} question IDs from intercepted templates`,
+        `[CloudRadial Content Downloader] Found ${ids.length} question IDs from intercepted templates`
       );
       return ids;
     } catch (error) {
-      console.error(
-        "[CloudRadial Content Downloader] Error extracting question IDs:",
-        error,
-      );
+      console.error("[CloudRadial Content Downloader] Error extracting question IDs:", error);
       return [];
     }
   }
@@ -687,20 +617,18 @@
         currentIndex: 0,
         startTime: Date.now(),
         type: "content",
-      }),
+      })
     );
 
     showToast(`Starting download of ${ids.length} items...`);
     console.log(
       `[CloudRadial Content Downloader] Starting batch download of ${ids.length} items:`,
-      ids,
+      ids
     );
 
     // Navigate to the first content using SPA navigation
     const firstId = ids[0];
-    console.log(
-      `[CloudRadial Content Downloader] Navigating to first content ${firstId}...`,
-    );
+    console.log(`[CloudRadial Content Downloader] Navigating to first content ${firstId}...`);
     history.pushState(null, "", `/app/admin/content/${firstId}`);
     window.dispatchEvent(new PopStateEvent("popstate"));
   }
@@ -723,20 +651,18 @@
         currentIndex: 0,
         startTime: Date.now(),
         type: "questions",
-      }),
+      })
     );
 
     showToast(`Starting download of ${ids.length} questions...`);
     console.log(
       `[CloudRadial Content Downloader] Starting batch download of ${ids.length} questions:`,
-      ids,
+      ids
     );
 
     // Navigate to the first question using SPA navigation
     const firstId = ids[0];
-    console.log(
-      `[CloudRadial Content Downloader] Navigating to first question ${firstId}...`,
-    );
+    console.log(`[CloudRadial Content Downloader] Navigating to first question ${firstId}...`);
     history.pushState(null, "", `/app/admin/questions/${firstId}`);
     window.dispatchEvent(new PopStateEvent("popstate"));
   }
@@ -762,9 +688,7 @@
         return;
       }
 
-      log(
-        `✓ Batch download in progress: ${currentIndex + 1}/${ids.length} (${type}s)`,
-      );
+      log(`✓ Batch download in progress: ${currentIndex + 1}/${ids.length} (${type}s)`);
       log(`  IDs: [${ids.join(", ")}]`);
 
       // Wait for auto-download to complete, then move to next
@@ -804,12 +728,9 @@
 
       const nextId = ids[nextIndex];
       const itemType = type === "questions" ? "question" : "content";
-      const urlPath =
-        type === "questions" ? "/app/admin/questions" : "/app/admin/content";
+      const urlPath = type === "questions" ? "/app/admin/questions" : "/app/admin/content";
 
-      log(
-        `→ Moving to next ${itemType}: ${nextId} (${nextIndex + 1}/${ids.length})`,
-      );
+      log(`→ Moving to next ${itemType}: ${nextId} (${nextIndex + 1}/${ids.length})`);
       showToast(`Downloading ${nextIndex + 1}/${ids.length}...`);
 
       // Small delay before SPA navigation
@@ -829,74 +750,69 @@
    */
   function updateButtonVisibility() {
     const batchState = localStorage.getItem("cloudradial-batch-download");
-    const currentPage = getCurrentPageType();
+    const _currentPage = getCurrentPageType();
     let hasContentBatch = false;
     let hasQuestionsBatch = false;
 
     if (batchState) {
       try {
         const state = JSON.parse(batchState);
-        if (state.type === "content") hasContentBatch = true;
-        if (state.type === "questions") hasQuestionsBatch = true;
+        if (state.type === "content") {
+          hasContentBatch = true;
+        }
+        if (state.type === "questions") {
+          hasQuestionsBatch = true;
+        }
       } catch (e) {
         // Invalid state, ignore
       }
     }
 
     // Content page buttons
-    const downloadTemplatesBtn = document.getElementById(
-      "cloudradial-download-templates-btn",
-    );
-    const downloadAllBtn = document.getElementById(
-      "cloudradial-download-all-btn",
-    );
-    const resetContentBtn = document.getElementById(
-      "cloudradial-reset-content-btn",
-    );
-    const resumeContentBtn = document.getElementById(
-      "cloudradial-resume-content-btn",
-    );
+    const downloadTemplatesBtn = document.getElementById("cloudradial-download-templates-btn");
+    const downloadAllBtn = document.getElementById("cloudradial-download-all-btn");
+    const resetContentBtn = document.getElementById("cloudradial-reset-content-btn");
+    const resumeContentBtn = document.getElementById("cloudradial-resume-content-btn");
 
     const isContentPage = isRootContentPage();
-    if (downloadTemplatesBtn)
-      downloadTemplatesBtn.style.display = isContentPage
-        ? "inline-block"
-        : "none";
-    if (downloadAllBtn)
-      downloadAllBtn.style.display =
-        isContentPage && !hasContentBatch ? "inline-block" : "none";
-    if (resetContentBtn)
-      resetContentBtn.style.display =
-        isContentPage && hasContentBatch ? "inline-block" : "none";
-    if (resumeContentBtn)
-      resumeContentBtn.style.display =
-        isContentPage && hasContentBatch ? "inline-block" : "none";
+    if (downloadTemplatesBtn) {
+      downloadTemplatesBtn.style.display = isContentPage ? "inline-block" : "none";
+    }
+    if (downloadAllBtn) {
+      downloadAllBtn.style.display = isContentPage && !hasContentBatch ? "inline-block" : "none";
+    }
+    if (resetContentBtn) {
+      resetContentBtn.style.display = isContentPage && hasContentBatch ? "inline-block" : "none";
+    }
+    if (resumeContentBtn) {
+      resumeContentBtn.style.display = isContentPage && hasContentBatch ? "inline-block" : "none";
+    }
 
     // Questions page buttons
     const downloadAllQuestionsBtn = document.getElementById(
-      "cloudradial-download-all-questions-btn",
+      "cloudradial-download-all-questions-btn"
     );
     const resetBtn = document.getElementById("cloudradial-reset-btn");
     const resumeBtn = document.getElementById("cloudradial-resume-btn");
 
     const isQuestionsPage = isQuestionsListPage();
-    if (downloadAllQuestionsBtn)
+    if (downloadAllQuestionsBtn) {
       downloadAllQuestionsBtn.style.display =
         isQuestionsPage && !hasQuestionsBatch ? "inline-block" : "none";
-    if (resetBtn)
-      resetBtn.style.display =
-        isQuestionsPage && hasQuestionsBatch ? "inline-block" : "none";
-    if (resumeBtn)
-      resumeBtn.style.display =
-        isQuestionsPage && hasQuestionsBatch ? "inline-block" : "none";
+    }
+    if (resetBtn) {
+      resetBtn.style.display = isQuestionsPage && hasQuestionsBatch ? "inline-block" : "none";
+    }
+    if (resumeBtn) {
+      resumeBtn.style.display = isQuestionsPage && hasQuestionsBatch ? "inline-block" : "none";
+    }
 
     // Tokens page button
-    const downloadPSABtn = document.getElementById(
-      "cloudradial-download-psa-btn",
-    );
+    const downloadPSABtn = document.getElementById("cloudradial-download-psa-btn");
     const isTokensPageNow = isTokensPage();
-    if (downloadPSABtn)
+    if (downloadPSABtn) {
       downloadPSABtn.style.display = isTokensPageNow ? "inline-block" : "none";
+    }
   }
 
   /**
@@ -904,7 +820,9 @@
    */
   let statusContainer = null;
   function tryInsertIntoNavbar() {
-    if (!statusContainer) return;
+    if (!statusContainer) {
+      return;
+    }
 
     // Get the navbar right container element
     const navbarRight = document.evaluate(
@@ -912,17 +830,12 @@
       document,
       null,
       XPathResult.FIRST_ORDERED_NODE_TYPE,
-      null,
+      null
     ).singleNodeValue;
 
-    if (
-      navbarRight &&
-      !document.getElementById("cloudradial-downloader-status")
-    ) {
+    if (navbarRight && !document.getElementById("cloudradial-downloader-status")) {
       navbarRight.parentElement.insertBefore(statusContainer, navbarRight);
-      console.log(
-        "[CloudRadial Content Downloader] Status inserted into navbar",
-      );
+      console.log("[CloudRadial Content Downloader] Status inserted into navbar");
     }
   }
 
@@ -991,7 +904,7 @@
     debugCheckbox.addEventListener("change", () => {
       debugMode = debugCheckbox.checked;
       console.log(
-        `[CloudRadial Content Downloader] Debug mode ${debugMode ? "enabled" : "disabled"}`,
+        `[CloudRadial Content Downloader] Debug mode ${debugMode ? "enabled" : "disabled"}`
       );
       showToast(`Debug mode ${debugMode ? "enabled" : "disabled"}`);
     });
@@ -1003,7 +916,7 @@
     statusContainer.appendChild(debugContainer);
 
     // Add click handler to re-evaluate button visibility
-    statusContainer.addEventListener("click", (e) => {
+    statusContainer.addEventListener("click", e => {
       // Don't interfere with checkbox clicks
       if (e.target !== debugCheckbox) {
         log("UI clicked, re-evaluating button visibility");
@@ -1043,10 +956,7 @@
       downloadTemplatesBtn.addEventListener("click", async () => {
         if (interceptedData["templates"]) {
           const zip = new JSZip();
-          zip.file(
-            "templates.json",
-            JSON.stringify(interceptedData["templates"].data, null, 2),
-          );
+          zip.file("templates.json", JSON.stringify(interceptedData["templates"].data, null, 2));
           const blob = await zip.generateAsync({ type: "blob" });
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
@@ -1058,10 +968,7 @@
           URL.revokeObjectURL(url);
           showToast("Downloaded templates list");
         } else {
-          showToast(
-            "No templates data intercepted yet. Please wait or refresh the page.",
-            4000,
-          );
+          showToast("No templates data intercepted yet. Please wait or refresh the page.", 4000);
         }
       });
 
@@ -1178,7 +1085,7 @@
               const { ids, currentIndex } = state;
               const nextId = ids[currentIndex];
               log(
-                `→ Resuming content batch download at item ${currentIndex + 1}/${ids.length} (ID: ${nextId})`,
+                `→ Resuming content batch download at item ${currentIndex + 1}/${ids.length} (ID: ${nextId})`
               );
               showToast(`Resuming at ${currentIndex + 1}/${ids.length}...`);
               history.pushState(null, "", `/app/admin/content/${nextId}`);
@@ -1317,7 +1224,7 @@
               const { ids, currentIndex } = state;
               const nextId = ids[currentIndex];
               log(
-                `→ Resuming questions batch download at item ${currentIndex + 1}/${ids.length} (ID: ${nextId})`,
+                `→ Resuming questions batch download at item ${currentIndex + 1}/${ids.length} (ID: ${nextId})`
               );
               showToast(`Resuming at ${currentIndex + 1}/${ids.length}...`);
               history.pushState(null, "", `/app/admin/questions/${nextId}`);
@@ -1443,8 +1350,6 @@
   }
 
   log(`✓ Script initialized`);
-  log(`📡 Monitoring endpoints: ${API_ENDPOINTS.map((e) => e.key).join(", ")}`);
-  log(
-    `🌐 Current page: ${getCurrentPageType()} | URL: ${window.location.pathname}`,
-  );
+  log(`📡 Monitoring endpoints: ${API_ENDPOINTS.map(e => e.key).join(", ")}`);
+  log(`🌐 Current page: ${getCurrentPageType()} | URL: ${window.location.pathname}`);
 })();

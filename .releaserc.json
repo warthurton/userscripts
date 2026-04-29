@@ -14,7 +14,7 @@
         [
             "@semantic-release/exec",
             {
-                "prepareCmd": "node tools/build-userscripts.mjs && node tools/reset-source-versions.mjs"
+                "prepareCmd": "node _tools/build-userscripts.mjs && node _tools/reset-source-versions.mjs"
             }
         ],
         [
