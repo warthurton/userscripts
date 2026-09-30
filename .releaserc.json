@@ -18,22 +18,13 @@
             }
         ],
         [
-            "@semantic-release/git",
+            "@semantic-release/github",
             {
                 "assets": [
-                    "package.json",
-                    "package-lock.json",
-                    "_dist/**",
-                    "autotask/**/*.user.js",
-                    "chatgpt/**/*.user.js",
-                    "cloudradial/**/*.user.js",
-                    "general/**/*.user.js",
-                    "microsoft/**/*.user.js",
-                    "search/**/*.user.js"
-                ],
-                "message": "chore(release): v${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+                    "_dist/*.user.js",
+                    "_dist/*.meta.js"
+                ]
             }
-        ],
-        "@semantic-release/github"
+        ]
     ]
 }

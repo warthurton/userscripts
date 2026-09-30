@@ -21,7 +21,7 @@ Generate `_dist/` artifacts locally (useful for testing):
 npm run build
 ```
 
-This produces `_dist/*.user.js` (full scripts) and `_dist/*.meta.js` (metadata-only for update checks). The build stamps `@version` from `package.json`, adds `@modified`, and rewrites `@updateURL` / `@downloadURL` to point at `_dist/` raw URLs.
+This produces `_dist/*.user.js` (full scripts) and `_dist/*.meta.js` (metadata-only for update checks). The build stamps date-based `@version` values, adds `@modified`, and rewrites `@updateURL` / `@downloadURL` to point at the latest GitHub Release assets.
 
 ## Versioning (Fully Automatic)
 
@@ -73,7 +73,7 @@ userscripts/
 
 The repository has one workflow:
 
-- **release.yml**: Runs on push to `main`. Uses semantic-release to determine the next version from conventional commits, runs the build script, commits `_dist/` and `package.json` back to `main`, creates a GitHub release, and tags the commit.
+- **release.yml**: Runs on push to `main`. Uses semantic-release to determine the next version from conventional commits, builds userscripts, attaches the `_dist/` assets to a GitHub release, and creates a tag. It does not push generated commits to the protected `main` branch.
 
 Release commits include `[skip ci]` to prevent infinite loops.
 

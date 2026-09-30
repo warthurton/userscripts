@@ -9,8 +9,8 @@
 // @grant        none
 // NOTE: Replace <name> with the script filename (without .user.js),
 // e.g. for chatgpt/my-script.user.js, <name> is "my-script"
-// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/<name>.meta.js
-// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/<name>.user.js
+// @updateURL    https://github.com/warthurton/userscripts/releases/latest/download/<name>.meta.js
+// @downloadURL  https://github.com/warthurton/userscripts/releases/latest/download/<name>.user.js
 // @homepageURL  https://github.com/warthurton/userscripts
 // @supportURL   https://github.com/warthurton/userscripts/issues
 // ==/UserScript==
