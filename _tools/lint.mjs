@@ -33,6 +33,7 @@ if (filePattern) {
   const scriptDirs = [
     "autotask",
     "chatgpt",
+    "claude",
     "cloudradial",
     "general",
     "microsoft",
@@ -47,7 +48,7 @@ if (filePattern) {
   console.log(`   Files: ${filePattern}`);
 } else {
   console.log(
-    `   Scanning: autotask/, chatgpt/, cloudradial/, general/, microsoft/, search/, _templates/`
+    `   Scanning: autotask/, chatgpt/, claude/, cloudradial/, general/, microsoft/, search/, _templates/`
   );
 }
 console.log();

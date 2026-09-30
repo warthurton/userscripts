@@ -56,6 +56,7 @@ Alternatively, you can copy the script content and create a new script in your u
 userscripts/
 ├── autotask/         # Autotask-related userscripts (source)
 ├── chatgpt/          # ChatGPT-related userscripts (source)
+├── claude/           # Claude-related userscripts (source)
 ├── cloudradial/      # CloudRadial-related userscripts (source)
 ├── general/          # General-purpose userscripts (source)
 ├── microsoft/        # Microsoft-related userscripts (source)

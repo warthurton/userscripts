@@ -31,6 +31,7 @@ const RAW_BASE = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}`;
 const SOURCE_DIRS = [
   "autotask",
   "chatgpt",
+  "claude",
   "cloudradial",
   "general",
   "microsoft",
