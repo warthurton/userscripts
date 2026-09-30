@@ -1,11 +1,17 @@
 // ==UserScript==
-// @name         Capture API Responses (Claude Org Settings)
-// @namespace    local
-// @version      1.7
-// @description  Files is the default/initial tab and the one Gather switches to; Discover switches to Pages. Gather also directly fetches the Organization-overview page's own data and Claude Code's Agents sub-tab data (bypassing app-level caching that blocks Discover's in-app revisit trick). Files/Pages tab order swapped (Files first). Toolbar buttons stay a fixed size — progress shows on a shared status line instead. Nav-tracking installed unconditionally at load for accurate auto/interaction tagging. Persistent panel, auto-zip on Discover completion, page-text-to-API matching, dedup + noise filtering — all defensively wrapped so it can never break the page.
+// @name         Claude - Org Settings API Capture
+// @namespace    https://github.com/warthurton/userscripts
+// @version      0.0.0
+// @description  Captures API responses on the Claude admin-settings pages (Files, Pages, Organization overview, Agents) and lets you gather and zip them up for offline inspection
+// @author       warthurton
 // @match        https://claude.ai/admin-settings/*
+// @icon         https://favicons-blue.vercel.app/?domain=claude.ai
 // @run-at       document-start
 // @grant        none
+// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/org-settings-capture.meta.js
+// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/org-settings-capture.user.js
+// @homepageURL  https://github.com/warthurton/userscripts
+// @supportURL   https://github.com/warthurton/userscripts/issues
 // ==/UserScript==
 
 (function () {
@@ -64,7 +70,7 @@
   }
 
   function safeTruncate(str) {
-    if (typeof str !== 'string') return str;
+    if (typeof str !== 'string') {return str;}
     return str.length > MAX_BODY_LOG_LENGTH
       ? str.slice(0, MAX_BODY_LOG_LENGTH) + `... [truncated, ${str.length} chars total]`
       : str;
@@ -121,7 +127,7 @@
   function record(entry) {
     safe(() => {
       entry.noise = isNoise(entry.url);
-      if (!entry.trigger) entry.trigger = currentTrigger();
+      if (!entry.trigger) {entry.trigger = currentTrigger();}
       window.__capturedApiCalls.push(entry);
       const tag = entry.noise ? 'noise' : entry.trigger;
       const color = entry.noise ? '#999' : entry.trigger === 'gather' ? '#0f766e' : entry.trigger === 'auto' ? '#8a5cf6' : '#c2410c';
@@ -153,7 +159,7 @@
 
       let requestBody = config?.body;
       if (requestBody && typeof requestBody !== 'string') {
-        try { requestBody = JSON.stringify(requestBody); } catch (e) {}
+        try { requestBody = JSON.stringify(requestBody); } catch (e) { /* not serializable, keep as-is */ }
       }
 
       const response = await originalFetch.apply(this, args);
@@ -165,7 +171,7 @@
         }
         response.clone().text().then((text) => {
           let parsed = text;
-          try { parsed = JSON.parse(text); } catch (e) {}
+          try { parsed = JSON.parse(text); } catch (e) { /* not JSON, keep as text */ }
           record({
             type: 'fetch', url, method, status: response.status, startedAt,
             requestBody: safeTruncate(requestBody),
@@ -182,7 +188,7 @@
 
   function installPatches() {
     safe(() => {
-      if (!patchedFetch) patchedFetch = buildPatchedFetch();
+      if (!patchedFetch) {patchedFetch = buildPatchedFetch();}
       window.fetch = patchedFetch;
     }, 'installPatches/fetch');
 
@@ -202,7 +208,7 @@
               return;
             }
             let responseBody = this.responseText;
-            try { responseBody = JSON.parse(this.responseText); } catch (e) {}
+            try { responseBody = JSON.parse(this.responseText); } catch (e) { /* not JSON, keep as text */ }
             record({
               type: 'xhr', url: this.__capture.url, method: this.__capture.method, status: this.status, startedAt: this.__capture.startedAt,
               requestBody: safeTruncate(this.__capture.requestBody),
@@ -250,8 +256,8 @@
   // -----------------------------------------------------------------------
   let jszipLoadPromise = null;
   function loadJSZip() {
-    if (window.JSZip) return Promise.resolve(window.JSZip);
-    if (jszipLoadPromise) return jszipLoadPromise;
+    if (window.JSZip) {return Promise.resolve(window.JSZip);}
+    if (jszipLoadPromise) {return jszipLoadPromise;}
     jszipLoadPromise = new Promise((resolve, reject) => {
       const script = document.createElement('script');
       script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
@@ -349,7 +355,7 @@
 
         const pageMatches = {};
         window.__navLinkRegistry.forEach((link, href) => {
-          if (!link.pageText) return;
+          if (!link.pageText) {return;}
           pageMatches[href] = {
             label: link.label,
             section: link.section,
@@ -384,7 +390,7 @@
   // (Unchanged from the previous version.)
   // -----------------------------------------------------------------------
   const DISCOVER_POLL_MS = 2500;
-  const VISIT_WAIT_MS = 1500;
+  const _VISIT_WAIT_MS = 1500;
   window.__navLinkRegistry = window.__navLinkRegistry || new Map();
   window.__discoverVisiting = window.__discoverVisiting || false; // reentrancy guard — see visitChecked
   window.__discoverCurrentHref = window.__discoverCurrentHref || null; // href actively being visited, if any
@@ -454,9 +460,9 @@
       let n;
       while ((n = walker.nextNode())) {
         const t = n.nodeValue.trim();
-        if (t) return t;
+        if (t) {return t;}
       }
-    } catch (e) {}
+    } catch (e) { /* walker failed, fall back to empty string */ }
     return '';
   }
 
@@ -477,7 +483,7 @@
     return safe(() => {
       const path = location.pathname;
       for (const [href, entry] of window.__navLinkRegistry.entries()) {
-        if (href.split('?')[0] === path) return entry;
+        if (href.split('?')[0] === path) {return entry;}
       }
       return null;
     }, 'findRegistryEntryForCurrentPath') || null;
@@ -486,7 +492,7 @@
   function captureCurrentPageTextIfKnown() {
     safe(() => {
       const entry = findRegistryEntryForCurrentPath();
-      if (!entry) return;
+      if (!entry) {return;}
       const text = captureVisiblePageText();
       if (text && text !== entry.pageText) {
         entry.pageText = text;
@@ -515,11 +521,11 @@
     const tokens = new Map(); // lowercase key -> { weight, display }
     const add = (raw, weight) => {
       const t = (raw || '').trim();
-      if (t.length < 4) return;
+      if (t.length < 4) {return;}
       const key = t.toLowerCase();
-      if (MATCH_STOPWORDS.has(key)) return;
+      if (MATCH_STOPWORDS.has(key)) {return;}
       const existing = tokens.get(key);
-      if (!existing || existing.weight < weight) tokens.set(key, { weight, display: t });
+      if (!existing || existing.weight < weight) {tokens.set(key, { weight, display: t });}
     };
 
     (text.match(/[\w.+-]+@[\w-]+\.[\w.-]+/g) || []).forEach((m) => add(m, 4));
@@ -535,7 +541,7 @@
 
   function matchPageToCalls(pageText, searchableCalls) {
     const tokens = tokenizePageText(pageText || '');
-    if (!tokens.length || !searchableCalls.length) return [];
+    if (!tokens.length || !searchableCalls.length) {return [];}
     return searchableCalls
       .map((c) => {
         let score = 0;
@@ -565,12 +571,12 @@
           if (child.tagName === 'UL') {
             child.querySelectorAll('a[href]').forEach((a) => {
               const href = a.getAttribute('href');
-              if (!href || !href.startsWith('/admin-settings/')) return;
+              if (!href || !href.startsWith('/admin-settings/')) {return;}
               found.push({ section: currentSection, label: firstTextNode(a) || href, href });
             });
           } else {
             const text = (child.textContent || '').trim();
-            if (text) currentSection = text;
+            if (text) {currentSection = text;}
           }
         });
       }
@@ -578,7 +584,7 @@
       if (!found.length) {
         document.querySelectorAll('a[href^="/admin-settings/"]').forEach((a) => {
           const href = a.getAttribute('href');
-          if (!href) return;
+          if (!href) {return;}
           found.push({ section: '(ungrouped)', label: firstTextNode(a) || href, href });
         });
       }
@@ -616,7 +622,7 @@
   }
 
   safe(pollNavLinks, 'initial pollNavLinks');
-  const discoverPollInterval = setInterval(() => safe(pollNavLinks, 'pollNavLinks interval'), DISCOVER_POLL_MS);
+  const _discoverPollInterval = setInterval(() => safe(pollNavLinks, 'pollNavLinks interval'), DISCOVER_POLL_MS);
 
   const NAV_CONFIRM_TIMEOUT_MS = 4000;
   const NAV_CONFIRM_POLL_MS = 150;
@@ -654,7 +660,7 @@
 
     window.__discoverVisiting = true;
     const visitBtn = document.getElementById('__panelFooterBtn');
-    if (visitBtn) visitBtn.disabled = true;
+    if (visitBtn) {visitBtn.disabled = true;}
     let failures = 0;
     let crashed = 0;
     let stoppedEarly = false;
@@ -729,7 +735,7 @@
             }
             console.error(`[discover] the page threw an error while/after visiting ${href}: ${window.__discoverPageErrorDetected.message}`);
 
-            const navStillThere = safe(() => !!document.querySelector('[data-testid="admin-settings-nav-scroll"]'), 'visitChecked/navCheck');
+            const navStillThere = safe(() => Boolean(document.querySelector('[data-testid="admin-settings-nav-scroll"]')), 'visitChecked/navCheck');
             if (!navStillThere) {
               console.error('[discover] the admin-settings nav is no longer on the page — the app may have crashed. Stopping the rest of this run.');
               stoppedEarly = true;
@@ -766,7 +772,7 @@
         visitBtn.disabled = false;
       }
       setStatusLine(stoppedEarly ? 'Discover stopped early — see console.' : 'Discover finished.');
-      setTimeout(() => { if (!window.__gatherRunning && !window.__discoverVisiting) clearStatusLine(); }, 3000);
+      setTimeout(() => { if (!window.__gatherRunning && !window.__discoverVisiting) {clearStatusLine();} }, 3000);
       safe(updateButtonLabel, 'updateButtonLabel/visitChecked');
       console.log(
         `%c[discover] done visiting${stoppedEarly ? ' (stopped early)' : ''} — ${checkedHrefs.length} checked` +
@@ -792,7 +798,7 @@
   function renderPagesTabBody(bodyEl, footerEl) {
     safe(() => {
       const links = Array.from(window.__navLinkRegistry.values()).sort((a, b) => {
-        if (a.section === b.section) return 0;
+        if (a.section === b.section) {return 0;}
         return (a.section || '').localeCompare(b.section || '');
       });
 
@@ -941,7 +947,7 @@
 
       const filterRow = document.createElement('div');
       filterRow.style.cssText = 'display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid #eee;flex-shrink:0;';
-      let activeFilter = window.__filesTabFilter || 'all';
+      const activeFilter = window.__filesTabFilter || 'all';
       ['all', 'auto', 'interaction', 'gather'].forEach((f) => {
         const chip = document.createElement('button');
         chip.textContent = f === 'all' ? 'All' : f[0].toUpperCase() + f.slice(1);
@@ -1045,9 +1051,9 @@
       const match = window.__capturedApiCalls
         .map((c) => c.url && c.url.match(/\/api\/organizations\/([0-9a-fA-F-]{36})(\/|$|\?)/))
         .find(Boolean);
-      if (match) return match[1];
+      if (match) {return match[1];}
       const pathMatch = location.pathname.match(/([0-9a-fA-F-]{36})/);
-      if (pathMatch) return pathMatch[1];
+      if (pathMatch) {return pathMatch[1];}
       return null;
     }, 'detectOrgUuid') || null;
   }
@@ -1061,7 +1067,7 @@
     // Need an org UUID before we can do anything. If auditing has never
     // been on and nothing's been captured yet, we can't detect it — ask
     // for one pass with auditing on first, rather than guessing.
-    let orgUuid = detectOrgUuid();
+    const orgUuid = detectOrgUuid();
     if (!orgUuid) {
       const wasOff = !auditingEnabled;
       if (wasOff) {
@@ -1075,7 +1081,7 @@
     const proceed = window.confirm(
       'Gather will clear all currently captured data (so the download afterward reflects only this run) and then actively fetch role, group, member, and connector data directly via the API.\n\nContinue?'
     );
-    if (!proceed) return;
+    if (!proceed) {return;}
 
     window.__capturedApiCalls.length = 0;
     safe(updateButtonLabel, 'updateButtonLabel/gatherClear');
@@ -1083,7 +1089,7 @@
     window.__gatherRunning = true;
     window.__gatherAbort = false;
     const btn = document.getElementById('__toolbarGatherBtn');
-    if (btn) btn.disabled = true;
+    if (btn) {btn.disabled = true;}
     const setStatus = (t) => setStatusLine(t);
     const base = `/api/organizations/${orgUuid}`;
     const summary = { roles: 0, groups: 0, members: 0, bindingBatches: 0, connectors: 0, roleConnectorPolicyHits: 0, errors: 0 };
@@ -1134,7 +1140,7 @@
         `${base}/experiences/claude_web?locale=en-US`,
       ];
       for (const url of orgOverviewEndpoints) {
-        if (window.__gatherAbort) break;
+        if (window.__gatherAbort) {break;}
         await gatherFetch(url);
         await sleep(GATHER_DELAY_MS);
       }
@@ -1164,7 +1170,7 @@
           '/v1/code/agents?limit=200&ancestors_first=true&include_virtual=true&include_slack_binding=true&include_teams_binding=true',
         ];
         for (const url of agentEndpoints) {
-          if (window.__gatherAbort) break;
+          if (window.__gatherAbort) {break;}
           await gatherFetch(url);
           await sleep(GATHER_DELAY_MS);
         }
@@ -1178,7 +1184,7 @@
       summary.roles = allRoles.length;
 
       for (const role of allRoles) {
-        if (window.__gatherAbort) break;
+        if (window.__gatherAbort) {break;}
         setStatus(`Gather: role "${role.name || role.role_uuid}"…`);
         await gatherFetch(`${base}/roles/${role.role_uuid}/permissions?page_size=100`); await sleep(GATHER_DELAY_MS);
         await gatherFetch(`${base}/roles/${role.role_uuid}/assignments?page_size=100`); await sleep(GATHER_DELAY_MS);
@@ -1191,9 +1197,9 @@
         summary.groups = groups.length;
 
         for (const group of groups) {
-          if (window.__gatherAbort) break;
+          if (window.__gatherAbort) {break;}
           const gid = group.group_uuid || group.uuid;
-          if (!gid) continue;
+          if (!gid) {continue;}
           setStatus(`Gather: group "${group.name || gid}"…`);
           await gatherFetch(`${base}/groups/${gid}/visibility`); await sleep(GATHER_DELAY_MS);
           await gatherFetch(`${base}/groups/${gid}/members?page_size=200`); await sleep(GATHER_DELAY_MS);
@@ -1210,13 +1216,13 @@
         const limit = 100;
         let total = Infinity;
         while (offset < total) {
-          if (window.__gatherAbort) break;
+          if (window.__gatherAbort) {break;}
           const resp = await gatherFetch(`${base}/members_v2?offset=${offset}&limit=${limit}&types%5B%5D=member`);
           const data = resp.body?.data || [];
           const pagination = resp.body?.pagination || {};
           total = typeof pagination.total === 'number' ? pagination.total : data.length;
-          data.forEach((d) => { const u = d?.member?.account?.uuid; if (u) accountUuids.push(u); });
-          if (!pagination.has_more) break;
+          data.forEach((d) => { const u = d?.member?.account?.uuid; if (u) {accountUuids.push(u);} });
+          if (!pagination.has_more) {break;}
           offset += limit;
           await sleep(GATHER_DELAY_MS);
         }
@@ -1227,7 +1233,7 @@
         setStatus('Gather: role/group bindings…');
         const BATCH = 40;
         for (let i = 0; i < accountUuids.length; i += BATCH) {
-          if (window.__gatherAbort) break;
+          if (window.__gatherAbort) {break;}
           const batch = accountUuids.slice(i, i + BATCH);
           await gatherFetch(`${base}/rbac/account-bindings:query`, { method: 'POST', body: JSON.stringify({ account_uuids: batch }) });
           summary.bindingBatches++;
@@ -1249,14 +1255,14 @@
         let workingPatternIdx = null;
 
         for (const server of servers) {
-          if (window.__gatherAbort) break;
+          if (window.__gatherAbort) {break;}
           const sid = server.uuid;
-          if (!sid) continue;
+          if (!sid) {continue;}
           setStatus(`Gather: connector "${server.name || sid}" (org-level)…`);
           await gatherFetch(`${base}/mcp/remote_servers/${sid}/tool_policies`); await sleep(GATHER_DELAY_MS);
 
           for (const role of allRoles) {
-            if (window.__gatherAbort) break;
+            if (window.__gatherAbort) {break;}
             setStatus(`Gather: connector "${server.name || sid}" × role "${role.name}"…`);
             const idxList = workingPatternIdx !== null ? [workingPatternIdx] : [0, 1, 2];
             let hit = false;
@@ -1275,7 +1281,7 @@
               console.warn('[gather] could not find a working role-level connector tool-policy URL shape; leaving org-level only.');
               workingPatternIdx = -1;
             }
-            if (workingPatternIdx === -1) break;
+            if (workingPatternIdx === -1) {break;}
           }
         }
       }
@@ -1284,12 +1290,12 @@
       summary.errors++;
     } finally {
       window.__gatherRunning = false;
-      if (btn) btn.disabled = false;
+      if (btn) {btn.disabled = false;}
       setStatusLine(window.__gatherAbort ? 'Gather aborted.' : '');
       if (!window.__gatherAbort) {
         // Brief confirmation, then clear so the line collapses again.
         setStatusLine('Gather finished.');
-        setTimeout(() => { if (!window.__gatherRunning && !window.__discoverVisiting) clearStatusLine(); }, 3000);
+        setTimeout(() => { if (!window.__gatherRunning && !window.__discoverVisiting) {clearStatusLine();} }, 3000);
       }
       safe(updateButtonLabel, 'updateButtonLabel/gather');
       console.log('%c[gather] summary:', 'color:#0f766e;font-weight:bold;', summary);
@@ -1313,7 +1319,7 @@
   window.__filesTabFilter = window.__filesTabFilter || 'all';
 
   function updateButtonLabel() { safe(refreshPanel, 'updateButtonLabel-alias'); }
-  function updateAuditingButton() { safe(refreshPanel, 'updateAuditingButton-alias'); }
+  function _updateAuditingButton() { safe(refreshPanel, 'updateAuditingButton-alias'); }
 
   function setActiveTab(tab) {
     window.__activeTab = tab;
@@ -1323,7 +1329,7 @@
   function refreshPanel() {
     safe(() => {
       const panel = document.getElementById('__capturePanel');
-      if (!panel) return; // not mounted yet
+      if (!panel) {return;} // not mounted yet
 
       const auditBtn = document.getElementById('__toolbarAuditBtn');
       if (auditBtn) {
@@ -1334,21 +1340,21 @@
       const kept = window.__capturedApiCalls.filter((c) => !c.noise);
       const tabPagesBtn = document.getElementById('__tabPagesBtn');
       const tabFilesBtn = document.getElementById('__tabFilesBtn');
-      if (tabPagesBtn) tabPagesBtn.textContent = `Pages (${window.__navLinkRegistry.size})`;
-      if (tabFilesBtn) tabFilesBtn.textContent = `Files (${kept.length})`;
-      if (tabPagesBtn) tabPagesBtn.style.cssText = tabStyle(window.__activeTab === 'pages');
-      if (tabFilesBtn) tabFilesBtn.style.cssText = tabStyle(window.__activeTab === 'files');
+      if (tabPagesBtn) {tabPagesBtn.textContent = `Pages (${window.__navLinkRegistry.size})`;}
+      if (tabFilesBtn) {tabFilesBtn.textContent = `Files (${kept.length})`;}
+      if (tabPagesBtn) {tabPagesBtn.style.cssText = tabStyle(window.__activeTab === 'pages');}
+      if (tabFilesBtn) {tabFilesBtn.style.cssText = tabStyle(window.__activeTab === 'files');}
 
       const bodyEl = document.getElementById('__panelBody');
       const footerEl = document.getElementById('__panelFooter');
-      if (!bodyEl || !footerEl || window.__panelMinimized) return;
+      if (!bodyEl || !footerEl || window.__panelMinimized) {return;}
 
       // Don't rebuild the Pages tab's checkboxes/button while a visit run
       // is using them — that's exactly what caused overlapping runs
       // before. The Files tab has no interactive state at risk, so it's
       // always safe to refresh.
       if (window.__activeTab === 'pages') {
-        if (!window.__discoverVisiting) renderPagesTabBody(bodyEl, footerEl);
+        if (!window.__discoverVisiting) {renderPagesTabBody(bodyEl, footerEl);}
       } else {
         renderFilesTabBody(bodyEl, footerEl);
       }
@@ -1367,7 +1373,7 @@
   function setStatusLine(text) {
     safe(() => {
       const el = document.getElementById('__statusLine');
-      if (!el) return;
+      if (!el) {return;}
       el.textContent = text;
       el.style.display = text ? 'block' : 'none';
     }, 'setStatusLine');
@@ -1379,7 +1385,7 @@
 
   function mountPanel() {
     safe(() => {
-      if (document.getElementById('__capturePanel')) return; // already mounted
+      if (document.getElementById('__capturePanel')) {return;} // already mounted
 
       const panel = document.createElement('div');
       panel.id = '__capturePanel';
@@ -1410,7 +1416,7 @@
         tabsRow.style.display = window.__panelMinimized ? 'none' : 'flex';
         bodyEl.style.display = window.__panelMinimized ? 'none' : 'block';
         footerEl.style.display = window.__panelMinimized ? 'none' : 'block';
-        if (!window.__panelMinimized) safe(refreshPanel, 'refreshPanel/restore');
+        if (!window.__panelMinimized) {safe(refreshPanel, 'refreshPanel/restore');}
       });
       header.appendChild(minBtn);
       panel.appendChild(header);
@@ -1450,7 +1456,7 @@
       auditBtn.title = 'Turn passive capture (recording every request the site itself makes) on or off. Gather and Download work either way.';
       auditBtn.style.cssText = baseStyle;
       auditBtn.addEventListener('click', () => safe(() => {
-        if (auditingEnabled) uninstallPatches(); else installPatches();
+        if (auditingEnabled) {uninstallPatches();} else {installPatches();}
         refreshPanel();
       }, 'auditing toggle click'));
       toolbar.appendChild(auditBtn);
