@@ -38,13 +38,12 @@ _Note: Greasemonkey is also available for [Firefox](https://addons.mozilla.org/e
 
 ### Step 2: Install Userscripts
 
-1. Browse the `_dist/` directory — it contains the latest built versions of every script
-2. Click on a `.user.js` file
-3. Click the "Raw" button on GitHub
-4. Your userscript manager should prompt you to install it
-5. Confirm the installation
+1. Open the [latest release](https://github.com/warthurton/userscripts/releases/latest)
+2. Download a `.user.js` asset or open its download link
+3. Your userscript manager should prompt you to install it
+4. Confirm the installation
 
-Scripts auto-update: `@updateURL` points to a lightweight `.meta.js` file for version checks, and `@downloadURL` points to the full `.user.js` in `_dist/`.
+Scripts auto-update: `@updateURL` points to a lightweight `.meta.js` release asset for version checks, and `@downloadURL` points to the full `.user.js` release asset.
 
 **Note for Safari users:** Userscripts for Safari has a different installation process. See the [Userscripts usage documentation](https://github.com/quoid/userscripts?tab=readme-ov-file#usage) for detailed instructions.
 
@@ -93,8 +92,8 @@ For the development workflow and build system, see [DEVELOPMENT.md](DEVELOPMENT.
    - `@name` - The name of your script
    - `@description` - What your script does
    - `@match` - URLs where the script should run
-3. Set `@updateURL` to `https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/<name>.meta.js`
-4. Set `@downloadURL` to `https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/<name>.user.js`
+3. Set `@updateURL` to `https://github.com/warthurton/userscripts/releases/latest/download/<name>.meta.js`
+4. Set `@downloadURL` to `https://github.com/warthurton/userscripts/releases/latest/download/<name>.user.js`
 5. Write your JavaScript code
 6. Save with `.user.js` extension
 7. Install in your userscript manager for testing
@@ -110,7 +109,7 @@ For the development workflow and build system, see [DEVELOPMENT.md](DEVELOPMENT.
 ## Usage Tips
 
 - Scripts auto-update via `@updateURL` / `@downloadURL` in your userscript manager
-- All updates ship from the `_dist/` directory on the `main` branch
+- All updates ship as assets on GitHub Releases
 - Version bumps happen automatically when changes merge to `main`
 
 ## Syncing Across Browsers

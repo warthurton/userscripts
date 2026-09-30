@@ -11,7 +11,7 @@ Thank you for your interest in contributing! This guide will help you add new us
 
 2. **Script Requirements**
    - Must include complete metadata header
-   - Must include autoupdate URLs (`@updateURL` and `@downloadURL`) pointing to `_dist/`
+   - Must include autoupdate URLs (`@updateURL` and `@downloadURL`) pointing to the latest GitHub release
    - Must use `.user.js` extension
    - Must be well-commented
    - Should handle errors gracefully
@@ -38,8 +38,8 @@ Thank you for your interest in contributing! This guide will help you add new us
    // @author       warthurton
    // @match        https://example.com/*
    // @icon         https://favicons-blue.vercel.app/?domain=example.com
-   // @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/<name>.meta.js
-   // @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/<name>.user.js
+   // @updateURL    https://github.com/warthurton/userscripts/releases/latest/download/<name>.meta.js
+   // @downloadURL  https://github.com/warthurton/userscripts/releases/latest/download/<name>.user.js
    // @grant        none
    // ==/UserScript==
    ```
@@ -49,10 +49,10 @@ Thank you for your interest in contributing! This guide will help you add new us
 - Purpose: Ensure script managers (Violentmonkey/FireMonkey/Tampermonkey) can automatically detect and install updates.
 - Required fields: `@updateURL` and `@downloadURL` must always be present.
 - URL format:
-  - `@updateURL` → `https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/<name>.meta.js`
-  - `@downloadURL` → `https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/<name>.user.js`
+  - `@updateURL` → `https://github.com/warthurton/userscripts/releases/latest/download/<name>.meta.js`
+  - `@downloadURL` → `https://github.com/warthurton/userscripts/releases/latest/download/<name>.user.js`
   - `<name>` is the script filename without `.user.js` (e.g. `auto-close` for `auto-close.user.js`)
-- The build script rewrites these URLs in `_dist/`, so they just need to be present in source files.
+- The build script rewrites these URLs in the published release assets, so they just need to be present in source files.
 - Do not omit or comment out these lines; they must be included upon script creation.
 
 ### Favicons / Icons

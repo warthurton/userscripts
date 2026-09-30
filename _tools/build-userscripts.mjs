@@ -25,8 +25,7 @@ const DIST = join(ROOT, "_dist");
 
 const OWNER = "warthurton";
 const REPO = "userscripts";
-const BRANCH = "main";
-const RAW_BASE = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}`;
+const RELEASE_BASE = `https://github.com/${OWNER}/${REPO}/releases/latest/download`;
 
 const SOURCE_DIRS = [
   "autotask",
@@ -101,8 +100,8 @@ for (const s of scripts) {
   const distUserPath = join(DIST, s.file);
   const distMetaPath = join(DIST, `${baseName}.meta.js`);
 
-  const metaUrl = `${RAW_BASE}/_dist/${baseName}.meta.js`;
-  const dlUrl = `${RAW_BASE}/_dist/${s.file}`;
+  const metaUrl = `${RELEASE_BASE}/${baseName}.meta.js`;
+  const dlUrl = `${RELEASE_BASE}/${s.file}`;
 
   // Rewrite URLs first (before content comparison)
   code = code.replace(
@@ -137,25 +136,40 @@ for (const s of scripts) {
       `$1\n// @modified     ${isoNow}`,
     );
 
-    writeFileSync(distUserPath, code, "utf8");
-
-    const metaBlock = code.match(
-      /(\/\/ ==UserScript==[\s\S]*?\/\/ ==\/UserScript==)/,
-    );
-    if (metaBlock) {
-      writeFileSync(distMetaPath, metaBlock[1] + "\n", "utf8");
-    }
-
     const oldVer = readExistingVersion(distUserPath);
     console.log(
       `  CHANGED  ${s.dir}/${s.file} → ${dateVersion}${oldVer && oldVer !== dateVersion ? ` (was ${oldVer})` : ""}`,
     );
     changed++;
   } else {
+    code = existingDist
+      .replace(
+        /(\/\/\s*@updateURL)\s+.+/,
+        `// @updateURL    ${metaUrl}`,
+      )
+      .replace(
+        /(\/\/\s*@downloadURL)\s+.+/,
+        `// @downloadURL  ${dlUrl}`,
+      );
     console.log(
       `  unchanged  ${s.dir}/${s.file} (${readExistingVersion(distUserPath)})`,
     );
     unchanged++;
+  }
+
+  if (code !== existingDist) writeFileSync(distUserPath, code, "utf8");
+
+  const metaBlock = code.match(
+    /(\/\/ ==UserScript==[\s\S]*?\/\/ ==\/UserScript==)/,
+  );
+  if (metaBlock) {
+    const metaCode = metaBlock[1] + "\n";
+    const existingMeta = existsSync(distMetaPath)
+      ? readFileSync(distMetaPath, "utf8")
+      : null;
+    if (existingMeta !== metaCode) {
+      writeFileSync(distMetaPath, metaCode, "utf8");
+    }
   }
 }
 
