@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Autotask - Ajax & Form Field Tracker
 // @namespace    https://github.com/warthurton/userscripts
-// @version      2026.0420.2230
-// @modified     2026-04-20T22:30:04.230Z
+// @version      2026.1008.1930
+// @modified     2026-10-08T19:30:52.609Z
 // @description  Tracks all Ajax calls and form fields in Autotask. Toggle tracking with checkbox, data persists across refreshes and can be downloaded as zip.
 // @author       warthurton
 // @match        https://ww*.autotask.net/*
@@ -13,18 +13,19 @@
 // @grant        GM_registerMenuCommand
 // @grant        GM_addStyle
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js
-// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/ajax-tracker.meta.js
-// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/ajax-tracker.user.js
+// @updateURL    https://github.com/warthurton/userscripts/releases/latest/download/ajax-tracker.meta.js
+// @downloadURL  https://github.com/warthurton/userscripts/releases/latest/download/ajax-tracker.user.js
 // @homepageURL  https://github.com/warthurton/userscripts
 // @supportURL   https://github.com/warthurton/userscripts/issues
 // ==/UserScript==
+
+/* global JSZip */
 
 (function () {
   "use strict";
 
   const DEBUG = true;
-  const log = (...args) =>
-    DEBUG && console.log("[Autotask Ajax Tracker]", ...args);
+  const log = (...args) => DEBUG && console.log("[Autotask Ajax Tracker]", ...args);
 
   const STORAGE_KEYS = {
     enabled: "autotask_ajax_tracker_enabled",
@@ -48,14 +49,11 @@
   function generateSessionId() {
     // Prefer cryptographically secure randomness when available
     let randomPart;
-    if (
-      typeof crypto !== "undefined" &&
-      typeof crypto.getRandomValues === "function"
-    ) {
+    if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
       const bytes = new Uint8Array(16);
       crypto.getRandomValues(bytes);
       randomPart = Array.from(bytes)
-        .map((b) => b.toString(16).padStart(2, "0"))
+        .map(b => b.toString(16).padStart(2, "0"))
         .join("")
         .slice(0, 9);
     } else {
@@ -112,7 +110,9 @@
 
   // Save current page data to session storage
   function savePageData() {
-    if (!isEnabled) return;
+    if (!isEnabled) {
+      return;
+    }
 
     const sessionId = getSessionId();
     const key = STORAGE_KEYS.sessionData + sessionId;
@@ -176,19 +176,12 @@
               status: this.status,
               statusText: this.statusText,
               responseHeaders: this.getAllResponseHeaders(),
-              responseText: this.responseText
-                ? this.responseText.substring(0, 50000)
-                : "", // Limit size
+              responseText: this.responseText ? this.responseText.substring(0, 50000) : "", // Limit size
               responseURL: this.responseURL,
               completedAt: new Date().toISOString(),
             };
             currentPageData.ajaxCalls.push(ajaxCall);
-            log(
-              "XHR completed:",
-              ajaxCall.method,
-              ajaxCall.url,
-              ajaxCall.status,
-            );
+            log("XHR completed:", ajaxCall.method, ajaxCall.url, ajaxCall.status);
           }
         });
       }
@@ -218,14 +211,14 @@
 
         return originalFetch
           .apply(this, arguments)
-          .then((response) => {
+          .then(response => {
             if (isEnabled) {
               // Clone response to read it without consuming
               const clonedResponse = response.clone();
 
               clonedResponse
                 .text()
-                .then((text) => {
+                .then(text => {
                   const ajaxCall = {
                     ...trackingData,
                     status: response.status,
@@ -238,21 +231,16 @@
                     completedAt: new Date().toISOString(),
                   };
                   currentPageData.ajaxCalls.push(ajaxCall);
-                  log(
-                    "Fetch completed:",
-                    ajaxCall.method,
-                    ajaxCall.url,
-                    ajaxCall.status,
-                  );
+                  log("Fetch completed:", ajaxCall.method, ajaxCall.url, ajaxCall.status);
                 })
-                .catch((err) => {
+                .catch(err => {
                   log("Error reading fetch response:", err);
                 });
             }
 
             return response;
           })
-          .catch((err) => {
+          .catch(err => {
             log("Fetch error:", err);
             throw err;
           });
@@ -264,30 +252,26 @@
 
   // Capture ASP.NET ViewState and EventValidation
   function captureViewState() {
-    if (!isEnabled) return;
+    if (!isEnabled) {
+      return;
+    }
 
     const viewState = document.querySelector('input[name="__VIEWSTATE"]');
-    const eventValidation = document.querySelector(
-      'input[name="__EVENTVALIDATION"]',
-    );
-    const viewStateGenerator = document.querySelector(
-      'input[name="__VIEWSTATEGENERATOR"]',
-    );
+    const eventValidation = document.querySelector('input[name="__EVENTVALIDATION"]');
+    const viewStateGenerator = document.querySelector('input[name="__VIEWSTATEGENERATOR"]');
 
     currentPageData.viewState = viewState ? viewState.value : null;
-    currentPageData.eventValidation = eventValidation
-      ? eventValidation.value
-      : null;
-    currentPageData.viewStateGenerator = viewStateGenerator
-      ? viewStateGenerator.value
-      : null;
+    currentPageData.eventValidation = eventValidation ? eventValidation.value : null;
+    currentPageData.viewStateGenerator = viewStateGenerator ? viewStateGenerator.value : null;
 
     log("Captured ViewState:", currentPageData.viewState ? "Yes" : "No");
   }
 
   // Track form fields
   function trackFormFields() {
-    if (!isEnabled) return;
+    if (!isEnabled) {
+      return;
+    }
 
     const forms = document.querySelectorAll("form");
     forms.forEach((form, formIndex) => {
@@ -295,7 +279,7 @@
       currentPageData.formFields[formId] = {};
 
       const inputs = form.querySelectorAll("input, select, textarea");
-      inputs.forEach((input) => {
+      inputs.forEach(input => {
         const fieldName = input.name || input.id || `field_${input.type}`;
         let fieldValue = input.value;
 
@@ -316,14 +300,16 @@
         "Tracked form:",
         formId,
         Object.keys(currentPageData.formFields[formId]).length,
-        "fields",
+        "fields"
       );
     });
   }
 
   // Capture page information
   function capturePageInfo() {
-    if (!isEnabled) return;
+    if (!isEnabled) {
+      return;
+    }
 
     currentPageData.pageInfo = {
       title: document.title,
@@ -339,11 +325,13 @@
 
   // Monitor for form field changes
   function monitorFormChanges() {
-    if (!isEnabled) return;
+    if (!isEnabled) {
+      return;
+    }
 
     document.addEventListener(
       "change",
-      (e) => {
+      e => {
         if (
           isEnabled &&
           (e.target.tagName === "INPUT" ||
@@ -351,16 +339,13 @@
             e.target.tagName === "TEXTAREA")
         ) {
           const form = e.target.closest("form");
-          const formId = form
-            ? form.id || form.name || "unknown_form"
-            : "no_form";
+          const formId = form ? form.id || form.name || "unknown_form" : "no_form";
 
           if (!currentPageData.formFields[formId]) {
             currentPageData.formFields[formId] = {};
           }
 
-          const fieldName =
-            e.target.name || e.target.id || `field_${e.target.type}`;
+          const fieldName = e.target.name || e.target.id || `field_${e.target.type}`;
           let fieldValue = e.target.value;
 
           if (e.target.type === "password") {
@@ -378,7 +363,7 @@
           log("Form field changed:", formId, fieldName);
         }
       },
-      true,
+      true
     );
   }
 
@@ -428,9 +413,7 @@
       }
 
       if (sessionData.length === 0) {
-        alert(
-          "No session data to export. Enable tracking and perform some actions first.",
-        );
+        alert("No session data to export. Enable tracking and perform some actions first.");
         return;
       }
 
@@ -450,21 +433,13 @@
 
       // Add each page's data
       sessionData.forEach((pageData, index) => {
-        const pageFolder = zip.folder(
-          `page_${index + 1}_${pageData.timestamp.replace(/:/g, "-")}`,
-        );
+        const pageFolder = zip.folder(`page_${index + 1}_${pageData.timestamp.replace(/:/g, "-")}`);
 
         // Page info
-        pageFolder.file(
-          "page-info.json",
-          JSON.stringify(pageData.pageInfo || {}, null, 2),
-        );
+        pageFolder.file("page-info.json", JSON.stringify(pageData.pageInfo || {}, null, 2));
 
         // Form fields
-        pageFolder.file(
-          "form-fields.json",
-          JSON.stringify(pageData.formFields || {}, null, 2),
-        );
+        pageFolder.file("form-fields.json", JSON.stringify(pageData.formFields || {}, null, 2));
 
         // ViewState
         if (pageData.viewState || pageData.eventValidation) {
@@ -477,8 +452,8 @@
                 viewStateGenerator: pageData.viewStateGenerator,
               },
               null,
-              2,
-            ),
+              2
+            )
           );
         }
 
@@ -488,7 +463,7 @@
           pageData.ajaxCalls.forEach((call, callIndex) => {
             ajaxFolder.file(
               `call_${callIndex + 1}_${call.method}_${call.timestamp.replace(/:/g, "-")}.json`,
-              JSON.stringify(call, null, 2),
+              JSON.stringify(call, null, 2)
             );
           });
         }
@@ -547,9 +522,7 @@
 
   // Start new session
   function startNewSession() {
-    if (
-      !confirm("Start a new tracking session? Current session will be saved.")
-    ) {
+    if (!confirm("Start a new tracking session? Current session will be saved.")) {
       return;
     }
 
@@ -607,38 +580,28 @@
     document.body.appendChild(container);
 
     // Event listeners
-    document
-      .getElementById("ajax-tracker-enabled")
-      .addEventListener("change", (e) => {
-        setEnabled(e.target.checked);
-      });
+    document.getElementById("ajax-tracker-enabled").addEventListener("change", e => {
+      setEnabled(e.target.checked);
+    });
 
-    document
-      .getElementById("ajax-tracker-export")
-      .addEventListener("click", (e) => {
-        e.preventDefault();
-        exportSessionData().catch((err) => log("Export error:", err));
-      });
-    document
-      .getElementById("ajax-tracker-clear")
-      .addEventListener("click", clearSessionData);
-    document
-      .getElementById("ajax-tracker-new-session")
-      .addEventListener("click", startNewSession);
+    document.getElementById("ajax-tracker-export").addEventListener("click", e => {
+      e.preventDefault();
+      exportSessionData().catch(err => log("Export error:", err));
+    });
+    document.getElementById("ajax-tracker-clear").addEventListener("click", clearSessionData);
+    document.getElementById("ajax-tracker-new-session").addEventListener("click", startNewSession);
 
-    document
-      .querySelector(".ajax-tracker-toggle")
-      .addEventListener("click", () => {
-        const body = document.querySelector(".ajax-tracker-body");
-        const toggle = document.querySelector(".ajax-tracker-toggle");
-        if (body.style.display === "none") {
-          body.style.display = "block";
-          toggle.textContent = "−";
-        } else {
-          body.style.display = "none";
-          toggle.textContent = "+";
-        }
-      });
+    document.querySelector(".ajax-tracker-toggle").addEventListener("click", () => {
+      const body = document.querySelector(".ajax-tracker-body");
+      const toggle = document.querySelector(".ajax-tracker-toggle");
+      if (body.style.display === "none") {
+        body.style.display = "block";
+        toggle.textContent = "−";
+      } else {
+        body.style.display = "none";
+        toggle.textContent = "+";
+      }
+    });
 
     log("UI created");
   }
@@ -649,11 +612,15 @@
     const ajaxCountEl = document.getElementById("ajax-tracker-ajax-count");
     const formCountEl = document.getElementById("ajax-tracker-form-count");
 
-    if (sessionIdEl)
+    if (sessionIdEl) {
       sessionIdEl.textContent = getSessionId().substr(0, 20) + "...";
-    if (ajaxCountEl) ajaxCountEl.textContent = currentPageData.ajaxCalls.length;
-    if (formCountEl)
+    }
+    if (ajaxCountEl) {
+      ajaxCountEl.textContent = currentPageData.ajaxCalls.length;
+    }
+    if (formCountEl) {
       formCountEl.textContent = Object.keys(currentPageData.formFields).length;
+    }
   }
 
   // Periodically update UI
@@ -785,10 +752,7 @@
     log("JSZip available:", typeof JSZip !== "undefined");
     log("GM_getValue available:", typeof GM_getValue === "function");
     log("GM_setValue available:", typeof GM_setValue === "function");
-    log(
-      "GM_registerMenuCommand available:",
-      typeof GM_registerMenuCommand === "function",
-    );
+    log("GM_registerMenuCommand available:", typeof GM_registerMenuCommand === "function");
 
     // Check enabled state
     isEnabled = getEnabled();
@@ -841,7 +805,7 @@
   if (typeof GM_registerMenuCommand === "function") {
     GM_registerMenuCommand("Export Session Data", () => {
       log("Menu: Export Session Data clicked");
-      exportSessionData().catch((err) => {
+      exportSessionData().catch(err => {
         log("Menu export error:", err);
         alert("Export failed: " + err.message);
       });

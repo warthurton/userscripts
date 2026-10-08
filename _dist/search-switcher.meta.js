@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Minimal Search Switcher: Google <-> Bing <-> DuckDuckGo
 // @namespace    https://github.com/warthurton/userscripts
-// @version      2026.0429.1725
-// @modified     2026-04-29T17:25:26.203Z
+// @version      2026.1008.1930
+// @modified     2026-10-08T19:30:52.609Z
 // @description  Switch between Google, Bing, and DuckDuckGo search engines
 // @author       warthurton
 // @match        https://www.google.com/search*
@@ -20,8 +20,8 @@
 // @compatible   firefox            Violentmonkey 3.0+ (full compatibility)
 // @compatible   safari             Userscripts for Safari 1.0+ (full compatibility; use Safari 15+)
 // @compatible   chrome             Chromium 90+ via Violentmonkey/TamperMonkey (full support)
-// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/search-switcher.meta.js
-// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/search-switcher.user.js
+// @updateURL    https://github.com/warthurton/userscripts/releases/latest/download/search-switcher.meta.js
+// @downloadURL  https://github.com/warthurton/userscripts/releases/latest/download/search-switcher.user.js
 // @homepageURL  https://github.com/warthurton/userscripts
 // @supportURL   https://github.com/warthurton/userscripts/issues
 // ==/UserScript==

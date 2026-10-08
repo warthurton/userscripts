@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Autotask - Close Tab Button
 // @namespace    https://github.com/warthurton/userscripts
-// @version      2026.0420.2230
-// @modified     2026-04-20T22:30:04.230Z
+// @version      2026.1008.1930
+// @modified     2026-10-08T19:30:52.609Z
 // @description  Adds a subtle Close Tab button to Autotask detail pages. Matches *Detail.mvc by default with configurable exclusions.
 // @author       warthurton
 // @match        https://ww*.autotask.net/Mvc/*Detail.mvc*
@@ -12,11 +12,13 @@
 // @grant        GM_setValue
 // @grant        GM_registerMenuCommand
 // @grant        GM_addStyle
-// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/close-tab-button.meta.js
-// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/close-tab-button.user.js
+// @updateURL    https://github.com/warthurton/userscripts/releases/latest/download/close-tab-button.meta.js
+// @downloadURL  https://github.com/warthurton/userscripts/releases/latest/download/close-tab-button.user.js
 // @homepageURL  https://github.com/warthurton/userscripts
 // @supportURL   https://github.com/warthurton/userscripts/issues
 // ==/UserScript==
+
+/* global isDebugEnabled */
 
 (function () {
   "use strict";
@@ -33,22 +35,20 @@
 
   function getExcluded() {
     log("Reading excluded patterns");
-    const raw =
-      typeof GM_getValue === "function"
-        ? GM_getValue(STORAGE_KEYS.excluded, "")
-        : "";
+    const raw = typeof GM_getValue === "function" ? GM_getValue(STORAGE_KEYS.excluded, "") : "";
     log("Excluded raw:", raw);
     return String(raw)
       .split(/\n|,|\s+/)
-      .map((s) => s.trim())
+      .map(s => s.trim())
       .filter(Boolean);
   }
 
   function saveExcluded(list) {
     log("Saving excluded patterns:", list);
     const raw = list.join("\n");
-    if (typeof GM_setValue === "function")
+    if (typeof GM_setValue === "function") {
       GM_setValue(STORAGE_KEYS.excluded, raw);
+    }
   }
 
   function isExcluded(url) {
@@ -59,7 +59,7 @@
       log("No exclusion patterns defined");
       return false;
     }
-    return patterns.some((p) => {
+    return patterns.some(p => {
       // Escape special regex chars except *, then convert * to .*
       const escaped = p.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
       const pattern = escaped.replace(/\*/g, ".*");
@@ -98,16 +98,16 @@
     document.documentElement.appendChild(overlay);
 
     const ta = overlay.querySelector("textarea");
-    overlay
-      .querySelector(".close")
-      .addEventListener("click", () => overlay.remove());
-    overlay.addEventListener("click", (e) => {
-      if (e.target === overlay) overlay.remove();
+    overlay.querySelector(".close").addEventListener("click", () => overlay.remove());
+    overlay.addEventListener("click", e => {
+      if (e.target === overlay) {
+        overlay.remove();
+      }
     });
     overlay.querySelector(".save").addEventListener("click", () => {
       const list = String(ta.value)
         .split(/\n|,|\s+/)
-        .map((s) => s.trim())
+        .map(s => s.trim())
         .filter(Boolean);
       saveExcluded(list);
       const debugChecked = overlay.querySelector("#cb-debug").checked;
@@ -128,8 +128,9 @@
       .at-close-modal button { background: #1565c0; color: #fff; border: none; border-radius: 6px; padding: 8px 12px; cursor: pointer; }
       .at-close-modal .close { background: #666; }
     `;
-    if (typeof GM_addStyle === "function") GM_addStyle(style);
-    else {
+    if (typeof GM_addStyle === "function") {
+      GM_addStyle(style);
+    } else {
       const s = document.createElement("style");
       s.textContent = style;
       document.head.appendChild(s);
@@ -172,12 +173,13 @@
 
   // Find and place button in TitleBar
   function placeButton() {
-    if (buttonPlaced) return;
+    if (buttonPlaced) {
+      return;
+    }
 
     log("Searching for TitleBar elements");
     const titleSelector = "div.PageHeadingContainer div.TitleBarItem.Title";
-    const toolbarSelector =
-      "div.PageHeadingContainer div.TitleBarItem.TitleBarToolbar";
+    const toolbarSelector = "div.PageHeadingContainer div.TitleBarItem.TitleBarToolbar";
     const titleEl = document.querySelector(titleSelector);
     const toolbarEl = document.querySelector(toolbarSelector);
 
@@ -215,24 +217,25 @@
       log("Close button clicked");
       try {
         window.close();
-      } catch {}
+      } catch {} // eslint-disable-line no-empty
       try {
         self.close();
-      } catch {}
+      } catch {} // eslint-disable-line no-empty
       try {
         const w = window.open("", "_self");
-        if (w) w.close();
-      } catch {}
+        if (w) {
+          w.close();
+        }
+      } catch {} // eslint-disable-line no-empty
       try {
         location.href = "about:blank";
-      } catch {}
+      } catch {} // eslint-disable-line no-empty
     });
 
     container.appendChild(btn);
 
     // Place container at the leftmost position in the TitleBar
-    const titleBar =
-      target.closest("div.TitleBar.TitleBarNavigation") || target.parentElement;
+    const titleBar = target.closest("div.TitleBar.TitleBarNavigation") || target.parentElement;
     if (titleBar) {
       titleBar.insertBefore(container, titleBar.firstChild);
     } else {
@@ -254,26 +257,28 @@
   // Helper to check if element exists in node tree
   function findElementInNode(node, selector) {
     if (node.nodeType === Node.ELEMENT_NODE) {
-      if (typeof node.matches === "function" && node.matches(selector))
+      if (typeof node.matches === "function" && node.matches(selector)) {
         return node;
-      if (typeof node.querySelector === "function")
+      }
+      if (typeof node.querySelector === "function") {
         return node.querySelector(selector);
+      }
     }
     return null;
   }
 
   // Observer callback
-  function handleTitleBarMutations(mutationsList, obs) {
+  function handleTitleBarMutations(mutationsList, _obs) {
     for (const mutation of mutationsList) {
       if (mutation.type === "childList" && mutation.addedNodes.length > 0) {
         for (const node of mutation.addedNodes) {
           const foundTitle = findElementInNode(
             node,
-            "div.PageHeadingContainer div.TitleBarItem.Title",
+            "div.PageHeadingContainer div.TitleBarItem.Title"
           );
           const foundToolbar = findElementInNode(
             node,
-            "div.PageHeadingContainer div.TitleBarItem.TitleBarToolbar",
+            "div.PageHeadingContainer div.TitleBarItem.TitleBarToolbar"
           );
           if (foundTitle || foundToolbar) {
             log("TitleBar element detected in mutation");
@@ -288,7 +293,9 @@
   // Start watching for TitleBar
   function startTitleBarObserver() {
     log("Starting TitleBar observer");
-    if (titleBarObserver) titleBarObserver.disconnect();
+    if (titleBarObserver) {
+      titleBarObserver.disconnect();
+    }
     titleBarObserver = new MutationObserver(handleTitleBarMutations);
     titleBarObserver.observe(document.body, { childList: true, subtree: true });
   }
@@ -344,7 +351,9 @@
 
   // Cleanup on unload
   window.addEventListener("unload", () => {
-    if (titleBarObserver) titleBarObserver.disconnect();
+    if (titleBarObserver) {
+      titleBarObserver.disconnect();
+    }
     log("Cleaned up on unload");
   });
 })();

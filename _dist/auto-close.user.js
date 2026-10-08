@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Auto Close Page (Countdown)
 // @namespace    https://github.com/warthurton/userscripts
-// @version      2026.0420.2230
-// @modified     2026-04-20T22:30:04.230Z
+// @version      2026.1008.1930
+// @modified     2026-10-08T19:30:52.609Z
 // @description  Automatically closes pages after a configurable countdown for configured domains. Includes an in-page settings UI and quick add menu commands.
 // @author       warthurton
 // @match        *://*/*
@@ -11,8 +11,8 @@
 // @grant        GM_setValue
 // @grant        GM_registerMenuCommand
 // @grant        GM_addStyle
-// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/auto-close.meta.js
-// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/auto-close.user.js
+// @updateURL    https://github.com/warthurton/userscripts/releases/latest/download/auto-close.meta.js
+// @downloadURL  https://github.com/warthurton/userscripts/releases/latest/download/auto-close.user.js
 // @homepageURL  https://github.com/warthurton/userscripts
 // @supportURL   https://github.com/warthurton/userscripts/issues
 // ==/UserScript==
@@ -34,18 +34,20 @@
   function parseDomains(text) {
     return String(text)
       .split(/\n|,|\s+/)
-      .map((s) => s.trim().toLowerCase())
+      .map(s => s.trim().toLowerCase())
       .filter(Boolean);
   }
 
   function saveDomains(key, domains) {
     const raw = domains.join("\n");
-    if (typeof GM_setValue === "function") GM_setValue(key, raw);
+    if (typeof GM_setValue === "function") {
+      GM_setValue(key, raw);
+    }
   }
 
   function hostnameMatchesList(hostname, list) {
     const h = hostname.toLowerCase();
-    return list.some((d) => {
+    return list.some(d => {
       const domain = d.toLowerCase();
       return h === domain || h.endsWith("." + domain);
     });
@@ -57,16 +59,26 @@
     const d30 = getStoredDomains(STORAGE_KEYS.d30);
     const d120 = getStoredDomains(STORAGE_KEYS.d120);
 
-    if (hostnameMatchesList(h, d5)) return 5;
-    if (hostnameMatchesList(h, d30)) return 30;
-    if (hostnameMatchesList(h, d120)) return 120;
+    if (hostnameMatchesList(h, d5)) {
+      return 5;
+    }
+    if (hostnameMatchesList(h, d30)) {
+      return 30;
+    }
+    if (hostnameMatchesList(h, d120)) {
+      return 120;
+    }
     return null;
   }
 
   function assignHostToDuration(hostname, newSeconds) {
-    if (![5, 30, 120].includes(newSeconds)) return;
+    if (![5, 30, 120].includes(newSeconds)) {
+      return;
+    }
     const host = (hostname || "").toLowerCase();
-    if (!host) return;
+    if (!host) {
+      return;
+    }
 
     const lists = {
       5: getStoredDomains(STORAGE_KEYS.d5),
@@ -75,7 +87,7 @@
     };
 
     for (const k of [5, 30, 120]) {
-      lists[k] = lists[k].filter((d) => d !== host);
+      lists[k] = lists[k].filter(d => d !== host);
     }
 
     lists[newSeconds].push(host);
@@ -125,8 +137,9 @@
       .acp-actions button { background: #1565c0; color: #fff; border: none; border-radius: 6px; padding: 8px 12px; cursor: pointer; }
       .acp-actions .acp-dismiss { background: #666; }
     `;
-    if (typeof GM_addStyle === "function") GM_addStyle(style);
-    else {
+    if (typeof GM_addStyle === "function") {
+      GM_addStyle(style);
+    } else {
       const s = document.createElement("style");
       s.textContent = style;
       document.head.appendChild(s);
@@ -141,16 +154,18 @@
     settingsBtn.addEventListener("click", openSettingsModal);
     if (selectEl) {
       // preselect current seconds bucket (5/30/120)
-      const pre = [5, 30, 120].includes(Number(seconds))
-        ? String(seconds)
-        : "120";
+      const pre = [5, 30, 120].includes(Number(seconds)) ? String(seconds) : "120";
       selectEl.value = pre;
     }
     if (saveBtn) {
       saveBtn.addEventListener("click", () => {
-        if (!selectEl) return;
+        if (!selectEl) {
+          return;
+        }
         const val = Number(selectEl.value);
-        if (![5, 30, 120].includes(val)) return;
+        if (![5, 30, 120].includes(val)) {
+          return;
+        }
         onSaveDuration && onSaveDuration(val);
       });
     }
@@ -207,8 +222,10 @@
       backdrop.remove();
     }
     closeBtn.addEventListener("click", close);
-    backdrop.addEventListener("click", (e) => {
-      if (e.target === backdrop) close();
+    backdrop.addEventListener("click", e => {
+      if (e.target === backdrop) {
+        close();
+      }
     });
 
     saveBtn.addEventListener("click", () => {
@@ -226,23 +243,27 @@
     // Try several strategies to close the tab in user agents that restrict window.close()
     try {
       window.close();
-    } catch {}
+    } catch {} // eslint-disable-line no-empty
     try {
       self.close();
-    } catch {}
+    } catch {} // eslint-disable-line no-empty
     try {
       const w = window.open("", "_self");
-      if (w) w.close();
-    } catch {}
+      if (w) {
+        w.close();
+      }
+    } catch {} // eslint-disable-line no-empty
     // As a last resort, navigate away (user can close then)
     try {
       location.href = "about:blank";
-    } catch {}
+    } catch {} // eslint-disable-line no-empty
   }
 
   function startCountdown() {
     const matchedSeconds = getMatchedCountdownSeconds();
-    if (matchedSeconds === null) return;
+    if (matchedSeconds === null) {
+      return;
+    }
 
     let seconds = matchedSeconds;
     let cancelled = false;
@@ -253,13 +274,15 @@
         cancelled = true;
         removeBanner();
       },
-      (newSeconds) => {
+      newSeconds => {
         assignHostToDuration(location.hostname || "", newSeconds);
 
         // Reset countdown to the chosen value
         seconds = newSeconds;
-        if (countBtn) countBtn.textContent = `${seconds}s`;
-      },
+        if (countBtn) {
+          countBtn.textContent = `${seconds}s`;
+        }
+      }
     );
 
     const interval = setInterval(() => {
@@ -268,7 +291,9 @@
         return;
       }
       seconds -= 1;
-      if (countBtn) countBtn.textContent = `${seconds}s`;
+      if (countBtn) {
+        countBtn.textContent = `${seconds}s`;
+      }
       if (seconds <= 0) {
         clearInterval(interval);
         attemptClose();
@@ -277,19 +302,21 @@
 
     function removeBanner() {
       const b = document.getElementById("auto-close-banner");
-      if (b) b.remove();
+      if (b) {
+        b.remove();
+      }
     }
 
     // Allow ESC to cancel
     window.addEventListener(
       "keydown",
-      (e) => {
+      e => {
         if (e.key === "Escape") {
           cancelled = true;
           removeBanner();
         }
       },
-      { once: true },
+      { once: true }
     );
   }
 
@@ -313,6 +340,9 @@
   }
 
   // Ensure we start after the page is fully loaded
-  if (document.readyState === "complete") onLoadThenStart();
-  else window.addEventListener("load", onLoadThenStart, { once: true });
+  if (document.readyState === "complete") {
+    onLoadThenStart();
+  } else {
+    window.addEventListener("load", onLoadThenStart, { once: true });
+  }
 })();

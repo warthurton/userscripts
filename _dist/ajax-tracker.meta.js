@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Autotask - Ajax & Form Field Tracker
 // @namespace    https://github.com/warthurton/userscripts
-// @version      2026.0420.2230
-// @modified     2026-04-20T22:30:04.230Z
+// @version      2026.1008.1930
+// @modified     2026-10-08T19:30:52.609Z
 // @description  Tracks all Ajax calls and form fields in Autotask. Toggle tracking with checkbox, data persists across refreshes and can be downloaded as zip.
 // @author       warthurton
 // @match        https://ww*.autotask.net/*
@@ -13,8 +13,8 @@
 // @grant        GM_registerMenuCommand
 // @grant        GM_addStyle
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js
-// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/ajax-tracker.meta.js
-// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/ajax-tracker.user.js
+// @updateURL    https://github.com/warthurton/userscripts/releases/latest/download/ajax-tracker.meta.js
+// @downloadURL  https://github.com/warthurton/userscripts/releases/latest/download/ajax-tracker.user.js
 // @homepageURL  https://github.com/warthurton/userscripts
 // @supportURL   https://github.com/warthurton/userscripts/issues
 // ==/UserScript==

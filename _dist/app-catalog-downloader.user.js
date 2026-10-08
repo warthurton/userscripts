@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Microsoft Defender - App Catalog Downloader
 // @namespace    https://github.com/warthurton/userscripts
-// @version      2026.0420.2230
-// @modified     2026-04-20T22:30:04.230Z
+// @version      2026.1008.1930
+// @modified     2026-10-08T19:30:52.609Z
 // @description  Captures app catalog API responses on the Microsoft Defender for Cloud Apps page and downloads them as individual JSON files in a ZIP
 // @author       warthurton
 // @match        https://security.microsoft.com/cloudapps/app-catalog*
@@ -10,11 +10,13 @@
 // @grant        none
 // @run-at       document-start
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js
-// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/app-catalog-downloader.meta.js
-// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/app-catalog-downloader.user.js
+// @updateURL    https://github.com/warthurton/userscripts/releases/latest/download/app-catalog-downloader.meta.js
+// @downloadURL  https://github.com/warthurton/userscripts/releases/latest/download/app-catalog-downloader.user.js
 // @homepageURL  https://github.com/warthurton/userscripts
 // @supportURL   https://github.com/warthurton/userscripts/issues
 // ==/UserScript==
+
+/* global JSZip */
 
 (function () {
   "use strict";
@@ -54,7 +56,7 @@
         response
           .clone()
           .json()
-          .then((data) => {
+          .then(data => {
             capturedData[skip] = data;
             updateStatus();
           })
@@ -121,7 +123,9 @@
    * Updates the captured page count shown in the panel.
    */
   function updateStatus() {
-    if (!statusEl) return;
+    if (!statusEl) {
+      return;
+    }
     const count = Object.keys(capturedData).length;
     statusEl.textContent = `${count} page${count !== 1 ? "s" : ""} captured`;
   }
@@ -131,14 +135,10 @@
    * Each file is named app_catalog-{skip}.json.
    */
   async function downloadZip() {
-    const keys = Object.keys(capturedData).sort(
-      (a, b) => Number(a) - Number(b),
-    );
+    const keys = Object.keys(capturedData).sort((a, b) => Number(a) - Number(b));
 
     if (keys.length === 0) {
-      showToast(
-        "No data captured yet — scroll through the app catalog to load pages first.",
-      );
+      showToast("No data captured yet — scroll through the app catalog to load pages first.");
       return;
     }
 
@@ -198,8 +198,12 @@
    * Injects the floating download panel into the page.
    */
   function injectPanel() {
-    if (document.getElementById("ac-downloader-panel")) return;
-    if (!document.body) return;
+    if (document.getElementById("ac-downloader-panel")) {
+      return;
+    }
+    if (!document.body) {
+      return;
+    }
 
     const panel = document.createElement("div");
     panel.id = "ac-downloader-panel";

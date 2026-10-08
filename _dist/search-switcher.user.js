@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Minimal Search Switcher: Google <-> Bing <-> DuckDuckGo
 // @namespace    https://github.com/warthurton/userscripts
-// @version      2026.0429.1725
-// @modified     2026-04-29T17:25:26.203Z
+// @version      2026.1008.1930
+// @modified     2026-10-08T19:30:52.609Z
 // @description  Switch between Google, Bing, and DuckDuckGo search engines
 // @author       warthurton
 // @match        https://www.google.com/search*
@@ -20,15 +20,11 @@
 // @compatible   firefox            Violentmonkey 3.0+ (full compatibility)
 // @compatible   safari             Userscripts for Safari 1.0+ (full compatibility; use Safari 15+)
 // @compatible   chrome             Chromium 90+ via Violentmonkey/TamperMonkey (full support)
-// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/search-switcher.meta.js
-// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/search-switcher.user.js
+// @updateURL    https://github.com/warthurton/userscripts/releases/latest/download/search-switcher.meta.js
+// @downloadURL  https://github.com/warthurton/userscripts/releases/latest/download/search-switcher.user.js
 // @homepageURL  https://github.com/warthurton/userscripts
 // @supportURL   https://github.com/warthurton/userscripts/issues
 // ==/UserScript==
-
-/* eslint-env browser, es2020 */
-/* eslint-disable no-console */
-/* global GM */
 
 (function () {
   "use strict";
@@ -41,8 +37,7 @@
       key: "google",
       hostname: "www.google.com",
       label: "!g",
-      buildUrl: (q) =>
-        `https://www.google.com/search?q=${encodeURIComponent(q)}`,
+      buildUrl: q => `https://www.google.com/search?q=${encodeURIComponent(q)}`,
       querySelectors: ['textarea[name="q"]', 'input[name="q"]'],
       overlayInputSelectors: ['textarea[name="q"]', 'input[name="q"]'],
       // The rounded search-box wrapper that holds input + buttons
@@ -66,7 +61,7 @@
       key: "bing",
       hostname: "www.bing.com",
       label: "!b",
-      buildUrl: (q) => `https://www.bing.com/search?q=${encodeURIComponent(q)}`,
+      buildUrl: q => `https://www.bing.com/search?q=${encodeURIComponent(q)}`,
       querySelectors: ["#sb_form_q", 'input[name="q"]'],
       searchBarSelectors: [".b_searchboxForm"],
       layout: "inline-left",
@@ -79,7 +74,7 @@
       key: "ddg",
       hostname: "duckduckgo.com",
       label: "!d",
-      buildUrl: (q) => `https://duckduckgo.com/?q=${encodeURIComponent(q)}`,
+      buildUrl: q => `https://duckduckgo.com/?q=${encodeURIComponent(q)}`,
       querySelectors: ["#search_form_input", 'input[name="q"]'],
       overlayInputSelectors: ["#search_form_input", 'input[name="q"]'],
       // DDG uses hashed CSS-module classes, so we locate the visual bar
@@ -104,8 +99,10 @@
   // Detect current engine
   // ---------------------------------------------------------------------------
   const host = location.hostname;
-  const currentEngine = Object.values(ENGINES).find((e) => e.hostname === host);
-  if (!currentEngine) return;
+  const currentEngine = Object.values(ENGINES).find(e => e.hostname === host);
+  if (!currentEngine) {
+    return;
+  }
 
   // ---------------------------------------------------------------------------
   // Detect script hosting extension (for engine-specific optimizations)
@@ -116,31 +113,22 @@
       return "firemonkey";
     }
     // Violentmonkey: Check for Violentmonkey-specific properties
-    if (
-      typeof GM !== "undefined" &&
-      GM.info?.scriptEngine === "Violentmonkey"
-    ) {
+    if (typeof GM !== "undefined" && GM.info?.scriptEngine === "Violentmonkey") {
       return "violentmonkey";
     }
     // Userscripts for Safari: Check for Safari detection
-    if (
-      typeof safari !== "undefined" ||
-      navigator.userAgent.includes("Safari")
-    ) {
+    if (typeof safari !== "undefined" || navigator.userAgent.includes("Safari")) {
       return "safari-userscripts";
     }
     // TamperMonkey: Check TamperMonkey-specific API
-    if (
-      typeof GM_info !== "undefined" &&
-      GM_info.scriptEngine === "Tampermonkey"
-    ) {
+    if (typeof GM_info !== "undefined" && GM_info.scriptEngine === "Tampermonkey") {
       return "tampermonkey";
     }
     // Default: assume generic GM API
     return "generic";
   };
 
-  const scriptEngine = detectScriptEngine();
+  const _scriptEngine = detectScriptEngine();
 
   // ---------------------------------------------------------------------------
   // Navigation marker — detect & clean up ss_nav parameter
@@ -176,10 +164,14 @@
   // Utility: query the first matching selector from a list
   // ---------------------------------------------------------------------------
   const queryFirst = (selectors, root = document) => {
-    if (!selectors) return null;
+    if (!selectors) {
+      return null;
+    }
     for (const sel of selectors) {
       const el = root.querySelector(sel);
-      if (el) return el;
+      if (el) {
+        return el;
+      }
     }
     return null;
   };
@@ -213,10 +205,7 @@
   // ---------------------------------------------------------------------------
   // Utility: navigate to URL respecting new-tab preference
   // ---------------------------------------------------------------------------
-  const navigateTo = (
-    url,
-    { newTab = prefs.openInNewTab, active = false } = {},
-  ) => {
+  const navigateTo = (url, { newTab = prefs.openInNewTab, active = false } = {}) => {
     cancelCountdown();
     if (newTab) {
       GM.openInTab(url, { active, insert: true, setParent: !active });
@@ -254,7 +243,9 @@
   // ---------------------------------------------------------------------------
   const getQuery = () => {
     const q = new URL(location.href).searchParams.get("q");
-    if (q) return q.trim();
+    if (q) {
+      return q.trim();
+    }
     const input = queryFirst(currentEngine.querySelectors);
     return (input?.value || "").trim();
   };
@@ -262,7 +253,7 @@
   // ---------------------------------------------------------------------------
   // Bing auto-redirect: open DDG in foreground, close Bing after delay
   // ---------------------------------------------------------------------------
-  const startBingAutoRedirect = (query) => {
+  const startBingAutoRedirect = query => {
     GM.openInTab(ENGINES.ddg.buildUrl(query), {
       active: true,
       insert: true,
@@ -293,7 +284,9 @@
         secondsLeft = next;
         btn.textContent = `Close Bing (${secondsLeft}s)`;
       }
-      if (remaining <= 0) clearInterval(countdownInterval);
+      if (remaining <= 0) {
+        clearInterval(countdownInterval);
+      }
     }, 100);
 
     redirectTimeout = setTimeout(async () => {
@@ -343,17 +336,19 @@
   // ---------------------------------------------------------------------------
   // UI: create a switch button for a target engine
   // ---------------------------------------------------------------------------
-  const createSwitchButton = (targetEngine) => {
+  const createSwitchButton = targetEngine => {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.textContent = targetEngine.label;
     btn.title = `Search on ${targetEngine.key}`;
     btn.style.cssText = CHIP_STYLE;
 
-    btn.addEventListener("click", async (e) => {
+    btn.addEventListener("click", async e => {
       e.preventDefault();
       const activeQuery = getQuery();
-      if (!activeQuery) return;
+      if (!activeQuery) {
+        return;
+      }
       const markers = {};
       if (targetEngine.key === "bing") {
         markers.ss_skip_redirect = "1";
@@ -388,7 +383,9 @@
   // DOM: resolve DDG's search bar dynamically (hashed class names)
   // ---------------------------------------------------------------------------
   const findCommonAncestor = (a, b) => {
-    if (!a || !b) return null;
+    if (!a || !b) {
+      return null;
+    }
     const seen = new Set();
     let node = a;
     while (node) {
@@ -397,7 +394,9 @@
     }
     node = b;
     while (node) {
-      if (seen.has(node)) return node;
+      if (seen.has(node)) {
+        return node;
+      }
       node = node.parentElement;
     }
     return null;
@@ -405,9 +404,7 @@
 
   const resolveDDGSearchBar = () => {
     const input = queryFirst(ENGINES.ddg.overlayInputSelectors);
-    const wrapper = document.querySelector(
-      '[data-testid="search-form-input-wrapper"]',
-    );
+    const wrapper = document.querySelector('[data-testid="search-form-input-wrapper"]');
 
     if (input && wrapper && wrapper.contains(input)) {
       return { bar: wrapper, input, layout: ENGINES.ddg.layout };
@@ -421,9 +418,7 @@
     // Find the submit button within that form (avoids matching unrelated buttons)
     const submitBtn = form
       ? form.querySelector('button[type="submit"], input[type="submit"]')
-      : document.querySelector(
-          'button[type="submit"][aria-label], button[aria-label="search"]',
-        );
+      : document.querySelector('button[type="submit"][aria-label], button[aria-label="search"]');
 
     if (input && submitBtn) {
       const commonAncestor = findCommonAncestor(input, submitBtn);
@@ -464,10 +459,7 @@
         if (currentEngine.layout === "overlay-left" && input) {
           return { bar, input, layout: currentEngine.layout };
         }
-        const insertBefore = queryFirst(
-          currentEngine.insertBeforeSelectors,
-          bar,
-        );
+        const insertBefore = queryFirst(currentEngine.insertBeforeSelectors, bar);
         return {
           bar,
           insertBefore,
@@ -485,21 +477,17 @@
   // DOM: mount controls into the page
   // ---------------------------------------------------------------------------
   const reserveInputSpace = (input, container) => {
-    if (!input || !container) return;
-    const computedPadding = Number.parseFloat(
-      getComputedStyle(input).paddingInlineStart,
-    );
+    if (!input || !container) {
+      return;
+    }
+    const computedPadding = Number.parseFloat(getComputedStyle(input).paddingInlineStart);
     const basePadding = Number.isFinite(computedPadding) ? computedPadding : 0;
     const gap = currentEngine.overlayPaddingPx || 12;
     input.style.paddingInlineStart = `${Math.ceil(basePadding + container.offsetWidth + gap)}px`;
   };
 
   const mountControls = (container, placement) => {
-    if (
-      placement.bar &&
-      placement.layout === "overlay-left" &&
-      placement.input
-    ) {
+    if (placement.bar && placement.layout === "overlay-left" && placement.input) {
       if (getComputedStyle(placement.bar).position === "static") {
         placement.bar.style.position = "relative";
       }
@@ -554,7 +542,9 @@
   // hydrates; hydration replaces form elements, destroying our buttons.
   // This observer detects removal and re-mounts into the hydrated DOM.
   const watchForRemoval = () => {
-    if (!currentEngine.dynamicContent) return;
+    if (!currentEngine.dynamicContent) {
+      return;
+    }
     const obs = new MutationObserver(() => {
       if (!document.getElementById(CONTAINER_ID)) {
         obs.disconnect();
@@ -571,23 +561,19 @@
   const init = () => {
     const query = getQuery();
     if (!query) {
-      if (
-        currentEngine.dynamicContent &&
-        retryCount < currentEngine.maxRetries
-      ) {
+      if (currentEngine.dynamicContent && retryCount < currentEngine.maxRetries) {
         retryCount++;
         setTimeout(init, 200);
       }
       return;
     }
-    if (document.getElementById(CONTAINER_ID)) return;
+    if (document.getElementById(CONTAINER_ID)) {
+      return;
+    }
 
     const placement = findSearchBar();
     if (!placement) {
-      if (
-        currentEngine.dynamicContent &&
-        retryCount < currentEngine.maxRetries
-      ) {
+      if (currentEngine.dynamicContent && retryCount < currentEngine.maxRetries) {
         retryCount++;
         setTimeout(init, 200);
       }
@@ -611,9 +597,7 @@
     prefs.autoRedirect = autoRedirect;
     const parsed = Number(delayMs);
     prefs.redirectDelayMs =
-      Number.isFinite(parsed) && parsed >= 0
-        ? Math.floor(parsed)
-        : DEFAULT_REDIRECT_DELAY_MS;
+      Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) : DEFAULT_REDIRECT_DELAY_MS;
 
     GM.registerMenuCommand(
       prefs.openInNewTab ? "[on] Open in New Tab" : "[off] Open in New Tab",
@@ -621,13 +605,11 @@
         prefs.openInNewTab = !prefs.openInNewTab;
         await GM.setValue("new-tab", prefs.openInNewTab);
         location.reload();
-      },
+      }
     );
 
     GM.registerMenuCommand(
-      prefs.autoRedirect
-        ? "[on] Auto Redirect Bing -> DDG"
-        : "[off] Auto Redirect Bing -> DDG",
+      prefs.autoRedirect ? "[on] Auto Redirect Bing -> DDG" : "[off] Auto Redirect Bing -> DDG",
       async () => {
         prefs.autoRedirect = !prefs.autoRedirect;
         await GM.setValue("bing-to-ddg", prefs.autoRedirect);
@@ -636,18 +618,15 @@
           document.getElementById(COUNTDOWN_ID)?.remove();
         }
         location.reload();
-      },
+      }
     );
 
     // Bing auto-redirect: open DDG immediately, close Bing after delay
-    if (
-      currentEngine.key === "bing" &&
-      !fromScript &&
-      !suppressRedirect &&
-      prefs.autoRedirect
-    ) {
+    if (currentEngine.key === "bing" && !fromScript && !suppressRedirect && prefs.autoRedirect) {
       const q = new URL(location.href).searchParams.get("q");
-      if (q) startBingAutoRedirect(q);
+      if (q) {
+        startBingAutoRedirect(q);
+      }
     }
 
     init();

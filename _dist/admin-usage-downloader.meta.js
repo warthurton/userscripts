@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ChatGPT Admin Usage Downloader
 // @namespace    https://github.com/warthurton/userscripts
-// @version      2026.0420.2230
-// @modified     2026-04-20T22:30:04.230Z
+// @version      2026.1008.1930
+// @modified     2026-10-08T19:30:52.609Z
 // @description  Auto-download analytics data and statistics from ChatGPT admin usage page
 // @author       warthurton
 // @match        https://chatgpt.com/admin/usage
@@ -10,8 +10,8 @@
 // @run-at       document-start
 // @grant        none
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js
-// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/admin-usage-downloader.meta.js
-// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/admin-usage-downloader.user.js
+// @updateURL    https://github.com/warthurton/userscripts/releases/latest/download/admin-usage-downloader.meta.js
+// @downloadURL  https://github.com/warthurton/userscripts/releases/latest/download/admin-usage-downloader.user.js
 // @homepageURL  https://github.com/warthurton/userscripts
 // @supportURL   https://github.com/warthurton/userscripts/issues
 // ==/UserScript==
