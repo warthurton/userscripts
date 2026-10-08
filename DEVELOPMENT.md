@@ -73,13 +73,9 @@ userscripts/
 
 The repository has one workflow:
 
-- **release.yml**: Runs on push to `main`. Uses semantic-release to determine the next version from conventional commits, builds userscripts, attaches the `_dist/` assets to a GitHub release, and creates a tag. After a successful release, it opens or updates a PR from `automation/release-dist` containing only generated `_dist/` changes rather than pushing directly to protected `main`. Runs are serialized to avoid conflicting releases and artifact PR updates.
+- **release.yml**: Runs on push to `main`. Uses semantic-release to determine the next version from conventional commits, builds userscripts, attaches the `_dist/` assets to a GitHub release, and creates a tag. It does not push generated commits to the protected `main` branch.
 
-Merge the artifact PR to update `_dist/` on `main`, preferably before the next release. Until it is merged, release downloads are current but the repository's `_dist/` files remain at their previous versions. The build uses those files as its comparison baseline, so leaving the PR unmerged can cause unchanged scripts to receive new versions in subsequent releases. When artifacts have not changed, no PR is needed; pushes that do not produce a release leave any pending artifact PR untouched.
-
-In **Settings → Actions → General → Workflow permissions**, enable **Allow GitHub Actions to create and approve pull requests** (organization policy must also permit it). The workflow already grants `contents: write` and `pull-requests: write`. Artifact PRs still require the normal reviews and branch-protection checks; they are not automatically merged. PRs created with `GITHUB_TOKEN` do not trigger other workflows, so repositories requiring PR checks may need an approved GitHub App token for the artifact PR action.
-
-Artifact commit messages and PR titles use `chore:` and include `[skip ci]` to prevent release loops when merged.
+Release commits include `[skip ci]` to prevent infinite loops.
 
 ## Workflow
 
