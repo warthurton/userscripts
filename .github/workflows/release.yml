@@ -9,10 +9,6 @@ permissions:
     issues: write
     pull-requests: write
 
-concurrency:
-    group: release-${{ github.ref }}
-    cancel-in-progress: false
-
 jobs:
     release:
         runs-on: ubuntu-latest
@@ -23,7 +19,6 @@ jobs:
               uses: actions/checkout@v5
               with:
                   fetch-depth: 0
-                  ref: main
 
             - name: Setup Node.js
               uses: actions/setup-node@v5
@@ -34,24 +29,8 @@ jobs:
               run: npm ci
 
             - name: Run semantic-release
-              id: release
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   FORCE_ALL_SCRIPTS: ${{ contains(github.event.head_commit.message,
                       '[force-all-scripts]') && '1' || '0' }}
               run: npx semantic-release
-
-            - name: Sync release artifacts
-              if: steps.release.outputs.released == 'true'
-              uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8
-              with:
-                  token: ${{ secrets.GITHUB_TOKEN }}
-                  add-paths: _dist/
-                  branch: automation/release-dist
-                  base: main
-                  commit-message: "chore: sync release artifacts [skip ci]"
-                  title: "chore: sync release artifacts [skip ci]"
-                  body: |
-                      Updates `_dist/` with the generated files uploaded by the latest successful release.
-
-                      Merge this PR to persist the released script versions and keep future builds from bumping unchanged scripts.

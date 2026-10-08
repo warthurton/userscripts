@@ -14,8 +14,7 @@
         [
             "@semantic-release/exec",
             {
-                "prepareCmd": "node _tools/build-userscripts.mjs && node _tools/reset-source-versions.mjs",
-                "successCmd": "if [ -n \"$GITHUB_OUTPUT\" ]; then echo \"released=true\" >> \"$GITHUB_OUTPUT\"; fi"
+                "prepareCmd": "node _tools/build-userscripts.mjs && node _tools/reset-source-versions.mjs"
             }
         ],
         [
