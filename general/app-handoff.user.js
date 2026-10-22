@@ -77,6 +77,7 @@
     snoozeMinutes: 5,
     closeDelaySec: 30,
     refreshThreshold: 3,
+    chooserTimeoutSec: 10,
     defaultHandlerId: DEFAULT_HANDLER.id,
     handlers: [DEFAULT_HANDLER],
   };
@@ -88,6 +89,7 @@
     { key: "snoozeMinutes", label: "Snooze after bar times out (minutes)", min: 0 },
     { key: "closeDelaySec", label: "Close tab after opening (seconds)", min: 1 },
     { key: "refreshThreshold", label: "Same-URL loads before prompting", min: 2 },
+    { key: "chooserTimeoutSec", label: "Target chooser picks the default after (seconds)", min: 1 },
   ];
 
   let settings = structuredCloneSettings(DEFAULT_SETTINGS);
@@ -436,10 +438,27 @@
   // them compact and left-aligned.
   function applyButtonLayout(actions) {
     const isNarrow = window.matchMedia(NARROW_SCREEN_QUERY).matches;
+    const isStacked = actions.style.flexDirection === "column";
+    // More than three buttons wrap onto a second row instead of being squeezed.
+    const narrowBasis = actions.children.length > 3 && !actions.dataset.singleRow ? "45%" : "0%";
     for (const button of actions.children) {
-      button.style.flex = isNarrow ? "1 1 0%" : "0 0 auto";
-      button.style.padding = isNarrow ? "10px 4px" : "10px 18px";
+      if (isStacked) {
+        button.style.flex = "0 0 auto";
+        button.style.padding = "10px 14px";
+      } else {
+        button.style.flex = isNarrow ? `1 1 ${narrowBasis}` : "0 0 auto";
+        button.style.padding = isNarrow ? "10px 4px" : "10px 18px";
+      }
     }
+  }
+
+  // Replaces the bar's buttons. Stacked puts one full-width button per row, which
+  // suits the target chooser where labels can be long.
+  function setActions(ui, children, { stacked = false } = {}) {
+    ui.actions.style.display = "flex";
+    ui.actions.style.flexDirection = stacked ? "column" : "row";
+    ui.actions.replaceChildren(...children);
+    applyButtonLayout(ui.actions);
   }
 
   const ACTION_STYLE = [
@@ -519,7 +538,14 @@
       .matchMedia(NARROW_SCREEN_QUERY)
       .addEventListener("change", () => applyButtonLayout(actions));
 
-    const ui = { bar, info, actions, hideTimeoutId: null };
+    const ui = {
+      bar,
+      info,
+      actions,
+      baseInfoText: infoText,
+      hideTimeoutId: null,
+      chooserIntervalId: null,
+    };
 
     const configButton = createActionButton("Config", "#48484a", () => showConfigPanel(ui));
     configButton.style.cssText += ";flex:none;padding:4px 10px;font-size:12px";
@@ -546,36 +572,199 @@
 
   function hideBar(ui) {
     clearTimeout(ui.hideTimeoutId);
+    clearInterval(ui.chooserIntervalId);
     ui.bar.style.opacity = "0";
     setTimeout(() => ui.bar.remove(), FADE_DURATION_MS);
   }
 
   function addPromptButtons(ui, context) {
     const { domain, handler } = context;
+    const hasChoice = settings.handlers.length > 1;
     const appUrl = buildAppUrl(handler, location.href);
-    ui.actions.style.display = "flex";
-    ui.actions.replaceChildren(
-      createActionLink(getOpenLabel(handler), "#0a84ff", appUrl, () => handleOpenTap(ui)),
-      createActionLink("Always open", "#30d158", appUrl, () => {
-        rememberAlwaysOpen(context);
-        handleOpenTap(ui);
-      }),
-      createActionButton("Ignore domain", "#636366", () => ignoreDomain(domain, ui))
-    );
-    applyButtonLayout(ui.actions);
+
+    // With several targets the buttons open a chooser; with one target they stay
+    // real links so the tap itself launches the app.
+    const openControl = hasChoice
+      ? createActionButton("Open in...", "#0a84ff", () => showOpenChooser(ui, context))
+      : createActionLink(getOpenLabel(handler), "#0a84ff", appUrl, () => handleOpenTap(ui));
+    const alwaysOpenControl = hasChoice
+      ? createActionButton("Always open", "#30d158", () => showAlwaysOpenChooser(ui, context))
+      : createActionLink("Always open", "#30d158", appUrl, () => {
+          rememberAlwaysOpen(context, handler);
+          handleOpenTap(ui);
+        });
+
+    const controls = [openControl, alwaysOpenControl];
+    if (context.isRefreshPrompt) {
+      controls.push(
+        createActionButton("Choose new target", "#bf5af2", () =>
+          showChangeTargetChooser(ui, context)
+        )
+      );
+      if (context.rule) {
+        controls.push(
+          createActionButton("Delete target", "#ff453a", () => deleteSiteTarget(ui, context))
+        );
+      }
+    }
+    controls.push(createActionButton("Ignore domain", "#636366", () => ignoreDomain(domain, ui)));
+    setActions(ui, controls);
   }
 
-  // Always-open tap-only apps (Shortcuts) get one run button; there is nothing
+  // Always-open tap-only targets (Shortcuts) get one run button; there is nothing
   // to decide, so Always open and Ignore domain are left out.
   function addRunOnlyButton(ui, context) {
     const { handler } = context;
-    ui.actions.style.display = "flex";
-    ui.actions.replaceChildren(
+    setActions(ui, [
       createActionLink(getOpenLabel(handler), "#ff9f0a", buildAppUrl(handler, location.href), () =>
         handleOpenTap(ui)
-      )
-    );
-    applyButtonLayout(ui.actions);
+      ),
+    ]);
+  }
+
+  function addOrphanedTargetButtons(ui, context) {
+    setActions(ui, [
+      createActionButton("Choose new target", "#30d158", () =>
+        showChangeTargetChooser(ui, context)
+      ),
+      createActionButton("Delete site", "#ff453a", () => deleteSiteTarget(ui, context)),
+    ]);
+  }
+
+  // Puts the bar back to what it showed before a chooser took it over.
+  function restorePrompt(ui, context) {
+    setInfoText(ui, ui.baseInfoText);
+    if (context.isOrphaned) {
+      addOrphanedTargetButtons(ui, context);
+    } else {
+      addPromptButtons(ui, context);
+    }
+    ui.hideTimeoutId = setTimeout(() => hideBar(ui), settings.barDurationSec * 1000);
+  }
+
+  // ── Target chooser ────────────────────────────────────────────────
+
+  // Lists every configured target as a real link, so picking one is the tap that
+  // launches it. With a defaultHandler and timeout, the default is picked for the
+  // user when the countdown ends.
+  function showTargetChooser(
+    ui,
+    { prompt, defaultHandler = null, timeoutSec = 0, onPick, onTimeout, onCancel }
+  ) {
+    clearTimeout(ui.hideTimeoutId);
+    clearInterval(ui.chooserIntervalId);
+    setInfoText(ui, prompt);
+
+    const entries = settings.handlers.map(handler => {
+      const isDefault = Boolean(defaultHandler) && handler.id === defaultHandler.id;
+      const baseLabel = getOpenLabel(handler);
+      const link = createActionLink(
+        baseLabel,
+        isDefault ? "#0a84ff" : "#48484a",
+        buildAppUrl(handler, location.href),
+        () => {
+          clearInterval(ui.chooserIntervalId);
+          onPick(handler);
+        }
+      );
+      return { link, baseLabel, isDefault };
+    });
+    const cancelButton = createActionButton("Cancel", "#636366", () => {
+      clearInterval(ui.chooserIntervalId);
+      onCancel();
+    });
+    setActions(ui, [...entries.map(entry => entry.link), cancelButton], { stacked: true });
+
+    const defaultEntry = entries.find(entry => entry.isDefault);
+    if (!defaultEntry || timeoutSec <= 0) {
+      return;
+    }
+    const deadline = Date.now() + timeoutSec * 1000;
+    function tick() {
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) {
+        clearInterval(ui.chooserIntervalId);
+        onTimeout(defaultHandler);
+        return;
+      }
+      defaultEntry.link.textContent = `${defaultEntry.baseLabel} (default in ${Math.ceil(remainingMs / 1000)}s)`;
+    }
+    ui.chooserIntervalId = setInterval(tick, 1000);
+    tick();
+  }
+
+  function showOpenChooser(ui, context) {
+    showTargetChooser(ui, {
+      prompt: "Open with which target?",
+      defaultHandler: context.handler,
+      timeoutSec: settings.chooserTimeoutSec,
+      onPick: () => handleOpenTap(ui),
+      onTimeout: handler => openDefaultTarget(ui, context, handler),
+      onCancel: () => restorePrompt(ui, context),
+    });
+  }
+
+  // Always open never falls back to a default: the user has to choose.
+  function showAlwaysOpenChooser(ui, context) {
+    showTargetChooser(ui, {
+      prompt: `Always open ${context.domain} with which target?`,
+      onPick: handler => {
+        rememberAlwaysOpen(context, handler);
+        handleOpenTap(ui);
+      },
+      onCancel: () => restorePrompt(ui, context),
+    });
+  }
+
+  // Used by the reload prompt, a missing target and a failed launch.
+  function showChangeTargetChooser(ui, context) {
+    showTargetChooser(ui, {
+      prompt: `Choose a new target for ${context.domain}.`,
+      onPick: handler => {
+        saveSiteTarget(context, handler);
+        handleOpenTap(ui);
+      },
+      onCancel: () => restorePrompt(ui, context),
+    });
+  }
+
+  function openDefaultTarget(ui, context, handler) {
+    if (isTapOnlyHandler(handler)) {
+      setInfoText(ui, `${handler.name} needs a tap to launch.`);
+      setActions(ui, [
+        createActionLink(
+          getOpenLabel(handler),
+          "#ff9f0a",
+          buildAppUrl(handler, location.href),
+          () => handleOpenTap(ui)
+        ),
+      ]);
+      return;
+    }
+    setInfoText(ui, `Opening with ${handler.name}.`);
+    launchAutomatically(ui, handler, {
+      requireHandoff: true,
+      onNoHandoff: () => showLaunchFailed(ui, context, handler),
+    });
+  }
+
+  function showLaunchFailed(ui, context, handler) {
+    setInfoText(ui, `${handler.name} did not open. It may be unavailable.`);
+    const controls = [
+      createActionLink("Try again", "#0a84ff", buildAppUrl(handler, location.href), () =>
+        handleOpenTap(ui)
+      ),
+      createActionButton("Choose new target", "#30d158", () =>
+        showChangeTargetChooser(ui, context)
+      ),
+    ];
+    if (context.rule) {
+      controls.push(
+        createActionButton("Delete target", "#ff453a", () => deleteSiteTarget(ui, context))
+      );
+    }
+    setActions(ui, controls);
+    ui.hideTimeoutId = setTimeout(() => hideBar(ui), settings.refreshBarDurationSec * 1000);
   }
 
   // ── Config panel ──────────────────────────────────────────────────
@@ -698,7 +887,7 @@
 
     content.append(
       createField("Bar position", positionSelect),
-      createField("Default app", defaultAppSelect),
+      createField("Default target", defaultAppSelect),
       close.row,
       ...numberInputs.map(({ label, input }) => createField(label, input)),
       createButtonRow(
@@ -708,7 +897,7 @@
     );
   }
 
-  function renderAppsTab(content, showMessage) {
+  function renderTargetsTab(content, showMessage) {
     const list = el("div", "display:flex;flex-direction:column;gap:8px");
     const formHost = el("div");
 
@@ -720,16 +909,16 @@
 
     async function deleteHandler(handler) {
       if (handler.id === settings.defaultHandlerId) {
-        showMessage("Choose a different default app on the General tab first.");
+        showMessage("Choose a different default target on the General tab first.");
         return;
       }
       settings.handlers = settings.handlers.filter(existing => existing.id !== handler.id);
-      sites = sites.map(rule =>
-        rule.handlerId === handler.id ? { ...rule, handlerId: settings.defaultHandlerId } : rule
-      );
+      const affectedSites = sites.filter(rule => rule.handlerId === handler.id).length;
       await persistSettings();
-      await persistSites();
-      showMessage(`Deleted ${handler.name}. Sites using it now use the default app.`, false);
+      showMessage(
+        `Deleted ${handler.name}. ${affectedSites} site(s) used it and will ask for a new target on their next visit.`,
+        false
+      );
       renderList();
     }
 
@@ -798,7 +987,7 @@
       async function save() {
         const name = nameInput.value.trim();
         if (!name) {
-          return showMessage("Give the app a name.");
+          return showMessage("Give the target a name.");
         }
 
         let handler;
@@ -839,7 +1028,7 @@
           shortcutField,
           shortcutHint,
           createButtonRow(
-            createActionButton("Save app", "#0a84ff", save),
+            createActionButton("Save target", "#0a84ff", save),
             createActionButton("Cancel", "#48484a", () => formHost.replaceChildren())
           )
         )
@@ -849,7 +1038,7 @@
     renderList();
     content.append(
       list,
-      createButtonRow(createActionButton("Add app", "#30d158", () => showForm(null))),
+      createButtonRow(createActionButton("Add target", "#30d158", () => showForm(null))),
       formHost
     );
   }
@@ -909,7 +1098,7 @@
                   el(
                     "div",
                     HINT_STYLE,
-                    `${resolveHandler(rule.handlerId).name} | auto open: ${rule.autoOpen ? "yes" : "no"}`
+                    `${settings.handlers.find(item => item.id === rule.handlerId)?.name || "target missing"} | auto open: ${rule.autoOpen ? "yes" : "no"}`
                   )
                 ),
                 createSmallButton("Edit", "#48484a", () => editRule(rule)),
@@ -964,7 +1153,7 @@
     const content = el("div", "display:flex;flex-direction:column;gap:10px");
     const tabs = [
       ["General", renderGeneralTab],
-      ["Apps", renderAppsTab],
+      ["Targets", renderTargetsTab],
       ["Sites", renderSitesTab],
     ];
     const tabButtons = tabs.map(([name, render]) =>
@@ -982,6 +1171,7 @@
 
     const closeButton = createActionButton("Close", "#636366", () => hideBar(ui));
     const nav = el("div", "display:flex;gap:8px", ...tabButtons, closeButton);
+    nav.dataset.singleRow = "true";
     applyButtonLayout(nav);
 
     const panel = el("div", "display:flex;flex-direction:column;gap:10px", nav, message, content);
@@ -999,8 +1189,7 @@
   // the automatic launch was probably blocked.
   function startCloseCountdown(deadline, ui, { requireHandoff = false, onNoHandoff } = {}) {
     clearTimeout(ui.hideTimeoutId);
-    ui.actions.style.display = "flex";
-    ui.actions.replaceChildren();
+    clearInterval(ui.chooserIntervalId);
     let isCancelled = false;
     let wasHidden = document.hidden;
     let intervalId = null;
@@ -1018,8 +1207,7 @@
       markStayInTab(location.hostname.toLowerCase());
       hideBar(ui);
     });
-    ui.actions.appendChild(cancelButton);
-    applyButtonLayout(ui.actions);
+    setActions(ui, [cancelButton]);
 
     function checkDeadline() {
       if (isCancelled) {
@@ -1051,7 +1239,7 @@
   function beginCloseCountdown(ui, countdownOptions) {
     if (!settings.closeTabAfterOpen) {
       setInfoText(ui, "Opened.");
-      ui.actions.replaceChildren();
+      setActions(ui, []);
       ui.hideTimeoutId = setTimeout(() => hideBar(ui), 2000);
       return;
     }
@@ -1072,12 +1260,29 @@
   }
 
   // Keeps the matching rule's domain (and so its subdomain coverage) when one exists.
-  function rememberAlwaysOpen({ domain, handler, rule }) {
+  function rememberAlwaysOpen({ domain, rule }, handler) {
     return saveSiteRule({
       domain: rule ? rule.domain : domain,
       handlerId: handler.id,
       autoOpen: true,
     });
+  }
+
+  // Changes which target a site uses without touching whether it auto-opens.
+  function saveSiteTarget({ domain, rule }, handler) {
+    return saveSiteRule({
+      domain: rule ? rule.domain : domain,
+      handlerId: handler.id,
+      autoOpen: rule ? rule.autoOpen : false,
+    });
+  }
+
+  async function deleteSiteTarget(ui, { rule }) {
+    sites = sites.filter(existing => existing.domain !== rule.domain);
+    await persistSites();
+    setInfoText(ui, `Deleted the saved target for ${rule.domain}.`);
+    setActions(ui, []);
+    ui.hideTimeoutId = setTimeout(() => hideBar(ui), 2500);
   }
 
   async function ignoreDomain(domain, ui) {
@@ -1095,7 +1300,7 @@
     const scheme = getScheme(getHandlerTemplate(handler));
     return [
       context.domain,
-      `app: ${handler.name} (${scheme}${isTapOnlyHandler(handler) ? ", tap only" : ""})`,
+      `target: ${handler.name} (${scheme}${isTapOnlyHandler(handler) ? ", tap only" : ""})`,
       `first in tab: ${context.isFirstSeenInTab ? "yes" : "no"}`,
       `same-URL loads: ${context.repeatCount}/${settings.refreshThreshold}`,
       `auto open: ${context.isAlwaysOpen ? "yes" : "no"}`,
@@ -1110,7 +1315,7 @@
     const lines = [];
     if (isRefreshPrompt) {
       lines.push(
-        `Same page loaded ${settings.refreshThreshold} times. ${getOpenLabel(handler)} or ignore ${domain}?`
+        `Same page loaded ${settings.refreshThreshold} times. Open it, pick a different target, or ignore ${domain}?`
       );
     }
     if (SHOW_DEBUG) {
@@ -1152,11 +1357,21 @@
     const ui = createBar(lines.join("\n"));
     launchAutomatically(ui, handler, {
       requireHandoff: true,
-      onNoHandoff: () => {
-        setInfoText(ui, `Auto-open did not leave this page. Tap ${getOpenLabel(handler)}.`);
-        addPromptButtons(ui, context);
-      },
+      onNoHandoff: () => showLaunchFailed(ui, context, handler),
     });
+  }
+
+  function showOrphanedTargetBar(context) {
+    const lines = [
+      `The target for ${context.rule.domain} is no longer available.`,
+      "Choose a new one or delete this site.",
+    ];
+    if (SHOW_DEBUG) {
+      lines.push(buildDebugText(context));
+    }
+    const ui = createBar(lines.join("\n"));
+    addOrphanedTargetButtons(ui, context);
+    ui.hideTimeoutId = setTimeout(() => hideBar(ui), settings.refreshBarDurationSec * 1000);
   }
 
   async function main() {
@@ -1186,7 +1401,8 @@
 
     const rule = findSiteRule(domain);
     const handler = resolveHandler(rule ? rule.handlerId : settings.defaultHandlerId);
-    const isAlwaysOpen = Boolean(rule && rule.autoOpen);
+    const isOrphaned = Boolean(rule) && !settings.handlers.some(item => item.id === rule.handlerId);
+    const isAlwaysOpen = Boolean(rule && rule.autoOpen) && !isOrphaned;
     const snoozedDomains = await loadSnoozedDomains();
     const { tab, isAvailable: isTabStateAvailable } = await loadTabState();
 
@@ -1210,6 +1426,7 @@
       domain,
       rule,
       handler,
+      isOrphaned,
       isFirstSeenInTab,
       repeatCount,
       isRefreshPrompt,
@@ -1218,6 +1435,14 @@
       isSnoozed: domain in snoozedDomains,
       isTabStateAvailable,
     };
+
+    // A rule whose target was deleted must be fixed before anything is launched.
+    if (isOrphaned) {
+      if (isFirstSeenInTab || isRefreshPrompt || isDebugForced) {
+        showOrphanedTargetBar(context);
+      }
+      return;
+    }
 
     if (
       isAlwaysOpen &&
