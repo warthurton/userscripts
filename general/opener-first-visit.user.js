@@ -25,6 +25,10 @@
   const FADE_DURATION_MS = 400;
   const CLOSE_DELAY_MS = 600;
   const BUTTON_ID = "opener-first-visit-button";
+  const STATUS_BANNER_ID = "opener-first-visit-status";
+  // Set to false once the script is confirmed working.
+  const SHOW_STATUS_BANNER = true;
+  const STATUS_BANNER_DURATION_MS = 2500;
 
   // Userscripts exposes storage as promises; localStorage is the fallback so a
   // storage failure never blocks the button.
@@ -78,6 +82,30 @@
     setTimeout(closeCurrentTab, CLOSE_DELAY_MS);
   }
 
+  function showStatusBanner(message, isError = false) {
+    if (!SHOW_STATUS_BANNER || !document.body) return;
+    document.getElementById(STATUS_BANNER_ID)?.remove();
+
+    const banner = document.createElement("div");
+    banner.id = STATUS_BANNER_ID;
+    banner.textContent = message;
+    banner.style.cssText = [
+      "position:fixed",
+      "top:env(safe-area-inset-top, 0px)",
+      "left:0",
+      "right:0",
+      "z-index:2147483647",
+      "padding:8px 12px",
+      "font:600 13px -apple-system, system-ui, sans-serif",
+      "text-align:center",
+      "color:#fff",
+      `background:${isError ? "#ff453a" : "#30d158"}`,
+    ].join(";");
+
+    document.body.appendChild(banner);
+    setTimeout(() => banner.remove(), STATUS_BANNER_DURATION_MS);
+  }
+
   function showFlashButton() {
     if (document.getElementById(BUTTON_ID)) return;
 
@@ -123,11 +151,14 @@
     const domain = location.hostname.toLowerCase();
     if (!domain) return;
 
+    showStatusBanner(`Opener script running: ${domain}`);
+
     // Visit any page with #opener-debug to force the button for testing.
     const isDebugForced = location.hash.includes("opener-debug");
     const seenDomains = await loadSeenDomains();
     if (seenDomains.has(domain) && !isDebugForced) {
       console.log("[opener-first-visit] domain already seen", domain);
+      showStatusBanner(`Opener script: ${domain} already seen, no button`);
       return;
     }
 
@@ -136,5 +167,8 @@
     showFlashButton();
   }
 
-  main().catch(error => console.error("[opener-first-visit] failed", error));
+  main().catch(error => {
+    console.error("[opener-first-visit] failed", error);
+    showStatusBanner(`Opener script error: ${error.message}`, true);
+  });
 })();
