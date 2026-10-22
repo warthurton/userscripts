@@ -21,14 +21,11 @@
   "use strict";
 
   const SEEN_DOMAINS_KEY = "openerFirstVisit_seenDomains";
+  const CLOSE_DEADLINE_KEY = "openerFirstVisit_closeDeadline";
   const FLASH_DURATION_MS = 4000;
   const FADE_DURATION_MS = 400;
-  const CLOSE_DELAY_MS = 600;
+  const CLOSE_DELAY_MS = 30000;
   const BUTTON_ID = "opener-first-visit-button";
-  const STATUS_BANNER_ID = "opener-first-visit-status";
-  // Set to false once the script is confirmed working.
-  const SHOW_STATUS_BANNER = true;
-  const STATUS_BANNER_DURATION_MS = 2500;
 
   // Userscripts exposes storage as promises; localStorage is the fallback so a
   // storage failure never blocks the button.
@@ -63,11 +60,31 @@
     }
   }
 
+  // sessionStorage is per tab, so a reload of this tab can still honor the deadline.
+  function readCloseDeadline() {
+    try {
+      const deadline = Number(sessionStorage.getItem(CLOSE_DEADLINE_KEY));
+      return Number.isFinite(deadline) && deadline > 0 ? deadline : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function writeCloseDeadline(deadline) {
+    try {
+      if (deadline === null) sessionStorage.removeItem(CLOSE_DEADLINE_KEY);
+      else sessionStorage.setItem(CLOSE_DEADLINE_KEY, String(deadline));
+    } catch (error) {
+      console.warn("[opener-first-visit] sessionStorage unavailable", error);
+    }
+  }
+
   function buildOpenerUrl(pageUrl) {
     return "opener://x-callback-url/show-options?url=" + encodeURIComponent(pageUrl);
   }
 
   function closeCurrentTab() {
+    writeCloseDeadline(null);
     if (typeof GM !== "undefined" && typeof GM.closeTab === "function") {
       GM.closeTab();
       return;
@@ -75,44 +92,10 @@
     window.close();
   }
 
-  function openInOpenerAndClose() {
-    const pageUrl = location.href;
-    window.location.href = buildOpenerUrl(pageUrl);
-    // Delay so iOS can hand off to Opener before this tab goes away.
-    setTimeout(closeCurrentTab, CLOSE_DELAY_MS);
-  }
-
-  function showStatusBanner(message, isError = false) {
-    if (!SHOW_STATUS_BANNER || !document.body) return;
-    document.getElementById(STATUS_BANNER_ID)?.remove();
-
-    const banner = document.createElement("div");
-    banner.id = STATUS_BANNER_ID;
-    banner.textContent = message;
-    banner.style.cssText = [
-      "position:fixed",
-      "top:env(safe-area-inset-top, 0px)",
-      "left:0",
-      "right:0",
-      "z-index:2147483647",
-      "padding:8px 12px",
-      "font:600 13px -apple-system, system-ui, sans-serif",
-      "text-align:center",
-      "color:#fff",
-      `background:${isError ? "#ff453a" : "#30d158"}`,
-    ].join(";");
-
-    document.body.appendChild(banner);
-    setTimeout(() => banner.remove(), STATUS_BANNER_DURATION_MS);
-  }
-
-  function showFlashButton() {
-    if (document.getElementById(BUTTON_ID)) return;
-
+  function createButton() {
     const button = document.createElement("button");
     button.id = BUTTON_ID;
     button.type = "button";
-    button.textContent = "Open in app";
     button.style.cssText = [
       "position:fixed",
       "right:16px",
@@ -128,37 +111,98 @@
       `transition:opacity ${FADE_DURATION_MS}ms ease`,
       "opacity:0",
     ].join(";");
-
-    button.addEventListener("click", event => {
-      event.preventDefault();
-      event.stopPropagation();
-      openInOpenerAndClose();
-    });
-
     document.body.appendChild(button);
     requestAnimationFrame(() => {
       button.style.opacity = "1";
     });
+    return button;
+  }
 
-    setTimeout(() => {
-      button.style.opacity = "0";
-      setTimeout(() => button.remove(), FADE_DURATION_MS);
-    }, FLASH_DURATION_MS);
+  function removeButton(button) {
+    button.style.opacity = "0";
+    setTimeout(() => button.remove(), FADE_DURATION_MS);
+  }
+
+  // The tab is usually backgrounded while the system prompt and Opener are up,
+  // which suspends timers. Checking the clock on every tick and on resume closes
+  // the tab as soon as JavaScript runs again after the deadline.
+  function startCloseCountdown(deadline, button = document.getElementById(BUTTON_ID)) {
+    const countdownButton = button || createButton();
+    countdownButton.style.background = "#ff453a";
+    let isCancelled = false;
+    let intervalId = null;
+
+    function stop() {
+      isCancelled = true;
+      clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", checkDeadline);
+      window.removeEventListener("pageshow", checkDeadline);
+    }
+
+    function checkDeadline() {
+      if (isCancelled) return;
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) {
+        stop();
+        closeCurrentTab();
+        return;
+      }
+      countdownButton.textContent = `Cancel close (${Math.ceil(remainingMs / 1000)}s)`;
+    }
+
+    countdownButton.onclick = event => {
+      event.preventDefault();
+      event.stopPropagation();
+      stop();
+      writeCloseDeadline(null);
+      removeButton(countdownButton);
+    };
+
+    document.addEventListener("visibilitychange", checkDeadline);
+    window.addEventListener("pageshow", checkDeadline);
+    intervalId = setInterval(checkDeadline, 1000);
+    checkDeadline();
+  }
+
+  function openInOpenerAndScheduleClose(button) {
+    const deadline = Date.now() + CLOSE_DELAY_MS;
+    writeCloseDeadline(deadline);
+    startCloseCountdown(deadline, button);
+    window.location.href = buildOpenerUrl(location.href);
+  }
+
+  function showFlashButton() {
+    if (document.getElementById(BUTTON_ID)) return;
+
+    const button = createButton();
+    button.textContent = "Open in app";
+    button.onclick = event => {
+      event.preventDefault();
+      event.stopPropagation();
+      clearTimeout(hideTimeoutId);
+      openInOpenerAndScheduleClose(button);
+    };
+
+    const hideTimeoutId = setTimeout(() => removeButton(button), FLASH_DURATION_MS);
   }
 
   async function main() {
     console.log("[opener-first-visit] running on", location.hostname);
+
+    const pendingDeadline = readCloseDeadline();
+    if (pendingDeadline !== null) {
+      startCloseCountdown(pendingDeadline, createButton());
+      return;
+    }
+
     const domain = location.hostname.toLowerCase();
     if (!domain) return;
-
-    showStatusBanner(`Opener script running: ${domain}`);
 
     // Visit any page with #opener-debug to force the button for testing.
     const isDebugForced = location.hash.includes("opener-debug");
     const seenDomains = await loadSeenDomains();
     if (seenDomains.has(domain) && !isDebugForced) {
       console.log("[opener-first-visit] domain already seen", domain);
-      showStatusBanner(`Opener script: ${domain} already seen, no button`);
       return;
     }
 
@@ -167,8 +211,5 @@
     showFlashButton();
   }
 
-  main().catch(error => {
-    console.error("[opener-first-visit] failed", error);
-    showStatusBanner(`Opener script error: ${error.message}`, true);
-  });
+  main().catch(error => console.error("[opener-first-visit] failed", error));
 })();
