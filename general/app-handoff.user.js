@@ -909,7 +909,7 @@
 
     async function deleteHandler(handler) {
       if (handler.id === settings.defaultHandlerId) {
-        showMessage("Choose a different default target on the General tab first.");
+        showMessage("Tick Default on another target before deleting this one.");
         return;
       }
       settings.handlers = settings.handlers.filter(existing => existing.id !== handler.id);
@@ -922,15 +922,32 @@
       renderList();
     }
 
+    // There is always exactly one default, so unticking is refused: tick another
+    // target to move the default.
+    async function setDefaultHandler(handler, isChecked) {
+      if (!isChecked) {
+        showMessage("A default target is required. Tick Default on another target to change it.");
+        renderList();
+        return;
+      }
+      settings.defaultHandlerId = handler.id;
+      await persistSettings();
+      showMessage(`${handler.name} is now the default target.`, false);
+      renderList();
+    }
+
     function renderList() {
       list.replaceChildren(
         ...settings.handlers.map(handler => {
-          const title = `${handler.name}${handler.id === settings.defaultHandlerId ? " (default)" : ""}`;
+          const defaultToggle = createCheckbox("Default", handler.id === settings.defaultHandlerId);
+          defaultToggle.checkbox.onchange = () =>
+            setDefaultHandler(handler, defaultToggle.checkbox.checked);
           const text = el(
             "div",
-            "flex:1;min-width:0;word-break:break-all",
-            title,
-            el("div", HINT_STYLE, describeHandler(handler))
+            "flex:1;min-width:0;word-break:break-all;display:flex;flex-direction:column;gap:4px",
+            handler.name,
+            el("div", HINT_STYLE, describeHandler(handler)),
+            defaultToggle.row
           );
           return el(
             "div",
@@ -974,6 +991,11 @@
         "The page URL is passed to the shortcut as text input. Needs a tap, so it never auto-launches."
       );
 
+      const defaultToggle = createCheckbox(
+        "Use as default target",
+        Boolean(existing) && existing.id === settings.defaultHandlerId
+      );
+
       function syncType() {
         const isShortcut = typeSelect.value === "shortcut";
         templateField.style.display = isShortcut ? "none" : "flex";
@@ -1011,6 +1033,9 @@
         settings.handlers = existing
           ? settings.handlers.map(item => (item.id === id ? saved : item))
           : [...settings.handlers, saved];
+        if (defaultToggle.checkbox.checked) {
+          settings.defaultHandlerId = id;
+        }
         await persistSettings();
         formHost.replaceChildren();
         showMessage(`Saved ${name}.`, false);
@@ -1027,6 +1052,7 @@
           templateHint,
           shortcutField,
           shortcutHint,
+          defaultToggle.row,
           createButtonRow(
             createActionButton("Save target", "#0a84ff", save),
             createActionButton("Cancel", "#48484a", () => formHost.replaceChildren())
