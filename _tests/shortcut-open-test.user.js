@@ -26,7 +26,9 @@
   }
 
   function showBar() {
-    if (document.getElementById(BAR_ID)) return;
+    if (document.getElementById(BAR_ID)) {
+      return;
+    }
 
     const shortcutUrl = buildShortcutUrl(SHORTCUT_NAME, location.href);
 
