@@ -41,7 +41,7 @@
   }
 
   function buildOpenerUrl(pageUrl) {
-    return "opener://x-callback-url/open-link?url=" + encodeURIComponent(pageUrl);
+    return "opener://x-callback-url/show-options?url=" + encodeURIComponent(pageUrl);
   }
 
   function closeCurrentTab() {
