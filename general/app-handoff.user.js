@@ -229,6 +229,17 @@
       .replaceAll("{host}", encodeURIComponent(location.hostname));
   }
 
+  // Shortcuts templates carry the shortcut name as ?name=..., which makes a
+  // better button label than the generic one.
+  function getShortcutName() {
+    try {
+      const sampleUrl = settings.urlTemplate.replace(/\{[^}]+\}/g, "x");
+      return new URL(sampleUrl).searchParams.get("name") || "";
+    } catch (error) {
+      return "";
+    }
+  }
+
   function isTapOnlyScheme() {
     return TAP_ONLY_SCHEMES.includes(getScheme(settings.urlTemplate));
   }
@@ -373,6 +384,18 @@
         handleOpenTap(ui);
       }),
       createActionButton("Ignore domain", "#636366", () => ignoreDomain(domain, ui))
+    );
+    applyButtonLayout(ui.actions);
+  }
+
+  // Always-open tap-only apps (Shortcuts) get one run button; there is nothing
+  // to decide, so Always open and Ignore domain are left out.
+  function addRunOnlyButton(ui) {
+    const shortcutName = getShortcutName();
+    const label = shortcutName ? `Run ${shortcutName}` : settings.openLabel;
+    ui.actions.style.display = "flex";
+    ui.actions.replaceChildren(
+      createActionLink(label, "#ff9f0a", buildAppUrl(location.href), () => handleOpenTap(ui))
     );
     applyButtonLayout(ui.actions);
   }
@@ -610,19 +633,25 @@
 
   function showPromptBar(context) {
     const { domain, isRefreshPrompt } = context;
+    const isRunOnlyBar = context.isAlwaysOpen && isTapOnlyScheme() && !isRefreshPrompt;
     const lines = [];
     if (isRefreshPrompt) {
       lines.push(
         `Same page loaded ${settings.refreshThreshold} times. ${settings.openLabel} or ignore ${domain}?`
       );
-    } else if (context.isAlwaysOpen && isTapOnlyScheme()) {
-      lines.push("Always open: this app needs a tap to launch.");
     }
     if (SHOW_DEBUG) lines.push(buildDebugText(context));
 
     const ui = createBar(lines.join("\n"));
-    addPromptButtons(ui, domain);
-    const durationSec = isRefreshPrompt ? settings.refreshBarDurationSec : settings.barDurationSec;
+    if (isRunOnlyBar) addRunOnlyButton(ui);
+    else addPromptButtons(ui, domain);
+
+    // The run-only bar stays up as long as the close countdown would. Fading out
+    // never closes the tab; only tapping the run button does.
+    let durationSec = settings.barDurationSec;
+    if (isRefreshPrompt) durationSec = settings.refreshBarDurationSec;
+    else if (isRunOnlyBar) durationSec = settings.closeDelaySec;
+
     ui.hideTimeoutId = setTimeout(() => {
       hideBar(ui);
       // Only the first-visit bar snoozes; the refresh prompt is a deliberate ask.
