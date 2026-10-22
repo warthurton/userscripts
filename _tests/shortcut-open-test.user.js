@@ -2,14 +2,12 @@
 // @name         Shortcut Open Test
 // @namespace    https://github.com/warthurton/userscripts
 // @version      0.0.0
-// @description  Adds a button to every page that runs the Apple Shortcut "DisplayURL" with the current URL as text input. For testing shortcuts:// links from Safari.
+// @description  Test script (not built or released). Adds a bar to every page with a link that runs the Apple Shortcut "DisplayURL" with the current URL as text input.
 // @author       warthurton
 // @match        *://*/*
 // @run-at       document-idle
 // @noframes
 // @grant        none
-// @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/shortcut-open-test.meta.js
-// @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/shortcut-open-test.user.js
 // @homepageURL  https://github.com/warthurton/userscripts
 // @supportURL   https://github.com/warthurton/userscripts/issues
 // ==/UserScript==
