@@ -7,10 +7,10 @@
 // @match        *://*/*
 // @run-at       document-idle
 // @noframes
+// @inject-into  content
 // @grant        GM.getValue
 // @grant        GM.setValue
 // @grant        GM.closeTab
-// @grant        GM_closeTab
 // @updateURL    https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/opener-first-visit.meta.js
 // @downloadURL  https://raw.githubusercontent.com/warthurton/userscripts/main/_dist/opener-first-visit.user.js
 // @homepageURL  https://github.com/warthurton/userscripts
@@ -123,8 +123,10 @@
     const domain = location.hostname.toLowerCase();
     if (!domain) return;
 
+    // Visit any page with #opener-debug to force the button for testing.
+    const isDebugForced = location.hash.includes("opener-debug");
     const seenDomains = await loadSeenDomains();
-    if (seenDomains.has(domain)) {
+    if (seenDomains.has(domain) && !isDebugForced) {
       console.log("[opener-first-visit] domain already seen", domain);
       return;
     }
